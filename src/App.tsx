@@ -1,51 +1,27 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
 import "./App.css";
 
 function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
-
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
-  }
-
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
+    <main className="flex min-h-screen items-center justify-center bg-[#f7f5ef] px-6 text-[#17201a]">
+      <section className="w-full max-w-[420px]">
+        <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#d8d0c1] bg-white/70 px-3 py-1 text-xs font-medium text-[#5d675f] shadow-sm">
+          <span className="size-2 rounded-full bg-[#6f9f75]" />
+          macOS companion foundation
+        </div>
 
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
-
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
+        <div className="rounded-lg border border-[#d8d0c1] bg-white/85 p-6 shadow-sm">
+          <p className="mb-3 text-sm font-medium text-[#6f9f75]">Amadeus</p>
+          <h1 className="text-2xl font-semibold leading-tight">
+            조용히 곁에 있는 데스크톱 동반자
+          </h1>
+          <p className="mt-4 text-sm leading-6 text-[#5d675f]">
+            Tauri, React, Vite, Tailwind CSS v4 기반이 준비되었습니다.
+          </p>
+        </div>
+      </section>
     </main>
   );
 }
 
 export default App;
+
