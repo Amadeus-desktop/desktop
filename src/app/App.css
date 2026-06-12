@@ -1,0 +1,142 @@
+@import "tailwindcss";
+
+:root {
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  color: #ffffff;
+  background: #101114;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: default;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  background-clip: content-box;
+}
+
+.animate-window-appear {
+  animation: window-appear 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.animate-bubble-in {
+  animation: bubble-in 220ms ease-out;
+}
+
+.tab-panel-enter {
+  animation: tab-panel-enter 180ms ease-out;
+}
+
+.ios-switch {
+  position: relative;
+  display: inline-flex;
+  width: 44px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+.ios-switch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ios-switch-slider {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(120, 120, 128, 0.32);
+  transition:
+    background 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.ios-switch-slider::before {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  content: "";
+  transition: transform 160ms ease;
+}
+
+.ios-switch input:checked + .ios-switch-slider {
+  background: #34c759;
+}
+
+.ios-switch input:checked + .ios-switch-slider::before {
+  transform: translateX(18px);
+}
+
+.ios-switch input:focus-visible + .ios-switch-slider {
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.36);
+}
+
+@keyframes window-appear {
+  from {
+    transform: translateY(10px) scale(0.985);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes bubble-in {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes tab-panel-enter {
+  from {
+    transform: translateY(4px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}

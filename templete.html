@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="ko">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Amadeus - 데스크톱 메이트 제어 센터</title>
+        <style>
+            /* macOS 시스템 폰트 및 부드러운 렌더링 세팅 */
+            body {
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "SF Pro Text",
+                    "SF Pro Icons", "Helvetica Neue", Helvetica, Arial,
+                    sans-serif;
+                background: linear-gradient(135deg, #1e293b, #0f172a);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                margin: 0;
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
+            }
+
+            /* macOS 특유의 반투명 프로스트 글래스(Glassmorphism) 윈도우 */
+            .mac-window {
+                width: 760px;
+                height: 520px;
+                background: rgba(30, 30, 30, 0.7);
+                backdrop-filter: blur(40px);
+                -webkit-backdrop-filter: blur(40px);
+                border: 1px solid rgba(255, 255, 255, 0.12);
+                border-radius: 12px;
+                box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+                display: flex;
+                color: #ffffff;
+                overflow: hidden;
+                animation: window-appear 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            }
+
+            @keyframes window-appear {
+                from {
+                    transform: scale(0.96);
+                    opacity: 0;
+                }
+                to {
+                    transform: scale(1);
+                    opacity: 1;
+                }
+            }
+
+            /* 왼쪽 사이드바 내비게이션 */
+            .sidebar {
+                width: 210px;
+                background: rgba(22, 22, 22, 0.4);
+                border-right: 1px solid rgba(255, 255, 255, 0.06);
+                padding: 20px 10px;
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+            }
+
+            /* macOS 윈도우 신호등 버튼 */
+            .window-controls {
+                display: flex;
+                gap: 8px;
+                margin-bottom: 24px;
+                margin-left: 10px;
+            }
+            .control-btn {
+                width: 12px;
+                height: 12px;
+                border-radius: 50%;
+            }
+            .close {
+                background-color: #ff5f56;
+            }
+            .minimize {
+                background-color: #ffbd2e;
+            }
+            .maximize {
+                background-color: #27c93f;
+            }
+
+            .sidebar-item {
+                padding: 8px 12px;
+                border-radius: 6px;
+                font-size: 13px;
+                font-weight: 500;
+                color: rgba(255, 255, 255, 0.65);
+                cursor: pointer;
+                transition: all 0.15s ease;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            .sidebar-item:hover {
+                background: rgba(255, 255, 255, 0.06);
+                color: #ffffff;
+            }
+            .sidebar-item.active {
+                background: #007aff; /* Apple System Blue */
+                color: #ffffff;
+            }
+
+            /* react-icons 플레이스홀더를 위한 스타일 */
+            .ri-icon {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 16px;
+                height: 16px;
+                fill: currentColor;
+            }
+
+            /* 오른쪽 메인 컨텐츠 영역 */
+            .main-content {
+                flex: 1;
+                padding: 32px;
+                overflow-y: auto;
+                display: none; /* 기본적으로 숨김 처리 */
+            }
+            .main-content.active {
+                display: block; /* 활성화된 탭만 노출 */
+                animation: tab-fade 0.25s ease-out;
+            }
+
+            @keyframes tab-fade {
+                from {
+                    opacity: 0;
+                    transform: translateY(4px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            h2 {
+                font-size: 22px;
+                font-weight: 600;
+                margin-top: 0;
+                margin-bottom: 24px;
+                letter-spacing: -0.5px;
+            }
+
+            h3 {
+                font-size: 11px;
+                font-weight: 600;
+                color: rgba(255, 255, 255, 0.4);
+                margin-top: 24px;
+                margin-bottom: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+
+            /* 캐릭터 그리드 영역 */
+            .character-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 14px;
+            }
+
+            .character-card {
+                background: rgba(255, 255, 255, 0.04);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                border-radius: 10px;
+                padding: 18px 12px;
+                text-align: center;
+                cursor: pointer;
+                transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+            }
+            .character-card:hover {
+                background: rgba(255, 255, 255, 0.08);
+                transform: translateY(-2px);
+            }
+            .character-card.selected {
+                border-color: #007aff;
+                background: rgba(0, 122, 255, 0.14);
+                box-shadow: 0 0 0 1px #007aff;
+            }
+
+            .avatar-placeholder {
+                width: 56px;
+                height: 56px;
+                border-radius: 50%;
+                background: linear-gradient(135deg, #a1887f, #7d6608);
+                margin: 0 auto 12px auto;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 22px;
+            }
+            .emilia-bg {
+                background: linear-gradient(135deg, #cbd5e1, #a855f7);
+            }
+            .daon-bg {
+                background: linear-gradient(135deg, #1e3a8a, #0f172a);
+            }
+
+            .char-name {
+                font-size: 13px;
+                font-weight: 600;
+                margin-bottom: 4px;
+            }
+            .char-desc {
+                font-size: 11px;
+                color: rgba(255, 255, 255, 0.45);
+            }
+
+            /* macOS 레이아웃 행 스타일 */
+            .setting-row {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                background: rgba(255, 255, 255, 0.03);
+                border: 1px solid rgba(255, 255, 255, 0.05);
+                padding: 12px 16px;
+                border-radius: 8px;
+                margin-bottom: 8px;
+            }
+
+            .setting-info .title {
+                font-size: 13px;
+                font-weight: 500;
+            }
+            .setting-info .subtitle {
+                font-size: 11px;
+                color: rgba(255, 255, 255, 0.38);
+                margin-top: 2px;
+            }
+
+            /* macOS 스타일 셀렉트 / 인풋 */
+            .mac-select,
+            .mac-input {
+                background: rgba(255, 255, 255, 0.08);
+                border: 1px solid rgba(255, 255, 255, 0.12);
+                color: #ffffff;
+                padding: 5px 10px;
+                border-radius: 6px;
+                font-size: 12px;
+                outline: none;
+            }
+            .mac-select:focus,
+            .mac-input:focus {
+                border-color: #007aff;
+            }
+
+            /* macOS 스타일 네이티브 스위치 */
+            .ios-switch {
+                position: relative;
+                display: inline-block;
+                width: 38px;
+                height: 22px;
+                flex-shrink: 0;
+            }
+            .ios-switch input {
+                opacity: 0;
+                width: 0;
+                height: 0;
+            }
+            .slider {
+                position: absolute;
+                cursor: pointer;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: rgba(255, 255, 255, 0.16);
+                transition: 0.2s;
+                border-radius: 22px;
+            }
+            .slider:before {
+                position: absolute;
+                content: "";
+                height: 18px;
+                width: 18px;
+                left: 2px;
+                bottom: 2px;
+                background-color: white;
+                transition: 0.2s;
+                border-radius: 50%;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+            }
+            input:checked + .slider {
+                background-color: #34c759;
+            }
+            input:checked + .slider:before {
+                transform: translateX(16px);
+            }
+
+            /* 대시보드 리포트용 격자 카드 */
+            .report-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+                margin-bottom: 24px;
+            }
+            .report-card {
+                background: rgba(255, 255, 255, 0.02);
+                border: 1px solid rgba(255, 255, 255, 0.05);
+                padding: 16px;
+                border-radius: 8px;
+            }
+            .report-card .val {
+                font-size: 24px;
+                font-weight: 700;
+                margin-top: 4px;
+            }
+
+            /* 타임라인 연출 */
+            .timeline {
+                position: relative;
+                padding-left: 18px;
+                border-left: 2px solid rgba(255, 255, 255, 0.08);
+                margin-left: 8px;
+            }
+            .timeline-item {
+                position: relative;
+                margin-bottom: 20px;
+            }
+            .timeline-dot {
+                position: absolute;
+                left: -24px;
+                top: 4px;
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="mac-window">
+            <div class="sidebar">
+                <div class="window-controls">
+                    <div class="control-btn close"></div>
+                    <div class="control-btn minimize"></div>
+                    <div class="control-btn maximize"></div>
+                </div>
+
+                <div
+                    class="sidebar-item active"
+                    onclick="switchTab('character-tab')"
+                >
+                    <svg class="ri-icon" viewBox="0 0 512 512">
+                        <path
+                            d="M256 256a112 112 0 100-224 112 112 0 000 224zm0 32c-69.42 0-208 42.88-208 112v48h416v-48c0-69.12-138.58-112-208-112z"
+                            stroke="currentColor"
+                            stroke-width="4"
+                            fill="none"
+                        />
+                    </svg>
+                    캐릭터 선택
+                </div>
+
+                <div class="sidebar-item" onclick="switchTab('general-tab')">
+                    <svg class="ri-icon" viewBox="0 0 512 512">
+                        <path
+                            d="M262.29 192.31a64 64 0 1057.4 57.4 64 64 0 00-57.4-57.4z"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="32"
+                        />
+                        <path
+                            d="M416.39 256a154.34 154.34 0 01-1.53 20.79l45.21 35.46a10.81 10.81 0 012.45 13.75l-42.77 74a10.81 10.81 0 01-13.14 4.59l-53.42-21.5a156.49 156.49 0 01-36 20.82l-8.1 56.81a10.85 10.85 0 01-10.71 9.3h-85.54a10.86 10.86 0 01-10.71-9.3l-8.1-56.81a156.49 156.49 0 01-36-20.82l-53.42 21.5a10.81 10.81 0 01-13.14-4.59l-42.77-74a10.81 10.81 0 012.45-13.75l45.21-35.46a154.34 154.34 0 01-1.53-20.79 154.34 154.34 0 011.53-20.79L53.66 200a10.81 10.81 0 01-2.45-13.75l42.77-74a10.81 10.81 0 0113.14-4.59l53.42 21.5a156.49 156.49 0 0136-20.82l8.1-56.81A10.85 10.85 0 01213.35 22h85.54a10.86 10.86 0 0110.71 9.3l8.1 56.81a156.49 156.49 0 0136 20.82l53.42-21.5a10.81 10.81 0 0113.14 4.59l42.77 74a10.81 10.81 0 01-2.45 13.75l-45.21 35.46a154.34 154.34 0 011.53 20.79z"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="32"
+                        />
+                    </svg>
+                    일반 설정
+                </div>
+
+                <div class="sidebar-item" onclick="switchTab('perception-tab')">
+                    <svg class="ri-icon" viewBox="0 0 512 512">
+                        <path
+                            d="M256 128c-81.82 0-153.36 47.17-192 128 38.64 80.83 110.18 128 192 128s153.36-47.17 192-128c-38.64-80.83-110.18-128-192-128z"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="32"
+                        />
+                        <circle
+                            cx="256"
+                            cy="256"
+                            r="64"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="32"
+                        />
+                    </svg>
+                    화면 인지 가이드
+                </div>
+
+                <div class="sidebar-item" onclick="switchTab('report-tab')">
+                    <svg class="ri-icon" viewBox="0 0 512 512">
+                        <path
+                            d="M432 448V144a16 16 0 00-16-16h-56a16 16 0 00-16 16v304M288 448V176a16 16 0 00-16-16h-56a16 16 0 00-16 16v272M144 448V272a16 16 0 00-16-16H72a16 16 0 00-16 16v176"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="32"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        />
+                    </svg>
+                    작업 리포트
+                </div>
+            </div>
+
+            <div class="main-content active" id="character-tab">
+                <h2>데스크톱 메이트 설정</h2>
+                <h3>메이트 선택 (Character)</h3>
+                <div class="character-grid">
+                    <div class="character-card" onclick="selectCharacter(this)">
+                        <div class="avatar-placeholder">🎀</div>
+                        <div class="char-name">루다</div>
+                        <div class="char-desc">말괄량이 여동생 텐션</div>
+                    </div>
+                    <div
+                        class="character-card selected"
+                        onclick="selectCharacter(this)"
+                    >
+                        <div class="avatar-placeholder emilia-bg">❄️</div>
+                        <div class="char-name">에밀리아</div>
+                        <div class="char-desc">은근히 챙겨주는 다정함</div>
+                    </div>
+                    <div class="character-card" onclick="selectCharacter(this)">
+                        <div class="avatar-placeholder daon-bg">🌌</div>
+                        <div class="char-name">다온</div>
+                        <div class="char-desc">차분하고 묵묵한 위로</div>
+                    </div>
+                </div>
+
+                <h3>인지 및 트리거 조건 (Swift Core)</h3>
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="title">하이브리드 화면 분석 활성화</div>
+                        <div class="subtitle">
+                            프로세스 텍스트 로그와 주기적 비전 스캔을
+                            결합합니다.
+                        </div>
+                    </div>
+                    <label class="ios-switch"
+                        ><input type="checkbox" checked /><span
+                            class="slider"
+                        ></span
+                    ></label>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="title">
+                            집중 유도 선제적 발화 (Proactive Trigger)
+                        </div>
+                        <div class="subtitle">
+                            30분 이상 딴짓을 하거나 멍 때릴 때 메이트가 먼저
+                            말을 겁니다.
+                        </div>
+                    </div>
+                    <label class="ios-switch"
+                        ><input type="checkbox" checked /><span
+                            class="slider"
+                        ></span
+                    ></label>
+                </div>
+            </div>
+
+            <div class="main-content" id="general-tab">
+                <h2>일반 설정</h2>
+                <h3>페르소나 튜닝 (Persona Tuning)</h3>
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="title">티키타카 빈도 설정</div>
+                        <div class="subtitle">
+                            캐릭터가 먼저 말을 거는 적극성을 조절합니다.
+                        </div>
+                    </div>
+                    <select class="mac-select">
+                        <option>조용하고 묵묵하게 (최소 발화)</option>
+                        <option selected>적당히 은은하게 (표준)</option>
+                        <option>기운 넘치고 적극적이게 (잦은 응원)</option>
+                    </select>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="title">호칭 커스텀 설정</div>
+                        <div class="subtitle">
+                            메이트가 나를 부를 때 사용할 고유 닉네임입니다.
+                        </div>
+                    </div>
+                    <input
+                        type="text"
+                        class="mac-input"
+                        value="작업자"
+                        style="width: 100px; text-align: right"
+                    />
+                </div>
+
+                <h3>심야 집중 케어 (Night Care)</h3>
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <div class="title">
+                            야간 위로 모드 활성화 (22:00 ~ 04:00)
+                        </div>
+                        <div class="subtitle">
+                            늦은 밤 감성 상태를 파악하여 휴식 권유 문맥을
+                            강화합니다.
+                        </div>
+                    </div>
+                    <label class="ios-switch"
+                        ><input type="checkbox" checked /><span
+                            class="slider"
+                        ></span
+                    ></label>
+                </div>
+            </div>
+
+            <div class="main-content" id="perception-tab">
+                <h2>화면 인지 가이드</h2>
+                <div
+                    style="
+                        background: rgba(0, 122, 255, 0.1);
+                        border: 1px solid rgba(0, 122, 255, 0.2);
+                        padding: 14px;
+                        border-radius: 8px;
+                        margin-bottom: 24px;
+                        display: flex;
+                        align-items: center;
+                        gap: 10px;
+                    "
+                >
+                    <div
+                        style="
+                            width: 8px;
+                            height: 8px;
+                            background: #27c93f;
+                            border-radius: 50%;
+                            box-shadow: 0 0 8px #27c93f;
+                        "
+                    ></div>
+                    <div style="font-size: 13px; color: #64b5f6">
+                        아마데우스 분석 엔진이 유저 화면의 맥락을 안전하게
+                        감지하고 있습니다.
+                    </div>
+                </div>
+
+                <h3>실시간 인지 로그 (Live Context Pipeline)</h3>
+                <div
+                    style="
+                        background: rgba(0, 0, 0, 0.3);
+                        border: 1px solid rgba(255, 255, 255, 0.06);
+                        padding: 16px;
+                        border-radius: 8px;
+                        font-family: monospace;
+                        font-size: 12px;
+                        color: #a5d6ff;
+                        line-height: 1.6;
+                    "
+                >
+                    <div>
+                        [Active App] :
+                        <span style="color: #fff"
+                            >HWP - 2024_공무_보고서.hwp</span
+                        >
+                    </div>
+                    <div>
+                        [State Sync] :
+                        <span style="color: #ffb454"
+                            >IDLE (3분간 입력 없음 판단)</span
+                        >
+                    </div>
+                    <div>
+                        [Vision Core] :
+                        <span style="color: #8ddb8c"
+                            >문서 정체 구간 확인, 발화 큐 대기 중.</span
+                        >
+                    </div>
+                </div>
+
+                <h3>개인정보 필터</h3>
+                <div class="setting-row" style="margin-top: 16px">
+                    <div class="setting-info">
+                        <div class="title">민감 영역 마스킹 (온디바이스)</div>
+                        <div class="subtitle">
+                            보안 비밀번호창 및 금융 결제 스크린샷 캡처를 전면
+                            자동 우회 차단합니다.
+                        </div>
+                    </div>
+                    <label class="ios-switch"
+                        ><input type="checkbox" checked /><span
+                            class="slider"
+                        ></span
+                    ></label>
+                </div>
+            </div>
+
+            <div class="main-content" id="report-tab">
+                <h2>오늘의 동반 작업 리포트</h2>
+                <div class="report-grid">
+                    <div class="report-card">
+                        <div
+                            style="
+                                font-size: 11px;
+                                color: rgba(255, 255, 255, 0.4);
+                            "
+                        >
+                            오늘 함께 달린 집중 시간
+                        </div>
+                        <div class="val" style="color: #34c759">3시간 45분</div>
+                    </div>
+                    <div class="report-card">
+                        <div
+                            style="
+                                font-size: 11px;
+                                color: rgba(255, 255, 255, 0.4);
+                            "
+                        >
+                            에밀리아가 건넨 넌지시 응원
+                        </div>
+                        <div class="val" style="color: #bf5af2">6회</div>
+                    </div>
+                </div>
+
+                <h3>동반 여정 타임라인</h3>
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <div
+                            class="timeline-dot"
+                            style="background: #007aff"
+                        ></div>
+                        <div
+                            style="
+                                font-size: 11px;
+                                color: rgba(255, 255, 255, 0.4);
+                            "
+                        >
+                            오후 09:15
+                        </div>
+                        <div style="font-size: 13px; margin-top: 2px">
+                            공무 보고서 작성 진입 확인
+                        </div>
+                    </div>
+                    <div class="timeline-item">
+                        <div
+                            class="timeline-dot"
+                            style="background: #ffbd2e"
+                        ></div>
+                        <div
+                            style="
+                                font-size: 11px;
+                                color: rgba(255, 255, 255, 0.4);
+                            "
+                        >
+                            오후 11:15
+                        </div>
+                        <div style="font-size: 13px; margin-top: 2px">
+                            2시간 장기 집중 인지 ➔ 에밀리아 격려 트리거 작동
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            function switchTab(tabId) {
+                // 모든 메인 콘텐츠 숨기기
+                const contents = document.querySelectorAll(".main-content");
+                contents.forEach((content) =>
+                    content.classList.remove("active"),
+                );
+
+                // 모든 사이드바 아이템 활성화 해제
+                const sidebarItems = document.querySelectorAll(".sidebar-item");
+                sidebarItems.forEach((item) => item.classList.remove("active"));
+
+                // 클릭한 탭과 메뉴 활성화
+                document.getElementById(tabId).classList.add("active");
+                event.currentTarget.classList.add("active");
+            }
+
+            function selectCharacter(cardElement) {
+                // 다른 카드들 선택 해제
+                const cards = document.querySelectorAll(".character-card");
+                cards.forEach((card) => card.classList.remove("selected"));
+
+                // 클릭한 카드 선택 활성화
+                cardElement.classList.add("selected");
+            }
+        </script>
+    </body>
+</html>
