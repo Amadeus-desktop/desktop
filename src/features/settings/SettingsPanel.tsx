@@ -3,8 +3,8 @@ import { MacInput } from "../../ui/MacInput";
 import { MacSelect } from "../../ui/MacSelect";
 import { SectionHeading } from "../../ui/SectionHeading";
 import { SettingRow } from "../../ui/SettingRow";
-import { useSettings } from "./hooks/useSettings";
-import { modelRouteOptions, talkFrequencyOptions } from "./model/settings";
+import { modelRouteOptions, talkFrequencyOptions } from "./settings";
+import { useSettings } from "./useSettings";
 
 export function SettingsPanel() {
   const {

@@ -1,10 +1,10 @@
 import { SectionHeading } from "../../ui/SectionHeading";
-import { FocusSummaryGrid } from "./components/FocusSummaryGrid";
-import { WorkTimeline } from "./components/WorkTimeline";
-import { useReport } from "./hooks/useReport";
+import { FocusSummaryGrid } from "./FocusSummaryGrid";
+import { WorkTimeline } from "./WorkTimeline";
+import { useReport } from "./useReport";
 
 export function ReportPanel() {
-  const { reportMetrics, workTimeline } = useReport();
+  const { reportMetrics, workTimeline, timelineState } = useReport();
 
   return (
     <section className="tab-panel-enter">
@@ -22,7 +22,7 @@ export function ReportPanel() {
       <FocusSummaryGrid metrics={reportMetrics} />
 
       <SectionHeading>Timeline</SectionHeading>
-      <WorkTimeline items={workTimeline} />
+      <WorkTimeline items={workTimeline} loading={timelineState === "loading"} />
     </section>
   );
 }

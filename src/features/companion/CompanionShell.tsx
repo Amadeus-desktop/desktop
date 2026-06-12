@@ -1,7 +1,7 @@
 import { MessageCircle } from "lucide-react";
-import { CompanionBubble } from "./components/CompanionBubble";
-import { CompanionChatPanel } from "./components/CompanionChatPanel";
-import { useCompanionBubble } from "./hooks/useCompanionBubble";
+import { CompanionBubble } from "./CompanionBubble";
+import { CompanionChatPanel } from "./CompanionChatPanel";
+import { useCompanionBubble } from "./useCompanionBubble";
 
 export function CompanionShell() {
   const {

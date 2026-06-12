@@ -55,35 +55,35 @@ Implement each primitive with props only and no Amadeus domain state.
 
 **Files:**
 - Create: `src/features/control-center/ControlCenter.tsx`
-- Create: `src/features/control-center/hooks/useControlCenter.ts`
-- Create: `src/features/control-center/model/tabs.ts`
+- Create: `src/features/control-center/useControlCenter.ts`
+- Create: `src/features/control-center/tabs.ts`
 - Create: `src/features/character/CharacterPanel.tsx`
-- Create: `src/features/character/components/CharacterCard.tsx`
-- Create: `src/features/character/hooks/useCharacterSelection.ts`
-- Create: `src/features/character/model/characters.ts`
-- Create: `src/features/character/model/types.ts`
+- Create: `src/features/character/CharacterCard.tsx`
+- Create: `src/features/character/useCharacterSelection.ts`
+- Create: `src/features/character/characters.ts`
+- Create: `src/features/character/types.ts`
 - Create: `src/features/settings/SettingsPanel.tsx`
-- Create: `src/features/settings/hooks/useSettings.ts`
-- Create: `src/features/settings/model/settings.ts`
-- Create: `src/features/settings/model/types.ts`
+- Create: `src/features/settings/useSettings.ts`
+- Create: `src/features/settings/settings.ts`
+- Create: `src/features/settings/types.ts`
 - Create: `src/features/perception/PerceptionPanel.tsx`
-- Create: `src/features/perception/components/LiveContextLog.tsx`
-- Create: `src/features/perception/components/PrivacyFilterCard.tsx`
-- Create: `src/features/perception/hooks/usePerceptionStatus.ts`
-- Create: `src/features/perception/model/perception.ts`
-- Create: `src/features/perception/model/types.ts`
+- Create: `src/features/perception/LiveContextLog.tsx`
+- Create: `src/features/perception/PrivacyFilterCard.tsx`
+- Create: `src/features/perception/usePerceptionStatus.ts`
+- Create: `src/features/perception/perception.ts`
+- Create: `src/features/perception/types.ts`
 - Create: `src/features/report/ReportPanel.tsx`
-- Create: `src/features/report/components/FocusSummaryGrid.tsx`
-- Create: `src/features/report/components/WorkTimeline.tsx`
-- Create: `src/features/report/hooks/useReport.ts`
-- Create: `src/features/report/model/report.ts`
-- Create: `src/features/report/model/types.ts`
+- Create: `src/features/report/FocusSummaryGrid.tsx`
+- Create: `src/features/report/WorkTimeline.tsx`
+- Create: `src/features/report/useReport.ts`
+- Create: `src/features/report/report.ts`
+- Create: `src/features/report/types.ts`
 - Create: `src/features/companion/CompanionShell.tsx`
-- Create: `src/features/companion/components/CompanionBubble.tsx`
-- Create: `src/features/companion/components/CompanionChatPanel.tsx`
-- Create: `src/features/companion/hooks/useCompanionBubble.ts`
-- Create: `src/features/companion/model/companion.ts`
-- Create: `src/features/companion/model/types.ts`
+- Create: `src/features/companion/CompanionBubble.tsx`
+- Create: `src/features/companion/CompanionChatPanel.tsx`
+- Create: `src/features/companion/useCompanionBubble.ts`
+- Create: `src/features/companion/companion.ts`
+- Create: `src/features/companion/types.ts`
 
 - [x] **Step 1: Implement tabs and feature hooks**
 

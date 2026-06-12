@@ -5,9 +5,9 @@ import { CharacterPanel } from "../character/CharacterPanel";
 import { PerceptionPanel } from "../perception/PerceptionPanel";
 import { ReportPanel } from "../report/ReportPanel";
 import { SettingsPanel } from "../settings/SettingsPanel";
-import { useControlCenter } from "./hooks/useControlCenter";
-import { controlCenterTabs } from "./model/tabs";
-import type { ControlCenterTab } from "./model/tabs";
+import { controlCenterTabs } from "./tabs";
+import type { ControlCenterTab } from "./tabs";
+import { useControlCenter } from "./useControlCenter";
 
 function renderPanel(activeTab: ControlCenterTab) {
   switch (activeTab) {

@@ -2,9 +2,9 @@ import { IosSwitch } from "../../ui/IosSwitch";
 import { SectionHeading } from "../../ui/SectionHeading";
 import { SettingRow } from "../../ui/SettingRow";
 import { StatusPill } from "../../ui/StatusPill";
-import { LiveContextLog } from "./components/LiveContextLog";
-import { PrivacyFilterCard } from "./components/PrivacyFilterCard";
-import { usePerceptionStatus } from "./hooks/usePerceptionStatus";
+import { LiveContextLog } from "./LiveContextLog";
+import { PrivacyFilterCard } from "./PrivacyFilterCard";
+import { usePerceptionStatus } from "./usePerceptionStatus";
 
 export function PerceptionPanel() {
   const {

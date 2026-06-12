@@ -1,8 +1,8 @@
 import { SectionHeading } from "../../ui/SectionHeading";
 import { StatusPill } from "../../ui/StatusPill";
-import { CharacterCard } from "./components/CharacterCard";
-import { useCharacterSelection } from "./hooks/useCharacterSelection";
-import { characters } from "./model/characters";
+import { CharacterCard } from "./CharacterCard";
+import { characters } from "./characters";
+import { useCharacterSelection } from "./useCharacterSelection";
 
 export function CharacterPanel() {
   const { selectedCharacterId, selectCharacter } = useCharacterSelection();
