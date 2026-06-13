@@ -1,13 +1,15 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+mod llama_sidecar;
 mod llm;
 mod macos_context;
 mod privacy;
+mod settings;
 mod timeline;
 mod trigger;
 
+use llama_sidecar::{get_llama_sidecar_status, LlamaSidecarState};
 use llm::{
-    generate_chat_reply, generate_test_utterance, get_llm_provider_health, set_llm_provider_route,
-    LlmService, LlmState,
+    generate_chat_reply, generate_test_utterance, get_llm_provider_health, LlmService, LlmState,
 };
 use macos_context::{
     capture_current_context_event, get_current_context_snapshot, ContextBridgeState,
@@ -16,6 +18,7 @@ use privacy::{
     assess_current_privacy_context, capture_privacy_checked_context_event,
     get_screen_capture_permission_status,
 };
+use settings::{get_app_settings, llama_endpoint, update_app_settings, SettingsState};
 use tauri::Manager;
 use timeline::{
     create_context_event, create_user_reaction, create_utterance_event, list_timeline_events,
@@ -57,16 +60,33 @@ fn configure_macos_window(window: &tauri::WebviewWindow) {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_store::Builder::default().build())
         .setup(|app| {
             let app_data_dir = app.path().app_data_dir()?;
             let database_path = app_data_dir.join("amadeus.sqlite3");
+            let settings_path = app_data_dir.join("settings.json");
             let mut repository = TimelineRepository::open(database_path)?;
             repository.migrate()?;
+            let settings_state = SettingsState::open(settings_path)?;
+            let settings = settings_state.current()?;
+            let llm_state = LlmState::new(LlmService::default());
+            let sidecar_state = LlamaSidecarState::new(app_data_dir.join("sidecars"));
+            let _ = sidecar_state.configure(&settings);
+            if settings.model_route == "local-first" {
+                if let Err(error) = sidecar_state.ensure_running() {
+                    let _ = sidecar_state.record_error(error);
+                }
+            }
+            llm_state.configure_local(
+                llama_endpoint(&settings.llama_server_host, settings.llama_server_port),
+                settings.local_model_path.clone(),
+            )?;
+            llm_state.set_route(&settings.model_route, settings.local_fallback_enabled)?;
             app.manage(TimelineState::new(repository));
             app.manage(ContextBridgeState::native());
             app.manage(TriggerEngineState::new());
-            app.manage(LlmState::new(LlmService::default()));
+            app.manage(settings_state);
+            app.manage(llm_state);
+            app.manage(sidecar_state);
 
             // Make the window transparent + popup-style on macOS
             #[cfg(target_os = "macos")]
@@ -92,8 +112,10 @@ pub fn run() {
             run_trigger_engine_once,
             poll_trigger_engine,
             record_trigger_reaction_for_scoring,
+            get_app_settings,
+            update_app_settings,
             get_llm_provider_health,
-            set_llm_provider_route,
+            get_llama_sidecar_status,
             generate_test_utterance,
             generate_chat_reply
         ])

@@ -6,6 +6,10 @@ export const initialSettings: GeneralSettings = {
   localFallbackEnabled: true,
   nickname: "작업자",
   nightCareEnabled: true,
+  localModelPath: null,
+  llamaServerBinaryPath: null,
+  llamaServerHost: "127.0.0.1",
+  llamaServerPort: 8080,
 };
 
 export const talkFrequencyOptions: Array<{

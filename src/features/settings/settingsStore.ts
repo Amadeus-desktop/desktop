@@ -1,37 +1,45 @@
-import { Store } from "@tauri-apps/plugin-store";
+import { invoke } from "@tauri-apps/api/core";
 import { isTauriRuntime } from "../../lib/tauriRuntime";
 import { initialSettings } from "./settings";
 import type { GeneralSettings } from "./types";
 
-const SETTINGS_STORE_PATH = "settings.json";
-const SETTINGS_KEY = "general";
-
 let browserSettings = initialSettings;
+
+export type LlamaSidecarStatus = {
+  configured: boolean;
+  running: boolean;
+  detail: string;
+};
 
 export async function loadGeneralSettings(): Promise<GeneralSettings> {
   if (!isTauriRuntime()) {
     return browserSettings;
   }
 
-  const store = await Store.load(SETTINGS_STORE_PATH, {
-    defaults: {
-      [SETTINGS_KEY]: initialSettings,
-    },
-  });
-
-  return (await store.get<GeneralSettings>(SETTINGS_KEY)) ?? initialSettings;
+  return invoke<GeneralSettings>("get_app_settings");
 }
 
-export async function saveGeneralSettings(settings: GeneralSettings) {
+export async function saveGeneralSettings(
+  settings: GeneralSettings,
+): Promise<GeneralSettings> {
   if (!isTauriRuntime()) {
     browserSettings = settings;
-    return;
+    return browserSettings;
   }
 
-  const store = await Store.load(SETTINGS_STORE_PATH, {
-    defaults: {
-      [SETTINGS_KEY]: initialSettings,
-    },
+  return invoke<GeneralSettings>("update_app_settings", {
+    settings,
   });
-  await store.set(SETTINGS_KEY, settings);
+}
+
+export async function loadLlamaSidecarStatus(): Promise<LlamaSidecarStatus> {
+  if (!isTauriRuntime()) {
+    return {
+      configured: false,
+      running: false,
+      detail: "browser preview",
+    };
+  }
+
+  return invoke<LlamaSidecarStatus>("get_llama_sidecar_status");
 }

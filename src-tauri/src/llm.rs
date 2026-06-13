@@ -200,6 +200,7 @@ impl LlmProvider for ApiLlmProvider {
 
 pub struct LocalLlamaProvider {
     endpoint: String,
+    model_path: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -211,10 +212,31 @@ impl LocalLlamaProvider {
     pub fn new(endpoint: impl Into<String>) -> Self {
         Self {
             endpoint: endpoint.into(),
+            model_path: None,
         }
     }
 
+    pub fn configure(&mut self, endpoint: impl Into<String>, model_path: Option<String>) {
+        self.endpoint = endpoint.into();
+        self.model_path = model_path;
+    }
+
+    fn require_model_file(&self) -> Result<(), LlmError> {
+        let Some(model_path) = self.model_path.as_deref().filter(|path| !path.is_empty()) else {
+            return Err(LlmError::Unavailable(
+                "local model path is not configured".to_string(),
+            ));
+        };
+        if !std::path::Path::new(model_path).is_file() {
+            return Err(LlmError::Unavailable(format!(
+                "local model file does not exist: {model_path}"
+            )));
+        }
+        Ok(())
+    }
+
     fn complete(&self, prompt: String) -> Result<String, LlmError> {
+        self.require_model_file()?;
         let url = llama_completion_url(&self.endpoint)?;
         let response = ureq::post(&url)
             .timeout(LLAMA_TIMEOUT)
@@ -236,17 +258,19 @@ impl LlmProvider for LocalLlamaProvider {
     }
 
     fn health(&self) -> LlmProviderHealth {
-        match llama_completion_url(&self.endpoint).and_then(|url| {
-            ureq::post(&url)
-                .timeout(LLAMA_TIMEOUT)
-                .send_json(json!({
-                    "prompt": "health",
-                    "n_predict": 1,
-                    "temperature": 0.0,
-                    "stop": ["\n"],
-                }))
-                .map(|_| ())
-                .map_err(LlmError::from)
+        match self.require_model_file().and_then(|_| {
+            llama_completion_url(&self.endpoint).and_then(|url| {
+                ureq::post(&url)
+                    .timeout(LLAMA_TIMEOUT)
+                    .send_json(json!({
+                        "prompt": "health",
+                        "n_predict": 1,
+                        "temperature": 0.0,
+                        "stop": ["\n"],
+                    }))
+                    .map(|_| ())
+                    .map_err(LlmError::from)
+            })
         }) {
             Ok(()) => LlmProviderHealth {
                 provider: self.id().to_string(),
@@ -334,6 +358,10 @@ impl LlmService {
     pub fn set_route(&mut self, route: LlmProviderRoute, fallback_enabled: bool) {
         self.route = route;
         self.fallback_enabled = fallback_enabled;
+    }
+
+    pub fn configure_local(&mut self, endpoint: impl Into<String>, model_path: Option<String>) {
+        self.local.configure(endpoint, model_path);
     }
 
     pub fn generate_utterance(&self, request: &LlmUtteranceRequest) -> LlmGeneration {
@@ -452,6 +480,19 @@ impl LlmState {
         service.set_route(route, fallback_enabled);
         Ok(())
     }
+
+    pub fn configure_local(
+        &self,
+        endpoint: impl Into<String>,
+        model_path: Option<String>,
+    ) -> Result<(), LlmError> {
+        let mut service = self
+            .service
+            .lock()
+            .map_err(|_| LlmError::State("llm service lock was poisoned".to_string()))?;
+        service.configure_local(endpoint, model_path);
+        Ok(())
+    }
 }
 
 #[tauri::command]
@@ -462,17 +503,6 @@ pub fn get_llm_provider_health(
         CommandError::from(LlmError::State("llm service lock was poisoned".to_string()))
     })?;
     Ok(service.health())
-}
-
-#[tauri::command]
-pub fn set_llm_provider_route(
-    state: State<'_, LlmState>,
-    model_route: String,
-    fallback_enabled: bool,
-) -> Result<(), CommandError> {
-    state
-        .set_route(&model_route, fallback_enabled)
-        .map_err(CommandError::from)
 }
 
 #[tauri::command]
@@ -583,6 +613,16 @@ mod tests {
         );
         assert!(llama_completion_url("https://127.0.0.1:8080").is_err());
         assert!(llama_completion_url("http://127.0.0.1:8080/api").is_err());
+    }
+
+    #[test]
+    fn local_provider_requires_model_path() {
+        let provider = LocalLlamaProvider::new("http://127.0.0.1:8080");
+
+        let health = provider.health();
+
+        assert!(!health.available);
+        assert!(health.detail.contains("local model path is not configured"));
     }
 
     #[test]

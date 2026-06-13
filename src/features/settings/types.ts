@@ -7,4 +7,8 @@ export type GeneralSettings = {
   localFallbackEnabled: boolean;
   nickname: string;
   nightCareEnabled: boolean;
+  localModelPath: string | null;
+  llamaServerBinaryPath: string | null;
+  llamaServerHost: string;
+  llamaServerPort: number;
 };

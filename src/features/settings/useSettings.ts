@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
-import { setLlmProviderRoute } from "../llm/llmRepository";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { initialSettings } from "./settings";
 import { loadGeneralSettings, saveGeneralSettings } from "./settingsStore";
 import type { ModelRoute, TalkFrequency } from "./types";
@@ -16,7 +15,20 @@ export function useSettings() {
   const [nightCareEnabled, setNightCareEnabled] = useState(
     initialSettings.nightCareEnabled,
   );
+  const [localModelPath, setLocalModelPath] = useState(
+    initialSettings.localModelPath,
+  );
+  const [llamaServerBinaryPath, setLlamaServerBinaryPath] = useState(
+    initialSettings.llamaServerBinaryPath,
+  );
+  const [llamaServerHost, setLlamaServerHost] = useState(
+    initialSettings.llamaServerHost,
+  );
+  const [llamaServerPort, setLlamaServerPort] = useState(
+    initialSettings.llamaServerPort,
+  );
   const [hydrated, setHydrated] = useState(false);
+  const saveSequence = useRef(0);
   const settings = useMemo(
     () => ({
       talkFrequency,
@@ -24,6 +36,10 @@ export function useSettings() {
       localFallbackEnabled,
       nickname,
       nightCareEnabled,
+      localModelPath,
+      llamaServerBinaryPath,
+      llamaServerHost,
+      llamaServerPort,
     }),
     [
       talkFrequency,
@@ -31,6 +47,10 @@ export function useSettings() {
       localFallbackEnabled,
       nickname,
       nightCareEnabled,
+      localModelPath,
+      llamaServerBinaryPath,
+      llamaServerHost,
+      llamaServerPort,
     ],
   );
 
@@ -46,6 +66,10 @@ export function useSettings() {
         setLocalFallbackEnabled(storedSettings.localFallbackEnabled);
         setNickname(storedSettings.nickname);
         setNightCareEnabled(storedSettings.nightCareEnabled);
+        setLocalModelPath(storedSettings.localModelPath);
+        setLlamaServerBinaryPath(storedSettings.llamaServerBinaryPath);
+        setLlamaServerHost(storedSettings.llamaServerHost);
+        setLlamaServerPort(storedSettings.llamaServerPort);
         setHydrated(true);
       })
       .catch(() => {
@@ -62,9 +86,25 @@ export function useSettings() {
   useEffect(() => {
     if (!hydrated) return;
 
-    void saveGeneralSettings(settings);
-    void setLlmProviderRoute(modelRoute, localFallbackEnabled);
-  }, [hydrated, localFallbackEnabled, modelRoute, settings]);
+    const sequence = ++saveSequence.current;
+    const timeout = window.setTimeout(() => {
+      void saveGeneralSettings(settings).then((savedSettings) => {
+        if (sequence !== saveSequence.current) return;
+
+        setTalkFrequency(savedSettings.talkFrequency);
+        setModelRoute(savedSettings.modelRoute);
+        setLocalFallbackEnabled(savedSettings.localFallbackEnabled);
+        setNickname(savedSettings.nickname);
+        setNightCareEnabled(savedSettings.nightCareEnabled);
+        setLocalModelPath(savedSettings.localModelPath);
+        setLlamaServerBinaryPath(savedSettings.llamaServerBinaryPath);
+        setLlamaServerHost(savedSettings.llamaServerHost);
+        setLlamaServerPort(savedSettings.llamaServerPort);
+      });
+    }, 250);
+
+    return () => window.clearTimeout(timeout);
+  }, [hydrated, settings]);
 
   return {
     talkFrequency,
@@ -77,5 +117,13 @@ export function useSettings() {
     setNickname,
     nightCareEnabled,
     setNightCareEnabled,
+    localModelPath,
+    setLocalModelPath,
+    llamaServerBinaryPath,
+    setLlamaServerBinaryPath,
+    llamaServerHost,
+    setLlamaServerHost,
+    llamaServerPort,
+    setLlamaServerPort,
   };
 }
