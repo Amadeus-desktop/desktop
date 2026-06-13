@@ -122,9 +122,10 @@ pub fn capture_privacy_checked_context_event(
     })
     .to_string();
 
-    let mut repository = timeline_state.repository().lock().map_err(|_| {
-        CommandError::from("timeline repository lock was poisoned".to_string())
-    })?;
+    let mut repository = timeline_state
+        .repository()
+        .lock()
+        .map_err(|_| CommandError::from("timeline repository lock was poisoned".to_string()))?;
     let context_event = repository
         .create_context_event(CreateContextEventInput {
             app_name: snapshot.app_name.clone(),
@@ -204,15 +205,37 @@ struct SensitiveRule {
 const SENSITIVE_RULES: &[SensitiveRule] = &[
     SensitiveRule {
         reason: SensitiveReason::PasswordManager,
-        keywords: &["1password", "bitwarden", "lastpass", "keychain", "password manager"],
+        keywords: &[
+            "1password",
+            "bitwarden",
+            "lastpass",
+            "keychain",
+            "password manager",
+        ],
     },
     SensitiveRule {
         reason: SensitiveReason::Finance,
-        keywords: &["bank", "banking", "card", "paypal", "toss", "kakaobank", "결제", "은행"],
+        keywords: &[
+            "bank",
+            "banking",
+            "card",
+            "paypal",
+            "toss",
+            "kakaobank",
+            "결제",
+            "은행",
+        ],
     },
     SensitiveRule {
         reason: SensitiveReason::Messaging,
-        keywords: &["kakaotalk", "messages", "telegram", "slack", "discord", "메신저"],
+        keywords: &[
+            "kakaotalk",
+            "messages",
+            "telegram",
+            "slack",
+            "discord",
+            "메신저",
+        ],
     },
     SensitiveRule {
         reason: SensitiveReason::Email,
@@ -224,7 +247,15 @@ const SENSITIVE_RULES: &[SensitiveRule] = &[
     },
     SensitiveRule {
         reason: SensitiveReason::Authentication,
-        keywords: &["login", "signin", "otp", "2fa", "인증", "비밀번호", "password"],
+        keywords: &[
+            "login",
+            "signin",
+            "otp",
+            "2fa",
+            "인증",
+            "비밀번호",
+            "password",
+        ],
     },
 ];
 
@@ -299,7 +330,11 @@ mod tests {
         assert_eq!(assessment.redacted_window_title, "main.rs");
     }
 
-    fn snapshot(app_name: &str, bundle_identifier: &str, window_title: &str) -> MacosContextSnapshot {
+    fn snapshot(
+        app_name: &str,
+        bundle_identifier: &str,
+        window_title: &str,
+    ) -> MacosContextSnapshot {
         MacosContextSnapshot {
             app_name: app_name.to_string(),
             bundle_identifier: bundle_identifier.to_string(),

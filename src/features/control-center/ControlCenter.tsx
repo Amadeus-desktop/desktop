@@ -30,7 +30,7 @@ export function ControlCenter() {
   return (
     <MacWindow>
       <Sidebar>
-        <div className="min-w-0 px-3 py-3 max-sm:hidden">
+        <div data-tauri-drag-region className="min-w-0 px-3 py-3 max-sm:hidden">
           <div className="truncate text-[13px] font-semibold text-white">
             Amadeus
           </div>
@@ -48,7 +48,10 @@ export function ControlCenter() {
           />
         ))}
       </Sidebar>
-      <div className="min-w-0 flex-1 overflow-y-auto px-8 py-7 max-sm:px-5 max-sm:py-5">
+      <div
+        data-tauri-drag-region
+        className="min-w-0 flex-1 overflow-y-auto px-8 py-7 max-sm:px-5 max-sm:py-5"
+      >
         {renderPanel(activeTab)}
       </div>
     </MacWindow>

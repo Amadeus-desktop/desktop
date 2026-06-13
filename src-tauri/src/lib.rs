@@ -1,15 +1,16 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-mod macos_context;
 mod llm;
+mod macos_context;
 mod privacy;
 mod timeline;
 mod trigger;
 
+use llm::{
+    generate_chat_reply, generate_test_utterance, get_llm_provider_health, set_llm_provider_route,
+    LlmService, LlmState,
+};
 use macos_context::{
     capture_current_context_event, get_current_context_snapshot, ContextBridgeState,
-};
-use llm::{
-    generate_chat_reply, generate_test_utterance, get_llm_provider_health, LlmService, LlmState,
 };
 use privacy::{
     assess_current_privacy_context, capture_privacy_checked_context_event,
@@ -30,10 +31,33 @@ fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
+/// Make the window visible on every macOS Space.
+///
+/// Transparency and shadow are handled declaratively in `tauri.conf.json`
+/// (`transparent: true` + `macOSPrivateApi: true`, `shadow: false`). The only
+/// thing Tauri config cannot express is `NSWindowCollectionBehavior`, so that is
+/// the sole reason this AppKit call exists. We intentionally do NOT set
+/// `Stationary` — it makes the window render incompletely in Mission Control.
+#[cfg(target_os = "macos")]
+fn configure_macos_window(window: &tauri::WebviewWindow) {
+    let Ok(ptr) = window.ns_window() else {
+        eprintln!("configure_macos_window: ns_window() unavailable");
+        return;
+    };
+
+    unsafe {
+        use objc2_app_kit::{NSWindow, NSWindowCollectionBehavior};
+
+        let ns_window: &NSWindow = &*(ptr as *const NSWindow);
+        ns_window.setCollectionBehavior(NSWindowCollectionBehavior::CanJoinAllSpaces);
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_store::Builder::default().build())
         .setup(|app| {
             let app_data_dir = app.path().app_data_dir()?;
             let database_path = app_data_dir.join("amadeus.sqlite3");
@@ -44,26 +68,11 @@ pub fn run() {
             app.manage(TriggerEngineState::new());
             app.manage(LlmState::new(LlmService::default()));
 
-            // Make the window transparent on macOS
+            // Make the window transparent + popup-style on macOS
             #[cfg(target_os = "macos")]
             {
                 if let Some(win) = app.get_webview_window("main") {
-                    let ptr = win.ns_window().expect("failed to get ns_window");
-                    unsafe {
-                        use objc2_app_kit::{NSColor, NSWindow};
-                        let ns_window: &NSWindow = &*(ptr as *const NSWindow);
-                        let clear = NSColor::clearColor();
-                        ns_window.setBackgroundColor(Some(&clear));
-                        ns_window.setOpaque(false);
-
-                        // Disable background drawing on the WKWebView (contentView)
-                        // Tauri sets transparent=true in config but this ensures it at runtime
-                        if let Some(content_view) = ns_window.contentView() {
-                            let content_view = &*content_view;
-                            let _: () = objc2::msg_send![content_view, setDrawsBackground: false];
-                            let _: () = objc2::msg_send![content_view, setOpaque: false];
-                        }
-                    }
+                    configure_macos_window(&win);
                 }
             }
 
@@ -84,6 +93,7 @@ pub fn run() {
             poll_trigger_engine,
             record_trigger_reaction_for_scoring,
             get_llm_provider_health,
+            set_llm_provider_route,
             generate_test_utterance,
             generate_chat_reply
         ])

@@ -1,7 +1,21 @@
 import { invoke } from "@tauri-apps/api/core";
+import { isTauriRuntime } from "../../lib/tauriRuntime";
 import type { CompanionMessage } from "../companion/types";
+import type { ModelRoute } from "../settings/types";
 import type { LlmGeneration } from "./types";
 import { toLlmChatRequest } from "./types";
+
+export async function setLlmProviderRoute(
+  modelRoute: ModelRoute,
+  fallbackEnabled: boolean,
+): Promise<void> {
+  if (!isTauriRuntime()) return;
+
+  await invoke("set_llm_provider_route", {
+    modelRoute,
+    fallbackEnabled,
+  });
+}
 
 export async function generateChatReply(
   messages: CompanionMessage[],
@@ -16,12 +30,4 @@ export async function generateChatReply(
     message: "응. 천천히 해도 괜찮아. 나 여기 있어.",
     provider: "template",
   };
-}
-
-function isTauriRuntime() {
-  return (
-    typeof window !== "undefined" &&
-    "__TAURI_INTERNALS__" in
-      (window as unknown as { __TAURI_INTERNALS__?: unknown })
-  );
 }

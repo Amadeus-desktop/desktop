@@ -316,7 +316,8 @@ impl TimelineRepository {
             })
         })?;
 
-        rows.collect::<Result<Vec<_>, _>>().map_err(TimelineError::from)
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(TimelineError::from)
     }
 
     fn next_marker(&mut self, prefix: &str) -> Result<(String, i64), TimelineError> {
@@ -448,10 +449,7 @@ mod tests {
         assert_eq!(timeline[0].kind, "reaction");
         assert_eq!(timeline[0].title, "opened");
         assert_eq!(timeline[1].kind, "utterance");
-        assert_eq!(
-            timeline[1].title,
-            "잠깐 멈춘 것 같아서. 말 안 해도 괜찮아."
-        );
+        assert_eq!(timeline[1].title, "잠깐 멈춘 것 같아서. 말 안 해도 괜찮아.");
         assert_eq!(timeline[2].kind, "context");
         assert_eq!(timeline[2].title, "Visual Studio Code");
     }

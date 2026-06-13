@@ -2,6 +2,7 @@
   "name": "amadeus",
   "private": true,
   "version": "0.1.0",
+  "packageManager": "pnpm@11.6.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -14,6 +15,7 @@
   "dependencies": {
     "@tauri-apps/api": "^2.11.0",
     "@tauri-apps/plugin-opener": "^2.5.4",
+    "@tauri-apps/plugin-store": "^2.4.3",
     "drizzle-orm": "^0.45.2",
     "lucide-react": "^1.18.0",
     "react": "^19.2.7",

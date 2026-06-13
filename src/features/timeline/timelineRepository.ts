@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { isTauriRuntime } from "../../lib/tauriRuntime";
 import type {
   ContextEvent,
   CreateContextEventInput,
@@ -134,14 +135,6 @@ export async function ensureTimelineSeed(): Promise<TimelineEvent[]> {
   });
 
   return listTimelineEvents(20);
-}
-
-function isTauriRuntime() {
-  return (
-    typeof window !== "undefined" &&
-    "__TAURI_INTERNALS__" in
-      (window as unknown as { __TAURI_INTERNALS__?: unknown })
-  );
 }
 
 function nextMockId(prefix: string) {

@@ -7,7 +7,7 @@ use std::{
 };
 use tauri::State;
 
-use crate::timeline::{CreateContextEventInput, ContextEvent, TimelineState};
+use crate::timeline::{ContextEvent, CreateContextEventInput, TimelineState};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -134,9 +134,10 @@ fn with_bridge<T>(
     state: &State<'_, ContextBridgeState>,
     operation: impl FnOnce(&mut dyn ContextBridge) -> Result<T, MacosContextError>,
 ) -> Result<T, MacosContextError> {
-    let mut bridge = state.bridge.lock().map_err(|_| {
-        MacosContextError::State("context bridge lock was poisoned".to_string())
-    })?;
+    let mut bridge = state
+        .bridge
+        .lock()
+        .map_err(|_| MacosContextError::State("context bridge lock was poisoned".to_string()))?;
 
     operation(bridge.as_mut())
 }
@@ -262,7 +263,10 @@ mod native_macos {
             let window_title = read_window_title(app.process_id)
                 .filter(|title| !title.trim().is_empty())
                 .unwrap_or_else(|| "Unknown Window".to_string());
-            let category = classify_app(&app.bundle_identifier, &format!("{} {window_title}", app.app_name));
+            let category = classify_app(
+                &app.bundle_identifier,
+                &format!("{} {window_title}", app.app_name),
+            );
 
             Ok(MacosContextSnapshot {
                 app_name: app.app_name,
@@ -284,9 +288,9 @@ mod native_macos {
 
     fn read_frontmost_app() -> Result<FrontmostApp, MacosContextError> {
         let workspace = NSWorkspace::sharedWorkspace();
-        let application = workspace
-            .frontmostApplication()
-            .ok_or_else(|| MacosContextError::Native("frontmost application unavailable".to_string()))?;
+        let application = workspace.frontmostApplication().ok_or_else(|| {
+            MacosContextError::Native("frontmost application unavailable".to_string())
+        })?;
 
         let app_name = application
             .localizedName()
@@ -365,7 +369,10 @@ mod tests {
             classify_app("com.microsoft.VSCode", "Visual Studio Code"),
             AppCategory::Work
         );
-        assert_eq!(classify_app("com.apple.dt.Xcode", "Xcode"), AppCategory::Work);
+        assert_eq!(
+            classify_app("com.apple.dt.Xcode", "Xcode"),
+            AppCategory::Work
+        );
         assert_eq!(classify_app("", "한글"), AppCategory::Work);
     }
 
@@ -380,6 +387,9 @@ mod tests {
 
     #[test]
     fn classifies_unknown_apps() {
-        assert_eq!(classify_app("dev.unknown.App", "Unknown"), AppCategory::Unknown);
+        assert_eq!(
+            classify_app("dev.unknown.App", "Unknown"),
+            AppCategory::Unknown
+        );
     }
 }

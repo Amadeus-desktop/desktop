@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { isTauriRuntime } from "../../lib/tauriRuntime";
 import { assessCurrentPrivacyContext } from "../context/contextRepository";
 import {
   createContextEvent,
@@ -163,12 +164,4 @@ function actionForScore(score: number): TriggerAction {
   if (score >= 60) return "bubble";
   if (score >= 40) return "status_only";
   return "no_action";
-}
-
-function isTauriRuntime() {
-  return (
-    typeof window !== "undefined" &&
-    "__TAURI_INTERNALS__" in
-      (window as unknown as { __TAURI_INTERNALS__?: unknown })
-  );
 }

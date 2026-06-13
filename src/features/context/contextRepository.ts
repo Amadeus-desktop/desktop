@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { isTauriRuntime } from "../../lib/tauriRuntime";
 import type { ContextEvent } from "../timeline/types";
 import type {
   MacosContextSnapshot,
@@ -91,12 +92,4 @@ export async function capturePrivacyCheckedContextEvent(
     screenCapturePermission: mockPermissionStatus,
     contextEvent: null,
   };
-}
-
-function isTauriRuntime() {
-  return (
-    typeof window !== "undefined" &&
-    "__TAURI_INTERNALS__" in
-      (window as unknown as { __TAURI_INTERNALS__?: unknown })
-  );
 }

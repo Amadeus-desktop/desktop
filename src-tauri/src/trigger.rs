@@ -259,7 +259,13 @@ pub fn run_trigger_engine_once(
     let evaluation = evaluate_trigger(trigger_input);
 
     let (context_event, utterance_event) = if evaluation.should_persist {
-        persist_trigger_events(&timeline_state, &llm_state, &snapshot, &privacy, &evaluation)?
+        persist_trigger_events(
+            &timeline_state,
+            &llm_state,
+            &snapshot,
+            &privacy,
+            &evaluation,
+        )?
     } else {
         (None, None)
     };
@@ -357,8 +363,8 @@ pub fn evaluate_trigger(input: TriggerInput) -> TriggerEvaluation {
         return suppressed("no_trigger");
     };
 
-    let speakability_score = (candidate.base_score - (input.dismissed_recent_count.max(0) * 10))
-        .clamp(0, 100);
+    let speakability_score =
+        (candidate.base_score - (input.dismissed_recent_count.max(0) * 10)).clamp(0, 100);
     let action = action_for_score(speakability_score);
     let should_persist = matches!(action, TriggerAction::Bubble | TriggerAction::Conversation);
 
