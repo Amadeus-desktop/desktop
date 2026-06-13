@@ -1,5 +1,7 @@
 # Phase 01. Domain Modularization
 
+Status: Completed
+
 ## Goal
 
 Rust와 React 구조를 도메인 단위로 정리한다. root에는 composition entry만 두고, 실제 도메인 로직은 폴더 내부에 둔다.
@@ -54,3 +56,13 @@ pnpm build
 - root Rust files are `lib.rs` and `main.rs` only.
 - feature modules expose stable `index.ts` entries.
 - build and tests pass.
+
+## Completion Evidence
+
+Verified on 2026-06-14:
+
+- Rust root contains only `lib.rs`, `main.rs`, and domain folders.
+- React app, feature, and UI folders expose `index.ts` entries.
+- `cargo check --manifest-path src-tauri/Cargo.toml` passed.
+- `cargo test --manifest-path src-tauri/Cargo.toml` passed.
+- `pnpm build` passed.
