@@ -43,3 +43,20 @@ Manual smoke:
 - MVP demo path가 깨지지 않는다.
 - known risk가 문서화되어 있다.
 - 다음 phase가 Web/Supabase인지 OCR인지 명확히 선택 가능하다.
+
+## Closeout Decision
+
+Next phase is **OCR Vision Spike before Web/Supabase**.
+
+Reason:
+
+- Desktop companion value depends first on local perception quality.
+- Web/Supabase sync policy should not be finalized before OCR data risk is measured.
+- Current local DB and sync queue boundaries are ready to block raw context while OCR is tested.
+
+## Known Risks
+
+- Manual UX smoke is still required on a running Tauri app before release.
+- Web/Supabase auth, RLS, device pairing, and cloud persona sync are intentionally deferred.
+- OCR remains experimental and must not persist raw OCR text or summaries.
+- Migration ownership is still simple single-file runtime SQL; future schema changes need a ledger or ordered migrations.

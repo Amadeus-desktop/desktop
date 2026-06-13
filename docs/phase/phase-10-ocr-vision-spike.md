@@ -38,3 +38,14 @@ Apple Vision OCR을 MVP 이후 실험 기능으로 검증한다.
 
 - OCR viability is measured.
 - Product can decide whether OCR belongs in MVP+1.
+
+## Spike Baseline
+
+Current implementation starts with a Rust-only OCR contract module:
+
+- `PreCaptureGate` blocks sensitive context before capture.
+- `PreOcrGate` blocks expired or unapproved capture metadata.
+- raw OCR adapter text is consumed inside the OCR module.
+- exported `OcrObservation` contains only redacted summary/classes/kind/confidence/hits/TTL.
+
+Apple Vision adapter and benchmark are still pending. This phase is not a production OCR feature.

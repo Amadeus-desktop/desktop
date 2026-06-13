@@ -2,6 +2,7 @@
 mod llama_sidecar;
 mod llm;
 mod macos_context;
+pub mod ocr;
 pub mod policy;
 mod privacy;
 mod settings;
