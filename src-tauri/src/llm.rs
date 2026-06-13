@@ -1,9 +1,8 @@
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::{
     error::Error,
     fmt::{Display, Formatter},
-    io::{Read, Write},
-    net::{TcpStream, ToSocketAddrs},
     sync::Mutex,
     time::Duration,
 };
@@ -58,6 +57,7 @@ pub enum LlmError {
     Io(std::io::Error),
     Protocol(String),
     Json(serde_json::Error),
+    Http(Box<ureq::Error>),
     State(String),
 }
 
@@ -70,6 +70,7 @@ impl Display for LlmError {
             Self::Io(error) => write!(formatter, "llm io error: {error}"),
             Self::Protocol(message) => write!(formatter, "llm protocol error: {message}"),
             Self::Json(error) => write!(formatter, "llm json error: {error}"),
+            Self::Http(error) => write!(formatter, "llm http error: {error}"),
             Self::State(message) => write!(formatter, "llm state error: {message}"),
         }
     }
@@ -86,6 +87,12 @@ impl From<std::io::Error> for LlmError {
 impl From<serde_json::Error> for LlmError {
     fn from(error: serde_json::Error) -> Self {
         Self::Json(error)
+    }
+}
+
+impl From<ureq::Error> for LlmError {
+    fn from(error: ureq::Error) -> Self {
+        Self::Http(Box::new(error))
     }
 }
 
@@ -195,6 +202,11 @@ pub struct LocalLlamaProvider {
     endpoint: String,
 }
 
+#[derive(Debug, Deserialize)]
+struct LlamaCompletionResponse {
+    content: String,
+}
+
 impl LocalLlamaProvider {
     pub fn new(endpoint: impl Into<String>) -> Self {
         Self {
@@ -203,16 +215,18 @@ impl LocalLlamaProvider {
     }
 
     fn complete(&self, prompt: String) -> Result<String, LlmError> {
-        let endpoint = parse_http_endpoint(&self.endpoint)?;
-        let body = serde_json::json!({
-            "prompt": prompt,
-            "n_predict": 80,
-            "temperature": 0.7,
-            "stop": ["\n"],
-        })
-        .to_string();
-        let response = post_json(&endpoint, "/completion", &body)?;
-        extract_llama_content(&response)
+        let url = llama_completion_url(&self.endpoint)?;
+        let response = ureq::post(&url)
+            .timeout(LLAMA_TIMEOUT)
+            .send_json(json!({
+                "prompt": prompt,
+                "n_predict": 80,
+                "temperature": 0.7,
+                "stop": ["\n"],
+            }))?
+            .into_json::<LlamaCompletionResponse>()?;
+
+        normalize_llama_content(response.content)
     }
 }
 
@@ -222,9 +236,18 @@ impl LlmProvider for LocalLlamaProvider {
     }
 
     fn health(&self) -> LlmProviderHealth {
-        match parse_http_endpoint(&self.endpoint)
-            .and_then(|endpoint| connect(&endpoint).map(|_| ()))
-        {
+        match llama_completion_url(&self.endpoint).and_then(|url| {
+            ureq::post(&url)
+                .timeout(LLAMA_TIMEOUT)
+                .send_json(json!({
+                    "prompt": "health",
+                    "n_predict": 1,
+                    "temperature": 0.0,
+                    "stop": ["\n"],
+                }))
+                .map(|_| ())
+                .map_err(LlmError::from)
+        }) {
             Ok(()) => LlmProviderHealth {
                 provider: self.id().to_string(),
                 available: true,
@@ -476,74 +499,37 @@ pub fn generate_chat_reply(
     Ok(service.generate_chat_reply(&input))
 }
 
-#[derive(Debug, Clone)]
-struct HttpEndpoint {
-    host: String,
-    port: u16,
-}
-
-fn parse_http_endpoint(endpoint: &str) -> Result<HttpEndpoint, LlmError> {
-    let endpoint = endpoint.strip_prefix("http://").ok_or_else(|| {
-        LlmError::InvalidEndpoint("only http:// endpoints are supported".to_string())
-    })?;
-    let authority = endpoint.split('/').next().unwrap_or(endpoint);
-    let (host, port) = authority.rsplit_once(':').ok_or_else(|| {
-        LlmError::InvalidEndpoint("endpoint must include host and port".to_string())
-    })?;
-    let port = port
-        .parse::<u16>()
-        .map_err(|_| LlmError::InvalidEndpoint("endpoint port must be a number".to_string()))?;
-
-    Ok(HttpEndpoint {
-        host: host.to_string(),
-        port,
-    })
-}
-
-fn connect(endpoint: &HttpEndpoint) -> Result<TcpStream, LlmError> {
-    let address = (endpoint.host.as_str(), endpoint.port)
-        .to_socket_addrs()?
-        .next()
-        .ok_or_else(|| LlmError::InvalidEndpoint("endpoint address did not resolve".to_string()))?;
-    let stream = TcpStream::connect_timeout(&address, LLAMA_TIMEOUT)?;
-    stream.set_read_timeout(Some(LLAMA_TIMEOUT))?;
-    stream.set_write_timeout(Some(LLAMA_TIMEOUT))?;
-    Ok(stream)
-}
-
-fn post_json(endpoint: &HttpEndpoint, path: &str, body: &str) -> Result<String, LlmError> {
-    let mut stream = connect(endpoint)?;
-    let request = format!(
-        "POST {path} HTTP/1.1\r\nHost: {}:{}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
-        endpoint.host,
-        endpoint.port,
-        body.len(),
-        body
-    );
-    stream.write_all(request.as_bytes())?;
-
-    let mut response = String::new();
-    stream.read_to_string(&mut response)?;
-    let (headers, body) = response
-        .split_once("\r\n\r\n")
-        .ok_or_else(|| LlmError::Protocol("http response had no body".to_string()))?;
-    if !headers.starts_with("HTTP/1.1 200") && !headers.starts_with("HTTP/1.0 200") {
-        return Err(LlmError::Protocol(
-            "llama server returned non-200 response".to_string(),
+fn llama_completion_url(endpoint: &str) -> Result<String, LlmError> {
+    let endpoint = endpoint.trim_end_matches('/');
+    if !endpoint.starts_with("http://") {
+        return Err(LlmError::InvalidEndpoint(
+            "only http:// endpoints are supported".to_string(),
+        ));
+    }
+    let authority = endpoint.trim_start_matches("http://");
+    if authority.is_empty() {
+        return Err(LlmError::InvalidEndpoint(
+            "endpoint must include host".to_string(),
+        ));
+    }
+    if authority.contains('/') {
+        return Err(LlmError::InvalidEndpoint(
+            "endpoint must not include a path".to_string(),
         ));
     }
 
-    Ok(body.to_string())
+    Ok(format!("{endpoint}/completion"))
 }
 
-pub fn extract_llama_content(body: &str) -> Result<String, LlmError> {
-    let value: serde_json::Value = serde_json::from_str(body)?;
-    let content = value
-        .get("content")
-        .and_then(|content| content.as_str())
-        .ok_or_else(|| LlmError::Protocol("llama response did not include content".to_string()))?;
+fn normalize_llama_content(content: String) -> Result<String, LlmError> {
+    let content = content.trim();
+    if content.is_empty() {
+        return Err(LlmError::Protocol(
+            "llama response content was empty".to_string(),
+        ));
+    }
 
-    Ok(content.trim().to_string())
+    Ok(content.to_string())
 }
 
 #[cfg(test)]
@@ -571,9 +557,32 @@ mod tests {
     fn extracts_llama_completion_content() {
         let body = r#"{"content":"잠깐 쉬어도 괜찮아.","stop":true}"#;
 
-        let content = extract_llama_content(body).expect("content is parsed");
+        let response: LlamaCompletionResponse = serde_json::from_str(body).expect("valid json");
+        let content = normalize_llama_content(response.content).expect("content is parsed");
 
         assert_eq!(content, "잠깐 쉬어도 괜찮아.");
+    }
+
+    #[test]
+    fn rejects_empty_llama_completion_content() {
+        let response: LlamaCompletionResponse =
+            serde_json::from_str(r#"{"content":"   ","stop":true}"#).expect("valid json");
+
+        assert!(normalize_llama_content(response.content).is_err());
+    }
+
+    #[test]
+    fn builds_llama_completion_url() {
+        assert_eq!(
+            llama_completion_url("http://127.0.0.1:8080").expect("valid endpoint"),
+            "http://127.0.0.1:8080/completion"
+        );
+        assert_eq!(
+            llama_completion_url("http://127.0.0.1:8080/").expect("valid endpoint"),
+            "http://127.0.0.1:8080/completion"
+        );
+        assert!(llama_completion_url("https://127.0.0.1:8080").is_err());
+        assert!(llama_completion_url("http://127.0.0.1:8080/api").is_err());
     }
 
     #[test]
