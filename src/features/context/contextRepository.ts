@@ -44,7 +44,8 @@ export async function getCurrentContextSnapshot(): Promise<MacosContextSnapshot>
 
 export async function captureCurrentContextEvent(): Promise<ContextEvent | null> {
   if (isTauriRuntime()) {
-    return invoke<ContextEvent>("capture_current_context_event");
+    const result = await capturePrivacyCheckedContextEvent();
+    return result.contextEvent;
   }
 
   return null;

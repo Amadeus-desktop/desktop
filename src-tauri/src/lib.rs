@@ -12,9 +12,7 @@ use llama_sidecar::{get_llama_sidecar_status, LlamaSidecarState};
 use llm::{
     generate_chat_reply, generate_test_utterance, get_llm_provider_health, LlmService, LlmState,
 };
-use macos_context::{
-    capture_current_context_event, get_current_context_snapshot, ContextBridgeState,
-};
+use macos_context::{get_current_context_snapshot, ContextBridgeState};
 use privacy::{
     assess_current_privacy_context, capture_privacy_checked_context_event,
     get_screen_capture_permission_status,
@@ -102,7 +100,6 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             get_current_context_snapshot,
-            capture_current_context_event,
             get_screen_capture_permission_status,
             assess_current_privacy_context,
             capture_privacy_checked_context_event,

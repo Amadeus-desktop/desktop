@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { initialChatMessages, initialCompanionMessage } from "./companion";
-import { createUserReaction } from "../timeline/timelineRepository";
+import { generateChatReply } from "../llm";
+import { createUserReaction } from "../timeline";
 import {
   pollTriggerEngine,
   recordTriggerReactionForScoring,
   runTriggerEngineOnce,
-} from "../trigger/triggerRepository";
-import { generateChatReply } from "../llm/llmRepository";
-import type { TriggerRunResult } from "../trigger/types";
+  type TriggerRunResult,
+} from "../trigger";
 
 const TRIGGER_POLL_INTERVAL_MS = 60_000;
 

@@ -1,10 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { isTauriRuntime } from "../../lib/tauriRuntime";
-import { assessCurrentPrivacyContext } from "../context/contextRepository";
-import {
-  createContextEvent,
-  createUtteranceEvent,
-} from "../timeline/timelineRepository";
+import { assessCurrentPrivacyContext } from "../context";
+import { createContextEvent, createUtteranceEvent } from "../timeline";
 import type {
   TriggerAction,
   TriggerCandidate,

@@ -10,6 +10,8 @@ export type MacosContextSnapshot = {
   frontmostDurationMs: number;
 };
 
+export type RedactedContextSnapshot = MacosContextSnapshot;
+
 export type SensitiveReason =
   | "password_manager"
   | "finance"
@@ -35,7 +37,7 @@ export type ScreenCapturePermissionStatus = {
 };
 
 export type PrivacyContext = {
-  snapshot: MacosContextSnapshot;
+  snapshot: RedactedContextSnapshot;
   assessment: PrivacyAssessment;
   screenCapturePermission: ScreenCapturePermissionStatus;
 };

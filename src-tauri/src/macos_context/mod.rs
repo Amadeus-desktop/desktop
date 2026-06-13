@@ -7,8 +7,6 @@ use std::{
 };
 use tauri::State;
 
-use crate::timeline::{ContextEvent, CreateContextEventInput, TimelineState};
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AppCategory {
@@ -34,7 +32,6 @@ pub enum MacosContextError {
     #[cfg(not(target_os = "macos"))]
     UnsupportedPlatform,
     Native(String),
-    Timeline(String),
     State(String),
 }
 
@@ -44,7 +41,6 @@ impl Display for MacosContextError {
             #[cfg(not(target_os = "macos"))]
             Self::UnsupportedPlatform => write!(formatter, "macOS context bridge is unsupported"),
             Self::Native(message) => write!(formatter, "native context error: {message}"),
-            Self::Timeline(message) => write!(formatter, "timeline error: {message}"),
             Self::State(message) => write!(formatter, "state error: {message}"),
         }
     }
@@ -91,37 +87,6 @@ pub fn get_current_context_snapshot(
     state: State<'_, ContextBridgeState>,
 ) -> Result<MacosContextSnapshot, CommandError> {
     read_current_snapshot(&state).map_err(CommandError::from)
-}
-
-#[tauri::command]
-pub fn capture_current_context_event(
-    context_state: State<'_, ContextBridgeState>,
-    timeline_state: State<'_, TimelineState>,
-) -> Result<ContextEvent, CommandError> {
-    let snapshot = read_current_snapshot(&context_state)?;
-    let metadata_json = serde_json::json!({
-        "bundleIdentifier": snapshot.bundle_identifier,
-        "processId": snapshot.process_id,
-        "idleSeconds": snapshot.idle_seconds,
-        "category": snapshot.category,
-        "frontmostDurationMs": snapshot.frontmost_duration_ms,
-    })
-    .to_string();
-
-    let mut repository = timeline_state.repository().lock().map_err(|_| {
-        CommandError::from(MacosContextError::State(
-            "timeline repository lock was poisoned".to_string(),
-        ))
-    })?;
-
-    repository
-        .create_context_event(CreateContextEventInput {
-            app_name: snapshot.app_name,
-            window_title: snapshot.window_title,
-            event_type: "macos_context_snapshot".to_string(),
-            metadata_json,
-        })
-        .map_err(|error| CommandError::from(MacosContextError::Timeline(error.to_string())))
 }
 
 pub(crate) fn read_current_snapshot(

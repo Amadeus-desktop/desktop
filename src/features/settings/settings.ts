@@ -27,4 +27,5 @@ export const modelRouteOptions: Array<{
 }> = [
   { label: "API 우선", value: "api-first" },
   { label: "로컬 우선", value: "local-first" },
+  { label: "템플릿", value: "template" },
 ];

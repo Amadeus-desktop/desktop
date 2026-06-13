@@ -1,5 +1,5 @@
 export type TalkFrequency = "quiet" | "balanced" | "active";
-export type ModelRoute = "api-first" | "local-first";
+export type ModelRoute = "api-first" | "local-first" | "template";
 
 export type GeneralSettings = {
   talkFrequency: TalkFrequency;

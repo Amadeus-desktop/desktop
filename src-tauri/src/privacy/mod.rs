@@ -3,7 +3,8 @@ use tauri::State;
 
 use crate::{
     macos_context::{
-        read_current_snapshot, ContextBridgeState, MacosContextError, MacosContextSnapshot,
+        read_current_snapshot, AppCategory, ContextBridgeState, MacosContextError,
+        MacosContextSnapshot,
     },
     timeline::{ContextEvent, CreateContextEventInput, TimelineState},
 };
@@ -41,8 +42,20 @@ pub struct ScreenCapturePermissionStatus {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct RedactedContextSnapshot {
+    pub app_name: String,
+    pub bundle_identifier: String,
+    pub process_id: i32,
+    pub window_title: String,
+    pub idle_seconds: f64,
+    pub category: AppCategory,
+    pub frontmost_duration_ms: u128,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PrivacyContext {
-    pub snapshot: MacosContextSnapshot,
+    pub snapshot: RedactedContextSnapshot,
     pub assessment: PrivacyAssessment,
     pub screen_capture_permission: ScreenCapturePermissionStatus,
 }
@@ -50,10 +63,27 @@ pub struct PrivacyContext {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PrivacyCheckedContextEvent {
-    pub snapshot: MacosContextSnapshot,
+    pub snapshot: RedactedContextSnapshot,
     pub assessment: PrivacyAssessment,
     pub screen_capture_permission: ScreenCapturePermissionStatus,
     pub context_event: ContextEvent,
+}
+
+impl RedactedContextSnapshot {
+    pub fn from_assessment(
+        snapshot: &MacosContextSnapshot,
+        assessment: &PrivacyAssessment,
+    ) -> Self {
+        Self {
+            app_name: snapshot.app_name.clone(),
+            bundle_identifier: snapshot.bundle_identifier.clone(),
+            process_id: snapshot.process_id,
+            window_title: assessment.redacted_window_title.clone(),
+            idle_seconds: snapshot.idle_seconds,
+            category: snapshot.category,
+            frontmost_duration_ms: snapshot.frontmost_duration_ms,
+        }
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -90,7 +120,7 @@ pub fn assess_current_privacy_context(
     let assessment = assess_privacy(&snapshot, &keywords);
 
     Ok(PrivacyContext {
-        snapshot,
+        snapshot: RedactedContextSnapshot::from_assessment(&snapshot, &assessment),
         assessment,
         screen_capture_permission: screen_capture_permission_status(),
     })
@@ -140,7 +170,7 @@ pub fn capture_privacy_checked_context_event(
         .map_err(|error| CommandError::from(error.to_string()))?;
 
     Ok(PrivacyCheckedContextEvent {
-        snapshot,
+        snapshot: RedactedContextSnapshot::from_assessment(&snapshot, &assessment),
         assessment,
         screen_capture_permission,
         context_event,
@@ -328,6 +358,18 @@ mod tests {
         assert!(!assessment.should_suppress_capture);
         assert!(!assessment.should_suppress_utterance);
         assert_eq!(assessment.redacted_window_title, "main.rs");
+    }
+
+    #[test]
+    fn redacted_snapshot_never_exposes_raw_sensitive_title() {
+        let snapshot = snapshot("Safari", "com.apple.Safari", "정부24 주민등록등본");
+        let assessment = assess_privacy(&snapshot, &[]);
+
+        let redacted = RedactedContextSnapshot::from_assessment(&snapshot, &assessment);
+
+        assert_eq!(redacted.window_title, "[민감 창 숨김]");
+        assert_ne!(redacted.window_title, snapshot.window_title);
+        assert_eq!(redacted.app_name, "Safari");
     }
 
     fn snapshot(
