@@ -5,7 +5,11 @@ use crate::{
     privacy::PrivacyAssessment,
 };
 
-use super::{TriggerAction, TriggerCandidate, TriggerEvaluation, TriggerType};
+use super::{
+    history::{is_known_meeting_app, is_known_music_app},
+    ProcessHistoryWindow, TriggerAction, TriggerCandidate, TriggerEvaluation, TriggerInput,
+    TriggerType,
+};
 
 const MINUTE_MS: u128 = 60 * 1000;
 const DEEP_PAUSE_MIN_FRONTMOST_MS: u128 = 10 * MINUTE_MS;
@@ -113,6 +117,42 @@ pub(super) fn select_candidate(snapshot: &MacosContextSnapshot) -> Option<Trigge
     }
 
     None
+}
+
+pub(super) fn exception_suppression(input: &TriggerInput) -> Option<&'static str> {
+    let Some(history) = input.history.as_ref() else {
+        return None;
+    };
+
+    if history.known_meeting_app_frontmost || is_known_meeting_app(&input.snapshot) {
+        return Some("meeting");
+    }
+
+    if suppress_music_drift(&input.snapshot, history) {
+        return Some("music_short_foreground");
+    }
+
+    if suppress_work_cluster_drift(&input.snapshot, history) {
+        return Some("work_cluster");
+    }
+
+    None
+}
+
+fn suppress_music_drift(snapshot: &MacosContextSnapshot, history: &ProcessHistoryWindow) -> bool {
+    (history.known_music_app_seen || is_known_music_app(snapshot))
+        && snapshot.category == AppCategory::NonWork
+        && history.known_music_app_frontmost_ms < 60_000
+}
+
+fn suppress_work_cluster_drift(
+    snapshot: &MacosContextSnapshot,
+    history: &ProcessHistoryWindow,
+) -> bool {
+    snapshot.category == AppCategory::NonWork
+        && history.work_cluster_duration_ms >= 10 * MINUTE_MS
+        && history.app_switch_count >= 3
+        && history.non_work_single_app_max_duration_ms < 10 * MINUTE_MS
 }
 
 pub(super) fn action_for_score(score: i64) -> TriggerAction {

@@ -10,6 +10,8 @@ fn suppresses_sensitive_privacy_context() {
     let evaluation = evaluate_trigger(TriggerInput {
         snapshot: snapshot(AppCategory::Work, 180.0, 12 * 60 * 1000),
         privacy: sensitive_privacy(),
+        history: None,
+
         recent_utterance_minutes_ago: None,
         dismissed_recent_count: 0,
         utterances_today: 0,
@@ -48,6 +50,8 @@ fn creates_deep_pause_bubble_for_work_idle() {
     let evaluation = evaluate_trigger(TriggerInput {
         snapshot: snapshot(AppCategory::Work, 180.0, 12 * 60 * 1000),
         privacy: normal_privacy("report.hwp"),
+        history: None,
+
         recent_utterance_minutes_ago: None,
         dismissed_recent_count: 0,
         utterances_today: 0,
@@ -65,6 +69,8 @@ fn creates_milestone_conversation_for_long_work_session() {
     let evaluation = evaluate_trigger(TriggerInput {
         snapshot: snapshot(AppCategory::Work, 12.0, 120 * 60 * 1000),
         privacy: normal_privacy("main.rs"),
+        history: None,
+
         recent_utterance_minutes_ago: None,
         dismissed_recent_count: 0,
         utterances_today: 0,
@@ -82,6 +88,8 @@ fn creates_drift_bubble_for_non_work_duration() {
     let evaluation = evaluate_trigger(TriggerInput {
         snapshot: snapshot(AppCategory::NonWork, 4.0, 15 * 60 * 1000),
         privacy: normal_privacy("YouTube"),
+        history: None,
+
         recent_utterance_minutes_ago: None,
         dismissed_recent_count: 0,
         utterances_today: 0,
@@ -95,10 +103,84 @@ fn creates_drift_bubble_for_non_work_duration() {
 }
 
 #[test]
+fn spotify_short_foreground_does_not_trigger_drift() {
+    let mut snapshot = snapshot(AppCategory::NonWork, 4.0, 2 * 60 * 1000);
+    snapshot.app_name = "Spotify".to_string();
+    snapshot.bundle_identifier = "com.spotify.client".to_string();
+    let mut history = ProcessHistoryWindow::default();
+    history.known_music_app_seen = true;
+    history.known_music_app_frontmost_ms = 30_000;
+
+    let evaluation = evaluate_trigger(TriggerInput {
+        snapshot,
+        privacy: normal_privacy("Spotify"),
+        history: Some(history),
+
+        recent_utterance_minutes_ago: None,
+        dismissed_recent_count: 0,
+        utterances_today: 0,
+    });
+
+    assert_eq!(evaluation.action, TriggerAction::NoAction);
+    assert_eq!(
+        evaluation.suppression_reason,
+        Some("music_short_foreground".to_string())
+    );
+}
+
+#[test]
+fn meeting_app_suppresses_deep_pause() {
+    let mut snapshot = snapshot(AppCategory::Work, 180.0, 12 * 60 * 1000);
+    snapshot.app_name = "Zoom".to_string();
+    snapshot.bundle_identifier = "us.zoom.xos".to_string();
+    let mut history = ProcessHistoryWindow::default();
+    history.known_meeting_app_frontmost = true;
+
+    let evaluation = evaluate_trigger(TriggerInput {
+        snapshot,
+        privacy: normal_privacy("Zoom Meeting"),
+        history: Some(history),
+
+        recent_utterance_minutes_ago: None,
+        dismissed_recent_count: 0,
+        utterances_today: 0,
+    });
+
+    assert_eq!(evaluation.action, TriggerAction::NoAction);
+    assert_eq!(evaluation.suppression_reason, Some("meeting".to_string()));
+}
+
+#[test]
+fn work_cluster_app_switching_suppresses_drift() {
+    let mut history = ProcessHistoryWindow::default();
+    history.work_cluster_duration_ms = 12 * 60 * 1000;
+    history.app_switch_count = 4;
+    history.non_work_single_app_max_duration_ms = 3 * 60 * 1000;
+
+    let evaluation = evaluate_trigger(TriggerInput {
+        snapshot: snapshot(AppCategory::NonWork, 4.0, 11 * 60 * 1000),
+        privacy: normal_privacy("API docs"),
+        history: Some(history),
+
+        recent_utterance_minutes_ago: None,
+        dismissed_recent_count: 0,
+        utterances_today: 0,
+    });
+
+    assert_eq!(evaluation.action, TriggerAction::NoAction);
+    assert_eq!(
+        evaluation.suppression_reason,
+        Some("work_cluster".to_string())
+    );
+}
+
+#[test]
 fn suppresses_recent_utterance_cooldown() {
     let evaluation = evaluate_trigger(TriggerInput {
         snapshot: snapshot(AppCategory::Work, 180.0, 12 * 60 * 1000),
         privacy: normal_privacy("report.hwp"),
+        history: None,
+
         recent_utterance_minutes_ago: Some(12),
         dismissed_recent_count: 0,
         utterances_today: 0,
@@ -114,6 +196,8 @@ fn dismissed_reactions_lower_action_intensity() {
     let evaluation = evaluate_trigger(TriggerInput {
         snapshot: snapshot(AppCategory::Work, 180.0, 12 * 60 * 1000),
         privacy: normal_privacy("report.hwp"),
+        history: None,
+
         recent_utterance_minutes_ago: None,
         dismissed_recent_count: 2,
         utterances_today: 0,
@@ -129,6 +213,8 @@ fn dismissed_reactions_can_suppress_bubble_persistence() {
     let evaluation = evaluate_trigger(TriggerInput {
         snapshot: snapshot(AppCategory::NonWork, 4.0, 15 * 60 * 1000),
         privacy: normal_privacy("YouTube"),
+        history: None,
+
         recent_utterance_minutes_ago: None,
         dismissed_recent_count: 3,
         utterances_today: 0,
@@ -144,6 +230,8 @@ fn suppresses_daily_utterance_limit() {
     let evaluation = evaluate_trigger(TriggerInput {
         snapshot: snapshot(AppCategory::Work, 12.0, 120 * 60 * 1000),
         privacy: normal_privacy("main.rs"),
+        history: None,
+
         recent_utterance_minutes_ago: None,
         dismissed_recent_count: 0,
         utterances_today: 12,
@@ -162,6 +250,8 @@ fn suppresses_when_no_trigger_threshold_matches() {
     let evaluation = evaluate_trigger(TriggerInput {
         snapshot: snapshot(AppCategory::Work, 4.0, 3 * 60 * 1000),
         privacy: normal_privacy("main.rs"),
+        history: None,
+
         recent_utterance_minutes_ago: None,
         dismissed_recent_count: 0,
         utterances_today: 0,
@@ -180,6 +270,8 @@ fn deep_pause_takes_priority_over_milestone_when_idle_after_long_work() {
     let evaluation = evaluate_trigger(TriggerInput {
         snapshot: snapshot(AppCategory::Work, 180.0, 120 * 60 * 1000),
         privacy: normal_privacy("main.rs"),
+        history: None,
+
         recent_utterance_minutes_ago: None,
         dismissed_recent_count: 0,
         utterances_today: 0,

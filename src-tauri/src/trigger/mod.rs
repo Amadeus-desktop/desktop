@@ -1,3 +1,4 @@
+mod history;
 mod scoring;
 
 use serde::Serialize;
@@ -20,8 +21,10 @@ use crate::{
         UtteranceEvent,
     },
 };
+pub use history::ProcessHistoryWindow;
 use scoring::{
-    action_for_score, llm_gate_for_trigger, llm_request_for_trigger, select_candidate, suppressed,
+    action_for_score, exception_suppression, llm_gate_for_trigger, llm_request_for_trigger,
+    select_candidate, suppressed,
 };
 
 const COOLDOWN_MINUTES: i64 = 30;
@@ -78,6 +81,7 @@ pub struct TriggerEvaluation {
 pub struct TriggerInput {
     pub snapshot: MacosContextSnapshot,
     pub privacy: PrivacyAssessment,
+    pub history: Option<ProcessHistoryWindow>,
     pub recent_utterance_minutes_ago: Option<i64>,
     pub dismissed_recent_count: i64,
     pub utterances_today: i64,
@@ -134,17 +138,20 @@ struct TriggerRuntimeState {
     last_automatic_evaluation_at: Option<Instant>,
     utterances_today: i64,
     dismissed_recent_count: i64,
+    process_history: ProcessHistoryWindow,
 }
 
 impl TriggerRuntimeState {
     fn input_for(
-        &self,
+        &mut self,
         snapshot: MacosContextSnapshot,
         privacy: PrivacyAssessment,
     ) -> TriggerInput {
+        self.process_history.observe_snapshot(&snapshot, &privacy);
         TriggerInput {
             snapshot,
             privacy,
+            history: Some(self.process_history.clone()),
             recent_utterance_minutes_ago: self.recent_utterance_minutes_ago(),
             dismissed_recent_count: self.dismissed_recent_count,
             utterances_today: self.utterances_today,
@@ -355,6 +362,10 @@ pub fn evaluate_trigger(input: TriggerInput) -> TriggerEvaluation {
         .is_some_and(|minutes| minutes < COOLDOWN_MINUTES)
     {
         return suppressed("cooldown");
+    }
+
+    if let Some(reason) = exception_suppression(&input) {
+        return suppressed(reason);
     }
 
     let Some(candidate) = select_candidate(&input.snapshot) else {
