@@ -76,7 +76,7 @@ impl AppSettings {
         }
 
         match self.llama_server_host.as_str() {
-            "127.0.0.1" | "localhost" | "::1" => Ok(()),
+            "127.0.0.1" | "localhost" => Ok(()),
             other => Err(SettingsError::Validation(format!(
                 "llama server host must be localhost-only, got '{other}'"
             ))),

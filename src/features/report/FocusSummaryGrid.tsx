@@ -1,4 +1,4 @@
-import { ReportCard } from "../../ui/ReportCard";
+import { ReportCard } from "../../ui";
 import type { ReportMetric } from "./types";
 
 type FocusSummaryGridProps = {

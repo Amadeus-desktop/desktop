@@ -1,4 +1,4 @@
-import { TimelineList } from "../../ui/TimelineList";
+import { TimelineList } from "../../ui";
 import type { WorkTimelineItem } from "./types";
 
 type WorkTimelineProps = {

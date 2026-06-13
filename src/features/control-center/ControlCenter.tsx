@@ -1,10 +1,8 @@
-import { MacWindow } from "../../ui/MacWindow";
-import { Sidebar } from "../../ui/Sidebar";
-import { SidebarItem } from "../../ui/SidebarItem";
-import { CharacterPanel } from "../character/CharacterPanel";
-import { PerceptionPanel } from "../perception/PerceptionPanel";
-import { ReportPanel } from "../report/ReportPanel";
-import { SettingsPanel } from "../settings/SettingsPanel";
+import { MacWindow, Sidebar, SidebarItem } from "../../ui";
+import { CharacterPanel } from "../character";
+import { PerceptionPanel } from "../perception";
+import { ReportPanel } from "../report";
+import { SettingsPanel } from "../settings";
 import { controlCenterTabs } from "./tabs";
 import type { ControlCenterTab } from "./tabs";
 import { useControlCenter } from "./useControlCenter";

@@ -1,4 +1,4 @@
-import { SectionHeading } from "../../ui/SectionHeading";
+import { SectionHeading } from "../../ui";
 import { FocusSummaryGrid } from "./FocusSummaryGrid";
 import { WorkTimeline } from "./WorkTimeline";
 import { useReport } from "./useReport";

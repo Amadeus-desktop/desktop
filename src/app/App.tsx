@@ -1,5 +1,5 @@
-import { CompanionShell } from "../features/companion/CompanionShell";
-import { ControlCenter } from "../features/control-center/ControlCenter";
+import { CompanionShell } from "../features/companion";
+import { ControlCenter } from "../features/control-center";
 import "./App.css";
 
 function App() {

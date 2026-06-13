@@ -1,9 +1,5 @@
 import { useEffect, useState } from "react";
-import { IosSwitch } from "../../ui/IosSwitch";
-import { MacInput } from "../../ui/MacInput";
-import { MacSelect } from "../../ui/MacSelect";
-import { SectionHeading } from "../../ui/SectionHeading";
-import { SettingRow } from "../../ui/SettingRow";
+import { IosSwitch, MacInput, MacSelect, SectionHeading, SettingRow } from "../../ui";
 import { modelRouteOptions, talkFrequencyOptions } from "./settings";
 import { loadLlamaSidecarStatus, type LlamaSidecarStatus } from "./settingsStore";
 import { useSettings } from "./useSettings";

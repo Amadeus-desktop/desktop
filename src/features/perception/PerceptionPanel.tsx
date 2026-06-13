@@ -1,7 +1,4 @@
-import { IosSwitch } from "../../ui/IosSwitch";
-import { SectionHeading } from "../../ui/SectionHeading";
-import { SettingRow } from "../../ui/SettingRow";
-import { StatusPill } from "../../ui/StatusPill";
+import { IosSwitch, SectionHeading, SettingRow, StatusPill } from "../../ui";
 import { LiveContextLog } from "./LiveContextLog";
 import { PrivacyFilterCard } from "./PrivacyFilterCard";
 import { usePerceptionStatus } from "./usePerceptionStatus";

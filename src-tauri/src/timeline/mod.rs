@@ -9,7 +9,7 @@ use std::{
 };
 use tauri::State;
 
-const MIGRATION_SQL: &str = include_str!("../../drizzle/0000_local_timeline_core.sql");
+const MIGRATION_SQL: &str = include_str!("../../../drizzle/0000_local_timeline_core.sql");
 
 #[derive(Debug)]
 pub enum TimelineError {

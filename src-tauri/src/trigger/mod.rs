@@ -622,6 +622,78 @@ mod tests {
     }
 
     #[test]
+    fn dismissed_reactions_can_suppress_bubble_persistence() {
+        let evaluation = evaluate_trigger(TriggerInput {
+            snapshot: snapshot(AppCategory::NonWork, 4.0, 15 * 60 * 1000),
+            privacy: normal_privacy("YouTube"),
+            recent_utterance_minutes_ago: None,
+            dismissed_recent_count: 3,
+            utterances_today: 0,
+        });
+
+        assert_eq!(evaluation.action, TriggerAction::NoAction);
+        assert_eq!(evaluation.speakability_score, 34);
+        assert!(!evaluation.should_persist);
+    }
+
+    #[test]
+    fn suppresses_daily_utterance_limit() {
+        let evaluation = evaluate_trigger(TriggerInput {
+            snapshot: snapshot(AppCategory::Work, 12.0, 120 * 60 * 1000),
+            privacy: normal_privacy("main.rs"),
+            recent_utterance_minutes_ago: None,
+            dismissed_recent_count: 0,
+            utterances_today: 12,
+        });
+
+        assert_eq!(evaluation.action, TriggerAction::NoAction);
+        assert!(!evaluation.should_persist);
+        assert_eq!(evaluation.suppression_reason, Some("daily_limit".to_string()));
+    }
+
+    #[test]
+    fn suppresses_when_no_trigger_threshold_matches() {
+        let evaluation = evaluate_trigger(TriggerInput {
+            snapshot: snapshot(AppCategory::Work, 4.0, 3 * 60 * 1000),
+            privacy: normal_privacy("main.rs"),
+            recent_utterance_minutes_ago: None,
+            dismissed_recent_count: 0,
+            utterances_today: 0,
+        });
+
+        assert_eq!(evaluation.action, TriggerAction::NoAction);
+        assert!(!evaluation.should_persist);
+        assert_eq!(evaluation.suppression_reason, Some("no_trigger".to_string()));
+    }
+
+    #[test]
+    fn deep_pause_takes_priority_over_milestone_when_idle_after_long_work() {
+        let evaluation = evaluate_trigger(TriggerInput {
+            snapshot: snapshot(AppCategory::Work, 180.0, 120 * 60 * 1000),
+            privacy: normal_privacy("main.rs"),
+            recent_utterance_minutes_ago: None,
+            dismissed_recent_count: 0,
+            utterances_today: 0,
+        });
+
+        let candidate = evaluation.candidate.expect("deep pause candidate");
+        assert_eq!(candidate.trigger_type, TriggerType::DeepPause);
+        assert_eq!(evaluation.action, TriggerAction::Bubble);
+        assert_eq!(evaluation.speakability_score, 72);
+    }
+
+    #[test]
+    fn action_bands_follow_score_policy() {
+        assert_eq!(action_for_score(100), TriggerAction::Conversation);
+        assert_eq!(action_for_score(80), TriggerAction::Conversation);
+        assert_eq!(action_for_score(79), TriggerAction::Bubble);
+        assert_eq!(action_for_score(60), TriggerAction::Bubble);
+        assert_eq!(action_for_score(59), TriggerAction::StatusOnly);
+        assert_eq!(action_for_score(40), TriggerAction::StatusOnly);
+        assert_eq!(action_for_score(39), TriggerAction::NoAction);
+    }
+
+    #[test]
     fn runtime_tracks_recent_utterance_minutes() {
         let mut runtime = TriggerRuntimeState::default();
         runtime.last_utterance_at = Some(Instant::now() - Duration::from_secs(12 * 60));
