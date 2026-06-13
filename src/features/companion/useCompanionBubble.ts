@@ -6,6 +6,7 @@ import {
   recordTriggerReactionForScoring,
   runTriggerEngineOnce,
 } from "../trigger/triggerRepository";
+import { generateChatReply } from "../llm/llmRepository";
 import type { TriggerRunResult } from "../trigger/types";
 
 const TRIGGER_POLL_INTERVAL_MS = 60_000;
@@ -87,10 +88,13 @@ export function useCompanionBubble() {
 
     const timeoutId = window.setTimeout(() => {
       setBubbleVisible(false);
+      if (activeUtteranceId) {
+        void recordReaction(activeUtteranceId, "ignored");
+      }
     }, 7000);
 
     return () => window.clearTimeout(timeoutId);
-  }, [bubbleVisible]);
+  }, [activeUtteranceId, bubbleVisible]);
 
   return {
     bubbleVisible,
@@ -103,16 +107,26 @@ export function useCompanionBubble() {
       const text = draft.trim();
       if (!text) return;
 
-      setMessages((currentMessages) => [
-        ...currentMessages,
-        {
-          id: `user-${Date.now()}`,
-          sender: "user",
-          text,
-        },
-      ]);
+      const userMessage = {
+        id: `user-${Date.now()}`,
+        sender: "user" as const,
+        text,
+      };
+      const nextMessages = [...messages, userMessage];
+
+      setMessages(nextMessages);
       setDraft("");
       void recordReaction(activeUtteranceId, "replied");
+      void generateChatReply(nextMessages).then((generation) => {
+        setMessages((currentMessages) => [
+          ...currentMessages,
+          {
+            id: `companion-${Date.now()}`,
+            sender: "companion",
+            text: generation.message,
+          },
+        ]);
+      });
     },
     showBubble: () => setBubbleVisible(true),
     dismissBubble: () => {

@@ -8,6 +8,7 @@ use std::{
 use tauri::State;
 
 use crate::{
+    llm::{LlmState, LlmUtteranceRequest},
     macos_context::{
         read_current_snapshot, AppCategory, ContextBridgeState, MacosContextError,
         MacosContextSnapshot,
@@ -188,7 +189,7 @@ impl TriggerRuntimeState {
 
     fn record_reaction(&mut self, reaction_type: &str) {
         match reaction_type {
-            "dismissed" | "closed" => {
+            "dismissed" | "closed" | "ignored" => {
                 self.dismissed_recent_count = (self.dismissed_recent_count + 1).min(5);
             }
             "opened" | "replied" => {
@@ -244,6 +245,7 @@ impl From<MacosContextError> for CommandError {
 pub fn run_trigger_engine_once(
     context_state: State<'_, ContextBridgeState>,
     timeline_state: State<'_, TimelineState>,
+    llm_state: State<'_, LlmState>,
     trigger_state: State<'_, TriggerEngineState>,
     keywords: Vec<String>,
 ) -> Result<TriggerRunResult, CommandError> {
@@ -257,7 +259,7 @@ pub fn run_trigger_engine_once(
     let evaluation = evaluate_trigger(trigger_input);
 
     let (context_event, utterance_event) = if evaluation.should_persist {
-        persist_trigger_events(&timeline_state, &snapshot, &privacy, &evaluation)?
+        persist_trigger_events(&timeline_state, &llm_state, &snapshot, &privacy, &evaluation)?
     } else {
         (None, None)
     };
@@ -283,6 +285,7 @@ pub fn run_trigger_engine_once(
 pub fn poll_trigger_engine(
     context_state: State<'_, ContextBridgeState>,
     timeline_state: State<'_, TimelineState>,
+    llm_state: State<'_, LlmState>,
     trigger_state: State<'_, TriggerEngineState>,
     keywords: Vec<String>,
 ) -> Result<TriggerPollResult, CommandError> {
@@ -309,6 +312,7 @@ pub fn poll_trigger_engine(
     let run_result = run_trigger_engine_once(
         context_state,
         timeline_state,
+        llm_state,
         trigger_state,
         keywords,
     )?;
@@ -369,6 +373,7 @@ pub fn evaluate_trigger(input: TriggerInput) -> TriggerEvaluation {
 
 fn persist_trigger_events(
     timeline_state: &State<'_, TimelineState>,
+    llm_state: &State<'_, LlmState>,
     snapshot: &MacosContextSnapshot,
     privacy: &PrivacyAssessment,
     evaluation: &TriggerEvaluation,
@@ -390,17 +395,33 @@ fn persist_trigger_events(
             metadata_json,
         })
         .map_err(|error| CommandError::from(error.to_string()))?;
+    let generation = llm_state
+        .generate_utterance(&llm_request_for_trigger(snapshot, candidate))
+        .map_err(|error| CommandError::from(error.to_string()))?;
     let utterance_event = repository
         .create_utterance_event(CreateUtteranceEventInput {
             trigger_type: candidate.trigger_type.as_str().to_string(),
             speakability_score: evaluation.speakability_score,
-            message: candidate.message.clone(),
-            provider: "template".to_string(),
+            message: generation.message,
+            provider: generation.provider,
             context_event_id: Some(context_event.id.clone()),
         })
         .map_err(|error| CommandError::from(error.to_string()))?;
 
     Ok((Some(context_event), Some(utterance_event)))
+}
+
+fn llm_request_for_trigger(
+    snapshot: &MacosContextSnapshot,
+    candidate: &TriggerCandidate,
+) -> LlmUtteranceRequest {
+    LlmUtteranceRequest {
+        trigger_type: candidate.trigger_type.as_str().to_string(),
+        trigger_reason: candidate.reason.clone(),
+        app_name: snapshot.app_name.clone(),
+        window_title: snapshot.window_title.clone(),
+        fallback_message: candidate.message.clone(),
+    }
 }
 
 fn trigger_context_metadata_json(
@@ -617,6 +638,33 @@ mod tests {
 
         runtime.record_reaction("opened");
         assert_eq!(runtime.snapshot().dismissed_recent_count, 0);
+    }
+
+    #[test]
+    fn runtime_counts_ignored_as_negative_feedback() {
+        let mut runtime = TriggerRuntimeState::default();
+
+        runtime.record_reaction("ignored");
+
+        assert_eq!(runtime.snapshot().dismissed_recent_count, 1);
+    }
+
+    #[test]
+    fn trigger_utterance_request_uses_candidate_context() {
+        let snapshot = snapshot(AppCategory::Work, 12.0, 120 * 60 * 1000);
+        let candidate = TriggerCandidate {
+            trigger_type: TriggerType::Milestone,
+            message: "fallback".to_string(),
+            reason: "long_work_session_milestone".to_string(),
+            base_score: 82,
+        };
+
+        let request = llm_request_for_trigger(&snapshot, &candidate);
+
+        assert_eq!(request.trigger_type, "milestone");
+        assert_eq!(request.trigger_reason, "long_work_session_milestone");
+        assert_eq!(request.fallback_message, "fallback");
+        assert_eq!(request.app_name, "Visual Studio Code");
     }
 
     #[test]

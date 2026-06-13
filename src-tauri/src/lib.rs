@@ -1,11 +1,15 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 mod macos_context;
+mod llm;
 mod privacy;
 mod timeline;
 mod trigger;
 
 use macos_context::{
     capture_current_context_event, get_current_context_snapshot, ContextBridgeState,
+};
+use llm::{
+    generate_chat_reply, generate_test_utterance, get_llm_provider_health, LlmService, LlmState,
 };
 use privacy::{
     assess_current_privacy_context, capture_privacy_checked_context_event,
@@ -38,6 +42,7 @@ pub fn run() {
             app.manage(TimelineState::new(repository));
             app.manage(ContextBridgeState::native());
             app.manage(TriggerEngineState::new());
+            app.manage(LlmState::new(LlmService::default()));
 
             // Make the window transparent on macOS
             #[cfg(target_os = "macos")]
@@ -50,6 +55,14 @@ pub fn run() {
                         let clear = NSColor::clearColor();
                         ns_window.setBackgroundColor(Some(&clear));
                         ns_window.setOpaque(false);
+
+                        // Disable background drawing on the WKWebView (contentView)
+                        // Tauri sets transparent=true in config but this ensures it at runtime
+                        if let Some(content_view) = ns_window.contentView() {
+                            let content_view = &*content_view;
+                            let _: () = objc2::msg_send![content_view, setDrawsBackground: false];
+                            let _: () = objc2::msg_send![content_view, setOpaque: false];
+                        }
                     }
                 }
             }
@@ -69,7 +82,10 @@ pub fn run() {
             list_timeline_events,
             run_trigger_engine_once,
             poll_trigger_engine,
-            record_trigger_reaction_for_scoring
+            record_trigger_reaction_for_scoring,
+            get_llm_provider_health,
+            generate_test_utterance,
+            generate_chat_reply
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
