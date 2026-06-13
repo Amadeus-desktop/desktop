@@ -329,20 +329,18 @@ impl LlmService {
         self.local.configure(endpoint, model_path);
     }
 
-    pub fn generate_utterance(&self, request: &LlmInputEnvelope) -> LlmGeneration {
-        self.try_generate_utterance(request).unwrap_or_else(|_| {
-            self.template
-                .generate_utterance(request)
-                .expect("template provider cannot fail")
-        })
+    pub fn generate_utterance(
+        &self,
+        request: &LlmInputEnvelope,
+    ) -> Result<LlmGeneration, LlmError> {
+        self.try_generate_utterance(request)
     }
 
-    pub fn generate_chat_reply(&self, request: &LlmChatEnvelope) -> LlmGeneration {
-        self.try_generate_chat_reply(request).unwrap_or_else(|_| {
-            self.template
-                .generate_chat_reply(request)
-                .expect("template provider cannot fail")
-        })
+    pub fn generate_chat_reply(
+        &self,
+        request: &LlmChatEnvelope,
+    ) -> Result<LlmGeneration, LlmError> {
+        self.try_generate_chat_reply(request)
     }
 
     fn health(&self) -> Vec<LlmProviderHealth> {
@@ -437,7 +435,7 @@ impl LlmState {
             .service
             .lock()
             .map_err(|_| LlmError::State("llm service lock was poisoned".to_string()))?;
-        Ok(service.generate_utterance(request))
+        service.generate_utterance(request)
     }
 
     pub fn generate_chat_reply(
@@ -448,7 +446,7 @@ impl LlmState {
             .service
             .lock()
             .map_err(|_| LlmError::State("llm service lock was poisoned".to_string()))?;
-        Ok(service.generate_chat_reply(request))
+        service.generate_chat_reply(request)
     }
 
     pub fn health(&self) -> Result<Vec<LlmProviderHealth>, LlmError> {

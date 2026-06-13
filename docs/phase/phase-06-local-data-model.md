@@ -43,5 +43,5 @@ MVP local-first DB를 architecture 계약에 맞춰 확장할 준비를 한다.
 - Drizzle schema mirrors the new local tables for frontend type alignment.
 - Rust repository exposes guarded MVP commands for local memory and sync queue drafts.
 - `local_private` memory cannot be marked syncable.
-- `sync_queue.payload_json` requires `SyncPayloadEnvelope` and rejects raw context keys.
+- `sync_queue.payload_json` requires an allowlisted `SyncPayloadEnvelope` and rejects raw context keys/values.
 - OCR summary persistence remains blocked until retention/source fields are present.

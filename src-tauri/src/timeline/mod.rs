@@ -329,13 +329,6 @@ impl TimelineRepository {
         Ok(row)
     }
 
-    #[cfg(test)]
-    fn persist_ocr_summary_for_test(&mut self, _summary: &str) -> Result<(), TimelineError> {
-        Err(TimelineError::Validation(
-            "ocr summary persistence requires retention fields and source contract".to_string(),
-        ))
-    }
-
     pub fn list_timeline_events(&self, limit: i64) -> Result<Vec<TimelineEvent>, TimelineError> {
         let safe_limit = limit.clamp(1, 100);
         let mut statement = self.connection.prepare(

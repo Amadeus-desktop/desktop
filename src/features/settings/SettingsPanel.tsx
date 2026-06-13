@@ -24,6 +24,7 @@ export function SettingsPanel() {
     setLlamaServerHost,
     llamaServerPort,
     setLlamaServerPort,
+    settingsRevision,
   } = useSettings();
   const [sidecarStatus, setSidecarStatus] = useState<LlamaSidecarStatus>({
     configured: false,
@@ -49,6 +50,7 @@ export function SettingsPanel() {
     llamaServerPort,
     localModelPath,
     modelRoute,
+    settingsRevision,
   ]);
 
   return (

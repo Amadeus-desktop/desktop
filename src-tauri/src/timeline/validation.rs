@@ -45,6 +45,7 @@ pub(super) fn validate_sync_payload_envelope(
             "sync payload event_type must match queue event_type".to_string(),
         ));
     }
+    validate_sync_event_contract(&envelope)?;
     if !matches!(
         envelope.payload_class.as_str(),
         "SafeSummary" | "PersonaPull" | "PreferenceAllowlist" | "SyncAck"
@@ -85,6 +86,23 @@ pub(super) fn validate_sync_payload_envelope(
     Ok(envelope)
 }
 
+fn validate_sync_event_contract(envelope: &SyncPayloadEnvelope) -> Result<(), TimelineError> {
+    match envelope.event_type.as_str() {
+        "memory.summary"
+            if envelope.payload_class == "SafeSummary"
+                && envelope.safety_grade == "SafeWorkSummary"
+                && envelope.redaction_level == "SummaryRedacted"
+                && matches!(envelope.retention_policy.as_str(), "Session" | "Timeline") =>
+        {
+            Ok(())
+        }
+        _ => Err(TimelineError::Validation(format!(
+            "unsupported sync event contract '{}'",
+            envelope.event_type
+        ))),
+    }
+}
+
 fn reject_forbidden_sync_keys(value: &serde_json::Value) -> Result<(), TimelineError> {
     match value {
         serde_json::Value::Object(map) => {
@@ -100,6 +118,13 @@ fn reject_forbidden_sync_keys(value: &serde_json::Value) -> Result<(), TimelineE
         serde_json::Value::Array(values) => {
             for nested in values {
                 reject_forbidden_sync_keys(nested)?;
+            }
+        }
+        serde_json::Value::String(value) => {
+            if is_forbidden_sync_value(value) {
+                return Err(TimelineError::Validation(
+                    "sync payload contains forbidden raw context value".to_string(),
+                ));
             }
         }
         _ => {}
@@ -119,4 +144,21 @@ fn is_forbidden_sync_key(key: &str) -> bool {
             | "token"
             | "keystroke_text"
     )
+}
+
+fn is_forbidden_sync_value(value: &str) -> bool {
+    let lower = value.to_ascii_lowercase();
+    value.contains('/')
+        || value.contains('\\')
+        || lower.contains("://")
+        || lower.contains("token=")
+        || lower.contains("password=")
+        || lower.contains("api_key=")
+        || lower.contains("apikey=")
+        || lower.contains("secret=")
+        || lower.contains(".xlsx")
+        || lower.contains(".docx")
+        || lower.contains(".pdf")
+        || lower.contains(".hwp")
+        || lower.contains('?')
 }

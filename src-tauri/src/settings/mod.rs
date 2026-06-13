@@ -108,11 +108,14 @@ impl SettingsStore {
         let value: serde_json::Value = serde_json::from_str(&raw)?;
         if value.get("general").is_some() {
             let wrapper: LegacySettingsWrapper = serde_json::from_value(value)?;
+            wrapper.general.validate()?;
             self.save(&wrapper.general)?;
             return Ok(wrapper.general);
         }
 
-        Ok(serde_json::from_value(value)?)
+        let settings: AppSettings = serde_json::from_value(value)?;
+        settings.validate()?;
+        Ok(settings)
     }
 
     pub fn save(&self, settings: &AppSettings) -> Result<(), SettingsError> {
@@ -187,6 +190,13 @@ pub fn update_app_settings(
     settings: AppSettings,
 ) -> Result<AppSettings, CommandError> {
     settings.validate().map_err(CommandError::from)?;
+    if settings.model_route == "local-first" {
+        sidecar_state
+            .validate_settings(&settings)
+            .map_err(|error| CommandError {
+                message: error.to_string(),
+            })?;
+    }
     let settings = state.update(settings).map_err(CommandError::from)?;
     let _ = sidecar_state.configure(&settings);
     if settings.model_route == "local-first" {
@@ -343,5 +353,25 @@ mod tests {
 
         assert!(state.update(settings).is_err());
         assert!(!path.exists());
+    }
+
+    #[test]
+    fn settings_store_rejects_non_localhost_host_on_load() {
+        let path = temp_settings_path();
+        let settings = AppSettings {
+            llama_server_host: "0.0.0.0".to_string(),
+            ..AppSettings::default()
+        };
+        fs::write(
+            &path,
+            serde_json::to_string_pretty(&settings).expect("settings json"),
+        )
+        .expect("settings file written");
+        let store = SettingsStore::new(path.clone());
+
+        let result = store.load();
+
+        assert!(result.is_err());
+        let _ = fs::remove_file(path);
     }
 }

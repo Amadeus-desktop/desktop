@@ -8,6 +8,7 @@ import type {
   CreateUtteranceEventInput,
   EnqueueSyncPayloadInput,
   LocalMemory,
+  SyncPayloadEnvelope,
   SyncQueueRow,
   TimelineEvent,
   UserReaction,
@@ -137,18 +138,14 @@ export async function enqueueSyncPayload(
     return invoke<SyncQueueRow>("enqueue_sync_payload", { input });
   }
 
-  const envelope = JSON.parse(input.payloadJson) as {
-    safetyGrade?: string;
-    redactionLevel?: string;
-    retentionPolicy?: string;
-  };
+  const envelope = validateSyncPayloadEnvelope(input);
 
   return {
     ...input,
     id: nextMockId("sync"),
-    safetyGrade: envelope.safetyGrade ?? "SafeWorkSummary",
-    redactionLevel: envelope.redactionLevel ?? "SummaryRedacted",
-    retentionPolicy: envelope.retentionPolicy ?? "Timeline",
+    safetyGrade: envelope.safetyGrade,
+    redactionLevel: envelope.redactionLevel,
+    retentionPolicy: envelope.retentionPolicy,
     status: "pending",
     retryCount: 0,
     lastError: null,
@@ -199,4 +196,73 @@ function nextMockId(prefix: string) {
 function nextMockOccurredAt() {
   mockSequence += 1;
   return Date.now() + mockSequence;
+}
+
+function validateSyncPayloadEnvelope(
+  input: EnqueueSyncPayloadInput,
+): SyncPayloadEnvelope {
+  const value = JSON.parse(input.payloadJson) as SyncPayloadEnvelope;
+  rejectForbiddenSyncValues(value);
+
+  if (
+    value.schemaVersion !== 1 ||
+    value.eventType !== input.eventType ||
+    value.eventType !== "memory.summary" ||
+    value.payloadClass !== "SafeSummary" ||
+    value.safetyGrade !== "SafeWorkSummary" ||
+    value.redactionLevel !== "SummaryRedacted" ||
+    !["Session", "Timeline"].includes(value.retentionPolicy)
+  ) {
+    throw new Error("unsupported sync payload envelope");
+  }
+
+  return value;
+}
+
+function rejectForbiddenSyncValues(value: unknown): void {
+  if (Array.isArray(value)) {
+    value.forEach(rejectForbiddenSyncValues);
+    return;
+  }
+
+  if (value && typeof value === "object") {
+    for (const [key, nested] of Object.entries(value)) {
+      if (
+        [
+          "raw_window_title",
+          "raw_ocr_text",
+          "screenshot_path",
+          "file_path",
+          "full_url",
+          "url_query",
+          "token",
+          "keystroke_text",
+        ].includes(key)
+      ) {
+        throw new Error("sync payload contains forbidden key");
+      }
+      rejectForbiddenSyncValues(nested);
+    }
+    return;
+  }
+
+  if (typeof value !== "string") return;
+
+  const normalized = value.toLowerCase();
+  if (
+    value.includes("/") ||
+    value.includes("\\") ||
+    normalized.includes("://") ||
+    normalized.includes("token=") ||
+    normalized.includes("password=") ||
+    normalized.includes("api_key=") ||
+    normalized.includes("apikey=") ||
+    normalized.includes("secret=") ||
+    [".xlsx", ".docx", ".pdf", ".hwp"].some((extension) =>
+      normalized.includes(extension),
+    ) ||
+    normalized.includes("?")
+  ) {
+    throw new Error("sync payload contains forbidden raw context value");
+  }
 }

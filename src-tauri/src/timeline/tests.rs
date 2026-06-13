@@ -116,11 +116,51 @@ fn sync_queue_payload_requires_sync_payload_envelope() {
 }
 
 #[test]
-fn ocr_summary_persistence_requires_retention_fields() {
+fn sync_queue_rejects_unknown_event_type() {
     let mut repository = TimelineRepository::open_in_memory().expect("in-memory db opens");
     repository.migrate().expect("migration succeeds");
 
-    let result = repository.persist_ocr_summary_for_test("redacted text summary");
+    let result = repository.enqueue_sync_payload(EnqueueSyncPayloadInput {
+        event_type: "ocr.summary".to_string(),
+        payload_json: serde_json::to_string(&SyncPayloadEnvelope {
+            schema_version: 1,
+            event_type: "ocr.summary".to_string(),
+            payload_class: "SafeSummary".to_string(),
+            safety_grade: "SafeWorkSummary".to_string(),
+            redaction_level: "SummaryRedacted".to_string(),
+            retention_policy: "Timeline".to_string(),
+            validator_version: "phase6.v1".to_string(),
+            payload: serde_json::json!({"summary": "redacted ocr summary"}),
+        })
+        .expect("json"),
+        idempotency_key: "idem-ocr".to_string(),
+    });
+
+    assert!(result.is_err());
+}
+
+#[test]
+fn sync_queue_rejects_forbidden_context_values() {
+    let mut repository = TimelineRepository::open_in_memory().expect("in-memory db opens");
+    repository.migrate().expect("migration succeeds");
+
+    let result = repository.enqueue_sync_payload(EnqueueSyncPayloadInput {
+        event_type: "memory.summary".to_string(),
+        payload_json: serde_json::to_string(&SyncPayloadEnvelope {
+            schema_version: 1,
+            event_type: "memory.summary".to_string(),
+            payload_class: "SafeSummary".to_string(),
+            safety_grade: "SafeWorkSummary".to_string(),
+            redaction_level: "SummaryRedacted".to_string(),
+            retention_policy: "Timeline".to_string(),
+            validator_version: "phase6.v1".to_string(),
+            payload: serde_json::json!({
+                "summary": "opened /Users/user/private/report.xlsx with token=abc123"
+            }),
+        })
+        .expect("json"),
+        idempotency_key: "idem-raw-value".to_string(),
+    });
 
     assert!(result.is_err());
 }

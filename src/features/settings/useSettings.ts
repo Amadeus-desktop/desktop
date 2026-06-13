@@ -28,6 +28,7 @@ export function useSettings() {
     initialSettings.llamaServerPort,
   );
   const [hydrated, setHydrated] = useState(false);
+  const [settingsRevision, setSettingsRevision] = useState(0);
   const saveSequence = useRef(0);
   const settings = useMemo(
     () => ({
@@ -100,6 +101,7 @@ export function useSettings() {
         setLlamaServerBinaryPath(savedSettings.llamaServerBinaryPath);
         setLlamaServerHost(savedSettings.llamaServerHost);
         setLlamaServerPort(savedSettings.llamaServerPort);
+        setSettingsRevision((revision) => revision + 1);
       });
     }, 250);
 
@@ -125,5 +127,6 @@ export function useSettings() {
     setLlamaServerHost,
     llamaServerPort,
     setLlamaServerPort,
+    settingsRevision,
   };
 }

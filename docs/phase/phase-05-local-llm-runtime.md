@@ -43,6 +43,6 @@ llama.cpp sidecar를 MVP 수준으로 안정화한다.
 
 - `LlamaSidecarConfig` enforces localhost settings and allowed sidecar binary directory.
 - config changes stop the previous sidecar before applying the new config.
-- sidecar startup now performs a short readiness probe and records early-exit stderr in status.
+- sidecar startup now performs a short localhost HTTP readiness probe and records early-exit stderr in status.
 - settings UI surfaces sidecar configured/running/error status.
 - local provider failures continue to fall back to the template provider when fallback is enabled.

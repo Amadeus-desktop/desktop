@@ -212,3 +212,13 @@ fn maps_saved_model_routes_to_provider_routes() {
     );
     assert!(LlmProviderRoute::from_model_route("unknown").is_err());
 }
+
+#[test]
+fn service_respects_disabled_fallback_for_generation() {
+    let mut service = LlmService::default();
+    service.set_route(LlmProviderRoute::LocalLlama, false);
+
+    let result = service.generate_utterance(&policy_envelope());
+
+    assert!(result.is_err());
+}
