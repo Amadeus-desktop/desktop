@@ -1,10 +1,24 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+mod macos_context;
+mod privacy;
 mod timeline;
+mod trigger;
 
+use macos_context::{
+    capture_current_context_event, get_current_context_snapshot, ContextBridgeState,
+};
+use privacy::{
+    assess_current_privacy_context, capture_privacy_checked_context_event,
+    get_screen_capture_permission_status,
+};
 use tauri::Manager;
 use timeline::{
     create_context_event, create_user_reaction, create_utterance_event, list_timeline_events,
     TimelineRepository, TimelineState,
+};
+use trigger::{
+    poll_trigger_engine, record_trigger_reaction_for_scoring, run_trigger_engine_once,
+    TriggerEngineState,
 };
 
 #[tauri::command]
@@ -22,14 +36,40 @@ pub fn run() {
             let mut repository = TimelineRepository::open(database_path)?;
             repository.migrate()?;
             app.manage(TimelineState::new(repository));
+            app.manage(ContextBridgeState::native());
+            app.manage(TriggerEngineState::new());
+
+            // Make the window transparent on macOS
+            #[cfg(target_os = "macos")]
+            {
+                if let Some(win) = app.get_webview_window("main") {
+                    let ptr = win.ns_window().expect("failed to get ns_window");
+                    unsafe {
+                        use objc2_app_kit::{NSColor, NSWindow};
+                        let ns_window: &NSWindow = &*(ptr as *const NSWindow);
+                        let clear = NSColor::clearColor();
+                        ns_window.setBackgroundColor(Some(&clear));
+                        ns_window.setOpaque(false);
+                    }
+                }
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             greet,
+            get_current_context_snapshot,
+            capture_current_context_event,
+            get_screen_capture_permission_status,
+            assess_current_privacy_context,
+            capture_privacy_checked_context_event,
             create_context_event,
             create_utterance_event,
             create_user_reaction,
-            list_timeline_events
+            list_timeline_events,
+            run_trigger_engine_once,
+            poll_trigger_engine,
+            record_trigger_reaction_for_scoring
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

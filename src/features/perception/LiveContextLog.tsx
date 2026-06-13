@@ -9,8 +9,9 @@ const rows: Array<{
   key: keyof LiveContextStatus;
 }> = [
   { label: "현재 앱", key: "activeApp" },
+  { label: "창 제목", key: "windowTitle" },
   { label: "상태 동기화", key: "stateSync" },
-  { label: "Vision Core", key: "visionCore" },
+  { label: "앱 분류", key: "category" },
 ];
 
 export function LiveContextLog({ liveContext }: LiveContextLogProps) {

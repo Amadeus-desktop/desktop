@@ -340,6 +340,10 @@ impl TimelineState {
             repository: Mutex::new(repository),
         }
     }
+
+    pub fn repository(&self) -> &Mutex<TimelineRepository> {
+        &self.repository
+    }
 }
 
 #[tauri::command]

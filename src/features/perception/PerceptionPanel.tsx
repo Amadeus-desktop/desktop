@@ -15,6 +15,8 @@ export function PerceptionPanel() {
     privacyFilterEnabled,
     setPrivacyFilterEnabled,
     liveContext,
+    privacyAssessment,
+    screenCapturePermission,
   } = usePerceptionStatus();
 
   return (
@@ -56,9 +58,17 @@ export function PerceptionPanel() {
       <LiveContextLog liveContext={liveContext} />
 
       <div className="mt-3 grid grid-cols-[minmax(0,1fr)_180px] gap-3 max-sm:grid-cols-1">
-        <PrivacyFilterCard enabled={privacyFilterEnabled} />
-        <StatusPill tone={analysisEnabled ? "green" : "blue"}>
-          {analysisEnabled ? "분석 대기 중" : "분석 일시 중지"}
+        <PrivacyFilterCard
+          enabled={privacyFilterEnabled}
+          assessment={privacyAssessment}
+          permissionStatus={screenCapturePermission}
+        />
+        <StatusPill tone={privacyAssessment?.isSensitive ? "blue" : analysisEnabled ? "green" : "blue"}>
+          {privacyAssessment?.isSensitive
+            ? "민감 컨텍스트 차단"
+            : analysisEnabled
+              ? "분석 대기 중"
+              : "분석 일시 중지"}
         </StatusPill>
       </div>
     </section>

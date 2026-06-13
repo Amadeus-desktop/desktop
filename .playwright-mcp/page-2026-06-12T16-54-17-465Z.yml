@@ -1,0 +1,42 @@
+- main [ref=e3]:
+  - generic [ref=e5]:
+    - complementary [ref=e6]:
+      - navigation [ref=e11]:
+        - generic [ref=e12]:
+          - generic [ref=e13]: Amadeus
+          - generic [ref=e14]: Active Companion
+        - button "캐릭터 선택" [ref=e15]:
+          - img [ref=e16]
+          - generic [ref=e19]: 캐릭터 선택
+        - button "일반 설정" [ref=e20]:
+          - img [ref=e21]
+          - generic [ref=e24]: 일반 설정
+        - button "화면 인지 가이드" [ref=e25]:
+          - img [ref=e26]
+          - generic [ref=e29]: 화면 인지 가이드
+        - button "작업 리포트" [ref=e30]:
+          - img [ref=e31]
+          - generic [ref=e33]: 작업 리포트
+    - generic [ref=e35]:
+      - generic [ref=e36]:
+        - paragraph [ref=e37]: Amadeus Persona
+        - heading "캐릭터 선택" [level=1] [ref=e38]
+        - paragraph [ref=e39]: 작업 흐름에 맞춰 말투와 반응 강도를 조절하는 동반자 프로필입니다.
+      - heading "Character" [level=3] [ref=e40]
+      - generic [ref=e41]:
+        - button "🎀 루다 말괄량이 여동생 텐션" [ref=e42]:
+          - generic [ref=e43]: 🎀
+          - generic [ref=e44]: 루다
+          - paragraph [ref=e45]: 말괄량이 여동생 텐션
+        - button "❄️ 에밀리아 은근히 챙겨주는 다정함" [pressed] [ref=e46]:
+          - generic [ref=e47]: ❄️
+          - generic [ref=e48]: 에밀리아
+          - paragraph [ref=e49]: 은근히 챙겨주는 다정함
+        - button "🌌 다온 차분하고 묵묵한 위로" [ref=e50]:
+          - generic [ref=e51]: 🌌
+          - generic [ref=e52]: 다온
+          - paragraph [ref=e53]: 차분하고 묵묵한 위로
+      - heading "Current Mode" [level=3] [ref=e54]
+      - generic [ref=e57]: 에밀리아 기준으로 말풍선과 채팅 톤을 맞춥니다.
+  - button "Amadeus 열기" [ref=e68]:
+    - img [ref=e69]

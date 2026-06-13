@@ -1,7 +1,8 @@
 export type LiveContextStatus = {
   activeApp: string;
+  windowTitle: string;
   stateSync: string;
-  visionCore: string;
+  category: string;
 };
 
 export type PerceptionState = {

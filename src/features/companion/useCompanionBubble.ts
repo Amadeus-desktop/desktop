@@ -1,47 +1,84 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { initialChatMessages, initialCompanionMessage } from "./companion";
+import { createUserReaction } from "../timeline/timelineRepository";
 import {
-  createContextEvent,
-  createUserReaction,
-  createUtteranceEvent,
-} from "../timeline/timelineRepository";
+  pollTriggerEngine,
+  recordTriggerReactionForScoring,
+  runTriggerEngineOnce,
+} from "../trigger/triggerRepository";
+import type { TriggerRunResult } from "../trigger/types";
+
+const TRIGGER_POLL_INTERVAL_MS = 60_000;
+
+let initialTriggerPromise: Promise<TriggerRunResult> | null = null;
 
 export function useCompanionBubble() {
-  const [bubbleVisible, setBubbleVisible] = useState(true);
+  const [bubbleVisible, setBubbleVisible] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [message, setMessage] = useState(initialCompanionMessage);
   const [messages, setMessages] = useState(initialChatMessages);
   const [draft, setDraft] = useState("");
   const [activeUtteranceId, setActiveUtteranceId] = useState<string | null>(
     null,
   );
+  const uiStateRef = useRef({
+    bubbleVisible: false,
+    chatOpen: false,
+  });
+
+  useEffect(() => {
+    uiStateRef.current = {
+      bubbleVisible,
+      chatOpen,
+    };
+  }, [bubbleVisible, chatOpen]);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function recordInitialUtterance() {
-      const contextEvent = await createContextEvent({
-        appName: "Amadeus",
-        windowTitle: "Companion Shell",
-        eventType: "mock_trigger",
-        metadataJson: JSON.stringify({ trigger: "deep_pause" }),
-      });
-      const utterance = await createUtteranceEvent({
-        triggerType: "deep_pause",
-        speakabilityScore: 72,
-        message: initialCompanionMessage,
-        provider: "mock",
-        contextEventId: contextEvent.id,
-      });
+    function presentTriggerResult(result: TriggerRunResult) {
+      if (!result.utteranceEvent) return;
 
-      if (!cancelled) {
-        setActiveUtteranceId(utterance.id);
-      }
+      const utterance = result.utteranceEvent;
+      setMessage(utterance.message);
+      setActiveUtteranceId(utterance.id);
+      setMessages((currentMessages) => [
+        ...currentMessages,
+        {
+          id: utterance.id,
+          sender: "companion",
+          text: utterance.message,
+        },
+      ]);
+      setBubbleVisible(true);
     }
 
-    void recordInitialUtterance();
+    async function requestInitialTrigger() {
+      const result = await requestInitialTriggerOnce();
+      if (cancelled) return;
+
+      presentTriggerResult(result);
+    }
+
+    async function requestScheduledTrigger() {
+      if (uiStateRef.current.bubbleVisible || uiStateRef.current.chatOpen) {
+        return;
+      }
+
+      const result = await pollTriggerEngine([]);
+      if (cancelled || !result.runResult) return;
+
+      presentTriggerResult(result.runResult);
+    }
+
+    void requestInitialTrigger().catch(() => {});
+    const intervalId = window.setInterval(() => {
+      void requestScheduledTrigger().catch(() => {});
+    }, TRIGGER_POLL_INTERVAL_MS);
 
     return () => {
       cancelled = true;
+      window.clearInterval(intervalId);
     };
   }, []);
 
@@ -58,7 +95,7 @@ export function useCompanionBubble() {
   return {
     bubbleVisible,
     chatOpen,
-    message: initialCompanionMessage,
+    message,
     messages,
     draft,
     setDraft,
@@ -94,12 +131,26 @@ export function useCompanionBubble() {
   };
 }
 
+function requestInitialTriggerOnce() {
+  if (!initialTriggerPromise) {
+    initialTriggerPromise = runTriggerEngineOnce([]).catch((error) => {
+      initialTriggerPromise = null;
+      throw error;
+    });
+  }
+
+  return initialTriggerPromise;
+}
+
 async function recordReaction(
   utteranceEventId: string | null,
   reactionType: string,
 ) {
-  await createUserReaction({
-    utteranceEventId,
-    reactionType,
-  });
+  await Promise.all([
+    createUserReaction({
+      utteranceEventId,
+      reactionType,
+    }),
+    recordTriggerReactionForScoring(reactionType),
+  ]);
 }
