@@ -22,9 +22,14 @@ fn policy_envelope() -> LlmInputEnvelope {
 
 #[test]
 fn template_provider_envelope_excludes_context() {
-    let envelope = policy_envelope().for_provider(ProviderInputGrade::Template);
+    let mut source = policy_envelope();
+    source.trigger_reason = "raw-file-/Users/user/private/spec.md".to_string();
+    let envelope = source.for_provider(ProviderInputGrade::Template);
 
     assert_eq!(envelope.provider_grade, ProviderInputGrade::Template);
+    assert_eq!(envelope.trigger_type, "milestone");
+    assert_eq!(envelope.trigger_reason, "");
+    assert_eq!(envelope.tone_hint, "");
     assert_eq!(envelope.fallback_message, "fallback");
     assert_eq!(envelope.persona_summary, None);
     assert_eq!(envelope.safe_memory_summary, None);
@@ -36,7 +41,9 @@ fn template_provider_envelope_excludes_context() {
 
 #[test]
 fn api_provider_envelope_excludes_ocr_and_title() {
-    let envelope = policy_envelope().for_provider(ProviderInputGrade::ApiRedacted);
+    let mut source = policy_envelope();
+    source.trigger_reason = "raw-file-/Users/user/private/spec.md".to_string();
+    let envelope = source.for_provider(ProviderInputGrade::ApiRedacted);
 
     assert_eq!(envelope.provider_grade, ProviderInputGrade::ApiRedacted);
     assert_eq!(
@@ -48,9 +55,12 @@ fn api_provider_envelope_excludes_ocr_and_title() {
         Some("prefers concise support".to_string())
     );
     assert_eq!(envelope.coarse_context_label, "work");
+    assert_eq!(envelope.trigger_reason, "");
+    assert_eq!(envelope.tone_hint, "");
     assert_eq!(envelope.redacted_window_title, None);
     assert_eq!(envelope.redacted_ocr_summary, None);
-    assert!(envelope.score_summary.is_some());
+    assert_eq!(envelope.score_summary, None);
+    assert!(!format!("{envelope:?}").contains("/Users/user/private/spec.md"));
 }
 
 #[test]

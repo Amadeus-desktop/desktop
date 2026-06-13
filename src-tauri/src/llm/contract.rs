@@ -39,14 +39,19 @@ impl LlmInputEnvelope {
             ProviderInputGrade::Template => {
                 envelope.persona_summary = None;
                 envelope.safe_memory_summary = None;
+                envelope.trigger_reason.clear();
+                envelope.tone_hint.clear();
                 envelope.coarse_context_label.clear();
                 envelope.redacted_window_title = None;
                 envelope.redacted_ocr_summary = None;
                 envelope.score_summary = None;
             }
             ProviderInputGrade::ApiRedacted => {
+                envelope.trigger_reason.clear();
+                envelope.tone_hint.clear();
                 envelope.redacted_window_title = None;
                 envelope.redacted_ocr_summary = None;
+                envelope.score_summary = None;
             }
             ProviderInputGrade::LocalRedacted => {}
         }
