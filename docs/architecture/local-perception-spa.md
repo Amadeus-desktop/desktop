@@ -8,7 +8,9 @@
 
 이 문서에서 SPA는 웹 Single Page Application이 아니다.
 
-SPA는 **Separated Process Architecture**이자 **Signal Processing Architecture**다. 하나의 로컬 인지 도메인을 여러 책임 단위로 나누고, 각 단위가 명확한 입력과 출력만 주고받게 만드는 설계 원칙이다.
+SPA는 **Signal Processing Architecture**를 기본 의미로 사용한다. 하나의 로컬 인지 도메인을 여러 책임 단위로 나누고, 각 단위가 명확한 입력과 출력만 주고받게 만드는 설계 원칙이다.
+
+**Separated Process Architecture**는 선택적 구현 전략이다. MVP 이후 실제 별도 프로세스로 분리할 대상은 Local LLM sidecar와 무거운 OCR 엔진처럼 crash isolation, resource budget, lifecycle 관리가 필요한 구성요소로 제한한다. Process, Policy, Capture decision은 먼저 Rust module boundary로 구현한다.
 
 Amadeus의 로컬 인지 도메인은 다음 질문에 답한다.
 
@@ -84,6 +86,33 @@ Process SPA
 
 각 SPA는 독립적으로 테스트 가능해야 한다. 한 SPA의 내부 구현이 바뀌어도 외부 계약은 유지되어야 한다.
 
+### 4.1 Source of Truth
+
+최종 발화 결정의 source of truth는 Rust backend의 **Utterance Policy SPA**다.
+
+LLM은 문장 생성과 tone 제안만 할 수 있다. LLM은 아래 결정을 직접 수행하거나 뒤집을 수 없다.
+
+- privacy suppression
+- capture allow/deny
+- OCR allow/deny
+- daily limit
+- cooldown
+- action band
+- persistence decision
+
+### 4.2 Process Boundary Policy
+
+| 구성요소 | MVP 구현 경계 | 별도 프로세스 조건 |
+| --- | --- | --- |
+| Process SPA | Rust module | 별도 프로세스 금지 |
+| Policy Gate | Rust module | 별도 프로세스 금지 |
+| Capture SPA | Rust module + OS API adapter | 별도 프로세스 금지 |
+| OCR/Vision SPA | Apple Vision adapter 우선 | PaddleOCR/Tesseract sidecar 채택 시 |
+| Local Reasoning SPA | LLM provider adapter | llama.cpp sidecar 사용 시 |
+| Utterance Policy SPA | Rust module | 별도 프로세스 금지 |
+
+정책 결정은 프로세스 밖으로 빼지 않는다. 외부 프로세스가 죽어도 앱은 process-only, template utterance, no capture 상태로 degrade 해야 한다.
+
 ---
 
 ## 5. Process SPA
@@ -118,6 +147,34 @@ ProcessHistoryWindow
 ProcessSignals
 ```
 
+### 5.1 ProcessHistoryWindow Contract
+
+예외상황 정책은 단일 snapshot으로 판단하지 않는다. 최소 10분 rolling window를 사용한다.
+
+```text
+ProcessHistoryWindow {
+  window_ms: u64,
+  foreground_segments: Vec<ForegroundSegment>,
+  app_switch_count: u32,
+  work_cluster_duration_ms: u128,
+  non_work_single_app_max_duration_ms: u128,
+  known_meeting_app_frontmost: bool,
+  known_music_app_seen: bool,
+  known_music_app_frontmost_ms: u128,
+}
+
+ForegroundSegment {
+  app_name: String,
+  bundle_identifier: String,
+  category: AppCategory,
+  started_at_ms: u128,
+  duration_ms: u128,
+  redacted_window_title: String,
+}
+```
+
+MVP에서는 `display_count`, 백그라운드 오디오 세션, 실제 듀얼 모니터 좌표 추적을 필수로 하지 않는다. 해당 신호가 없으면 `unknown`으로 처리하고 점수 보정에 사용하지 않는다.
+
 ---
 
 ## 6. Policy Gate
@@ -145,6 +202,54 @@ allow_utterance
 ```
 
 Policy Gate의 결정은 LLM이 뒤집을 수 없다.
+
+### 6.1 Three-Stage Privacy Boundary
+
+프라이버시 경계는 한 번의 필터가 아니다. Capture 전, OCR 전, LLM 전 3단으로 나눈다.
+
+```text
+PreCaptureGate
+  input: ProcessSnapshot + ProcessHistoryWindow + user settings
+  output: CaptureDecision
+
+PreOcrGate
+  input: CaptureDecision + capture metadata
+  output: OcrDecision
+
+PreLlmGate
+  input: ProcessSignals + OcrObservation redacted fields + PolicyScores
+  output: LlmInputEnvelope
+```
+
+#### PreCaptureGate hard deny
+
+아래 조건은 캡처 요청 자체를 만들지 않는다.
+
+- `privacy_risk_score >= 70`
+- `sensitive_context == true`
+- `screen_capture_permission != granted`
+- `user_screen_context_enabled == false`
+- `known_meeting_app_frontmost == true`
+
+#### PreOcrGate hard deny
+
+아래 조건은 캡처 이미지가 있어도 OCR을 실행하지 않는다.
+
+- 캡처 대상이 허용된 창/영역이 아니다.
+- 캡처 TTL이 만료됐다.
+- 캡처 metadata에 sensitive marker가 있다.
+- OCR adapter가 timeout budget을 초과했다.
+
+#### PreLlmGate hard deny
+
+아래 데이터는 어떤 provider에도 전달하지 않는다.
+
+- raw screenshot
+- OCR raw text
+- raw window title
+- file path
+- URL full path/query
+- keystroke text
 
 ---
 
@@ -174,13 +279,14 @@ capture_value_score >= 60
 privacy_risk_score < 50
 context_confidence_score < 70
 user_screen_context_enabled == true
+known_meeting_app_frontmost == false
 ```
 
 ### 캡처 금지 조건
 
 ```text
 privacy_risk_score >= 70
-meeting_mode == true
+known_meeting_app_frontmost == true
 sensitive_context == true
 screen_capture_permission != granted
 ```
@@ -217,6 +323,19 @@ OcrObservation {
   source_ttl_ms
 }
 ```
+
+### 8.1 OCR Data Handling Contract
+
+OCR adapter는 raw text를 반환할 수 있지만, raw text는 adapter boundary 밖으로 나갈 수 없다.
+
+```text
+Raw OCR text
+  -> in-memory sensitive scan
+  -> redacted summary
+  -> raw text dropped
+```
+
+`OcrObservation`에는 raw text 필드를 두지 않는다. 테스트 fixture에서만 raw text를 파일로 둘 수 있고, fixture는 실제 사용자 캡처에서 생성하지 않는다.
 
 ---
 
@@ -268,8 +387,48 @@ Local Reasoning SPA는 정책 엔진이 허용한 신호만 받아 상황 해석
 
 - 원본 스크린샷을 직접 받지 않는다.
 - 개인정보 위험 정책을 우회하지 않는다.
-- 발화 여부를 최종 결정하지 않는다.
+- 발화 여부, action band, persistence 여부를 결정하지 않는다.
+- score를 직접 보정하지 않는다.
 - 사용자 파일 또는 앱 조작 명령을 생성하지 않는다.
+
+### 10.1 Provider Input Grade
+
+Provider별로 허용 입력 등급을 분리한다.
+
+| Provider | 허용 입력 | 금지 입력 |
+| --- | --- | --- |
+| Template | trigger type, fallback message | window title, OCR summary, screenshot |
+| API | trigger type, tone, coarse app category, redacted title class | raw title, OCR raw text, OCR summary, screenshot |
+| Local llama.cpp | trigger type, tone, redacted title, redacted OCR summary, score signals | raw title, OCR raw text, screenshot |
+
+API provider는 외부 전송 가능성이 있으므로 기본적으로 OCR summary를 받지 않는다. API가 필요하면 redacted summary 대신 coarse context label만 사용한다.
+
+```text
+coarse context label examples:
+  coding
+  writing
+  design_reference
+  meeting
+  unknown
+```
+
+### 10.2 LlmInputEnvelope
+
+```text
+LlmInputEnvelope {
+  provider_grade: Template | ApiRedacted | LocalRedacted,
+  trigger_type: TriggerType,
+  trigger_reason: String,
+  tone_hint: String,
+  coarse_context_label: String,
+  redacted_window_title: Option<String>,
+  redacted_ocr_summary: Option<String>,
+  score_summary: PolicyScoreSummary,
+  fallback_message: String,
+}
+```
+
+`LlmInputEnvelope`는 raw input을 포함하지 않는 것을 타입 수준에서 보장해야 한다.
 
 ---
 
@@ -298,13 +457,49 @@ Utterance Policy SPA가 최종 발화 여부를 결정한다.
 7. persistence decision
 ```
 
-LLM의 제안은 5번 이후 보정 입력으로만 사용할 수 있다. 1~3번 억제 정책은 LLM이 뒤집을 수 없다.
+LLM의 제안은 action band 이후의 message/tone 생성에만 사용할 수 있다. 1~7번 결정은 LLM이 뒤집을 수 없다.
 
 ---
 
 ## 12. Score Contract
 
 모든 점수는 `0..100` 범위다.
+
+### 12.1 PolicyScores Type
+
+```text
+PolicyScores {
+  privacy_risk_score: i64,
+  context_confidence_score: i64,
+  attention_stability_score: i64,
+  capture_value_score: i64,
+  speakability_score: i64,
+}
+```
+
+점수는 모두 계산 직후 `0..100`으로 clamp한다.
+
+누락 신호 기본값:
+
+| 신호 | 기본값 | 이유 |
+| --- | --- | --- |
+| privacy_risk_score | 50 | 모르면 안전 쪽으로 둔다 |
+| context_confidence_score | 40 | 모르면 말하지 않는다 |
+| attention_stability_score | 50 | 모르면 interrupt penalty를 주지 않는다 |
+| capture_value_score | 0 | 모르면 캡처하지 않는다 |
+| speakability_score | 0 | 모르면 말하지 않는다 |
+
+### 12.2 Score Ownership
+
+| 점수 | 계산 소유자 | 주요 입력 |
+| --- | --- | --- |
+| privacy_risk_score | Policy Gate | privacy assessment, app/window rules, user settings |
+| context_confidence_score | Policy Gate | process history, OCR confidence, conflicting signals |
+| attention_stability_score | Process SPA | work cluster, app switches, idle, meeting/media mode |
+| capture_value_score | Capture SPA | low confidence, trigger candidate, privacy risk |
+| speakability_score | Utterance Policy SPA | trigger base, policy scores, reaction feedback |
+
+LLM은 점수 계산 소유자가 아니다.
 
 ### privacy_risk_score
 
@@ -399,6 +594,8 @@ recent_dismissal_penalty =
   min(recent_negative_reactions, 5) * 10
 ```
 
+`cooldown_penalty`는 MVP에서는 hard suppression으로 처리한다. cooldown 중이면 `speakability_score = 0`, `suppression_reason = cooldown`이다.
+
 ### 현재 트리거 base score
 
 ```text
@@ -421,6 +618,14 @@ music_app_is_background = ignored_for_drift
 
 음악 앱은 단독으로 Drift 근거가 되면 안 된다. 음악 앱이 잠깐 frontmost가 된 것은 작업 이탈이 아니라 제어 행위로 본다.
 
+MVP 판정 기준:
+
+```text
+known_music_app_seen == true
+known_music_app_frontmost_ms < 60_000
+  -> no drift candidate
+```
+
 ### 듀얼 모니터와 앱 왕복
 
 ```text
@@ -431,15 +636,34 @@ non_work_single_app_duration < drift_threshold
 
 에디터, 브라우저, 터미널, Figma, PDF, Notion이 반복 등장하면 개별 앱 체류보다 workflow cluster를 우선한다.
 
+MVP 판정 기준:
+
+```text
+work_cluster_duration_ms >= 10 minutes
+app_switch_count >= 3
+non_work_single_app_max_duration_ms < 10 minutes
+  -> multi_app_workflow = true
+  -> drift suppressed
+```
+
 ### 회의 중 idle
 
 ```text
-meeting_mode = true
+known_meeting_app_frontmost = true
 capture = blocked
 utterance = blocked
 ```
 
 회의 중 idle은 멈춤이 아니라 듣기 또는 말하기일 수 있다.
+
+MVP 판정 기준:
+
+```text
+known_meeting_app_frontmost == true
+  -> deep_pause suppressed
+  -> capture blocked
+  -> utterance blocked
+```
 
 ### 레퍼런스 영상 또는 강의
 
@@ -471,10 +695,23 @@ utterance = blocked or status_only
 | app transition history | 허용 | 시간 범위 제한 |
 | raw screenshot | 금지 | 디버그 플래그 + 명시 동의 시 임시 저장 |
 | OCR raw text | 금지 | 테스트 fixture에서만 허용 |
-| redacted OCR summary | 허용 | TTL 또는 timeline metadata |
+| redacted OCR summary | MVP 저장 금지 | retention 필드 구현 후 허용 |
 | LLM prompt | 원문 저장 금지 | redacted prompt hash만 허용 |
 | utterance | 허용 | timeline event |
 | user reaction | 허용 | score feedback |
+
+### 15.1 Retention Contract
+
+OCR summary를 timeline에 저장하려면 아래 필드가 먼저 DB 계약에 포함되어야 한다.
+
+```text
+retention_policy: Ephemeral | Session | Timeline
+expires_at: Option<DateTime>
+redaction_level: None | TitleRedacted | SummaryRedacted | SensitiveSuppressed
+source_kind: Process | Capture | Ocr | Llm
+```
+
+이 필드가 구현되기 전에는 OCR summary를 SQLite에 저장하지 않는다.
 
 ---
 
@@ -537,15 +774,15 @@ utterance = blocked or status_only
 
 ## 18. 구현 순서
 
-1. Process history window 추가
-2. policy score struct 추가
-3. capture decision만 먼저 구현하고 실제 캡처는 mock으로 둔다
-4. 예외 상황 단위 테스트 추가
-5. Apple Vision OCR spike
-6. OCR 결과 redaction pipeline 추가
-7. Local Reasoning SPA 입력 계약 추가
-8. LLM utterance prompt를 redacted context 중심으로 변경
-9. PaddleOCR/Tesseract 벤치마크 후 optional sidecar 판단
+1. LLM input을 `LlmInputEnvelope`로 제한하고 raw window title 전달을 제거한다.
+2. `ProcessHistoryWindow`와 `PolicyScores` 타입을 추가한다.
+3. 예외 상황 단위 테스트를 process-only로 먼저 구현한다.
+4. Capture decision을 구현하되 실제 캡처는 mock adapter로 둔다.
+5. PreCaptureGate, PreOcrGate, PreLlmGate를 분리한다.
+6. Apple Vision OCR spike를 별도 feature flag로 실험한다.
+7. OCR 결과 redaction pipeline을 추가한다.
+8. retention contract 구현 전까지 OCR summary 저장을 금지한다.
+9. PaddleOCR/Tesseract는 post-MVP benchmark로만 검토한다.
 
 ---
 
