@@ -1,4 +1,4 @@
-use super::{LlmChatRequest, LlmInputEnvelope};
+use super::{redaction::sanitize_prompt_field, LlmChatEnvelope, LlmInputEnvelope};
 
 pub(super) fn local_utterance_prompt(request: &LlmInputEnvelope) -> String {
     let sanitized_reason = sanitize_prompt_field(&request.trigger_reason);
@@ -23,7 +23,7 @@ pub(super) fn local_utterance_prompt(request: &LlmInputEnvelope) -> String {
     lines.join("\n")
 }
 
-pub(super) fn local_chat_prompt(request: &LlmChatRequest) -> String {
+pub(super) fn local_chat_prompt(request: &LlmChatEnvelope) -> String {
     let conversation = request
         .messages
         .iter()
@@ -39,18 +39,4 @@ pub(super) fn local_chat_prompt(request: &LlmChatRequest) -> String {
     format!(
         "너는 조용하고 다정한 데스크톱 companion이다. 짧게 한두 문장으로 답해라.\n{conversation}\ncompanion:"
     )
-}
-
-fn sanitize_prompt_field(value: &str) -> String {
-    value
-        .split_whitespace()
-        .map(|part| {
-            if part.contains('/') || part.contains('\\') || part.contains("://") {
-                "[redacted]"
-            } else {
-                part
-            }
-        })
-        .collect::<Vec<_>>()
-        .join(" ")
 }

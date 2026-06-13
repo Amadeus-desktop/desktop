@@ -140,7 +140,7 @@ pub(super) fn exception_suppression(input: &TriggerInput) -> Option<&'static str
 }
 
 fn suppress_music_drift(snapshot: &MacosContextSnapshot, history: &ProcessHistoryWindow) -> bool {
-    (history.known_music_app_seen || is_known_music_app(snapshot))
+    is_known_music_app(snapshot)
         && snapshot.category == AppCategory::NonWork
         && history.known_music_app_frontmost_ms < 60_000
 }

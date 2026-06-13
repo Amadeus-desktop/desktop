@@ -87,10 +87,51 @@ fn local_chat_prompt_redacts_path_and_url_content() {
         }],
     };
 
-    let prompt = local_chat_prompt(&request);
+    let prompt = local_chat_prompt(&LlmChatEnvelope::from_request(request));
 
     assert!(!prompt.contains("/Users/user/secret/report.xlsx"));
     assert!(!prompt.contains("https://example.test/token"));
+    assert!(prompt.contains("[redacted]"));
+}
+
+#[test]
+fn chat_envelope_filters_provider_input() {
+    let request = LlmChatRequest {
+        messages: vec![LlmChatMessage {
+            role: "user".to_string(),
+            content: "token=abc123 open example.com?token=abc and /Users/user/private.txt"
+                .to_string(),
+        }],
+    };
+
+    let envelope =
+        LlmChatEnvelope::from_request(request).for_provider(ProviderInputGrade::ApiRedacted);
+
+    assert_eq!(envelope.provider_grade, ProviderInputGrade::ApiRedacted);
+    assert_eq!(envelope.messages.len(), 1);
+    assert!(!envelope.messages[0].content.contains("token=abc123"));
+    assert!(!envelope.messages[0]
+        .content
+        .contains("example.com?token=abc"));
+    assert!(!envelope.messages[0]
+        .content
+        .contains("/Users/user/private.txt"));
+    assert!(envelope.messages[0].content.contains("[redacted]"));
+}
+
+#[test]
+fn local_chat_prompt_redacts_token_like_content_without_slashes() {
+    let request = LlmChatRequest {
+        messages: vec![LlmChatMessage {
+            role: "user".to_string(),
+            content: "token=abc123 password=hunter2".to_string(),
+        }],
+    };
+
+    let prompt = local_chat_prompt(&LlmChatEnvelope::from_request(request));
+
+    assert!(!prompt.contains("token=abc123"));
+    assert!(!prompt.contains("password=hunter2"));
     assert!(prompt.contains("[redacted]"));
 }
 

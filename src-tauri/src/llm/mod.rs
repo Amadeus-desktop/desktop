@@ -1,10 +1,13 @@
+mod commands;
 mod contract;
 mod llama_http;
 mod prompt;
+mod redaction;
 
+pub use commands::{generate_chat_reply, generate_test_utterance, get_llm_provider_health};
 pub use contract::{
-    LlmChatRequest, LlmGeneration, LlmInputEnvelope, LlmProviderHealth, PolicyScoreSummary,
-    ProviderInputGrade,
+    LlmChatEnvelope, LlmChatRequest, LlmGeneration, LlmInputEnvelope, LlmProviderHealth,
+    PolicyScoreSummary, ProviderInputGrade,
 };
 use llama_http::{llama_completion_url, normalize_llama_content};
 use prompt::{local_chat_prompt, local_utterance_prompt};
@@ -17,7 +20,6 @@ use std::{
     sync::Mutex,
     time::Duration,
 };
-use tauri::State;
 
 const DEFAULT_LLAMA_URL: &str = "http://127.0.0.1:8080";
 const LLAMA_TIMEOUT: Duration = Duration::from_secs(3);
@@ -87,7 +89,7 @@ pub trait LlmProvider: Send + Sync {
     fn id(&self) -> &'static str;
     fn health(&self) -> LlmProviderHealth;
     fn generate_utterance(&self, request: &LlmInputEnvelope) -> Result<LlmGeneration, LlmError>;
-    fn generate_chat_reply(&self, request: &LlmChatRequest) -> Result<LlmGeneration, LlmError>;
+    fn generate_chat_reply(&self, request: &LlmChatEnvelope) -> Result<LlmGeneration, LlmError>;
 }
 
 pub struct TemplateLlmProvider;
@@ -120,7 +122,8 @@ impl LlmProvider for TemplateLlmProvider {
         })
     }
 
-    fn generate_chat_reply(&self, request: &LlmChatRequest) -> Result<LlmGeneration, LlmError> {
+    fn generate_chat_reply(&self, request: &LlmChatEnvelope) -> Result<LlmGeneration, LlmError> {
+        let request = request.for_provider(ProviderInputGrade::Template);
         let last_user_message = request
             .messages
             .iter()
@@ -162,7 +165,7 @@ impl LlmProvider for ApiLlmProvider {
         ))
     }
 
-    fn generate_chat_reply(&self, _request: &LlmChatRequest) -> Result<LlmGeneration, LlmError> {
+    fn generate_chat_reply(&self, _request: &LlmChatEnvelope) -> Result<LlmGeneration, LlmError> {
         Err(LlmError::Unavailable(
             "api provider is not configured".to_string(),
         ))
@@ -265,8 +268,9 @@ impl LlmProvider for LocalLlamaProvider {
         })
     }
 
-    fn generate_chat_reply(&self, request: &LlmChatRequest) -> Result<LlmGeneration, LlmError> {
-        let prompt = local_chat_prompt(request);
+    fn generate_chat_reply(&self, request: &LlmChatEnvelope) -> Result<LlmGeneration, LlmError> {
+        let request = request.for_provider(ProviderInputGrade::LocalRedacted);
+        let prompt = local_chat_prompt(&request);
 
         Ok(LlmGeneration {
             message: self.complete(prompt)?,
@@ -333,7 +337,7 @@ impl LlmService {
         })
     }
 
-    pub fn generate_chat_reply(&self, request: &LlmChatRequest) -> LlmGeneration {
+    pub fn generate_chat_reply(&self, request: &LlmChatEnvelope) -> LlmGeneration {
         self.try_generate_chat_reply(request).unwrap_or_else(|_| {
             self.template
                 .generate_chat_reply(request)
@@ -368,16 +372,21 @@ impl LlmService {
         }
     }
 
-    fn try_generate_chat_reply(&self, request: &LlmChatRequest) -> Result<LlmGeneration, LlmError> {
+    fn try_generate_chat_reply(
+        &self,
+        request: &LlmChatEnvelope,
+    ) -> Result<LlmGeneration, LlmError> {
         match self.route {
-            LlmProviderRoute::Template => self.template.generate_chat_reply(request),
+            LlmProviderRoute::Template => self
+                .template
+                .generate_chat_reply(&request.for_provider(ProviderInputGrade::Template)),
             LlmProviderRoute::LocalLlama => self
                 .local
-                .generate_chat_reply(request)
+                .generate_chat_reply(&request.for_provider(ProviderInputGrade::LocalRedacted))
                 .or_else(|error| self.fallback_chat_reply(request, error)),
             LlmProviderRoute::Api => self
                 .api
-                .generate_chat_reply(request)
+                .generate_chat_reply(&request.for_provider(ProviderInputGrade::ApiRedacted))
                 .or_else(|error| self.fallback_chat_reply(request, error)),
         }
     }
@@ -397,11 +406,12 @@ impl LlmService {
 
     fn fallback_chat_reply(
         &self,
-        request: &LlmChatRequest,
+        request: &LlmChatEnvelope,
         error: LlmError,
     ) -> Result<LlmGeneration, LlmError> {
         if self.fallback_enabled {
-            self.template.generate_chat_reply(request)
+            self.template
+                .generate_chat_reply(&request.for_provider(ProviderInputGrade::Template))
         } else {
             Err(error)
         }
@@ -430,6 +440,25 @@ impl LlmState {
         Ok(service.generate_utterance(request))
     }
 
+    pub fn generate_chat_reply(
+        &self,
+        request: &LlmChatEnvelope,
+    ) -> Result<LlmGeneration, LlmError> {
+        let service = self
+            .service
+            .lock()
+            .map_err(|_| LlmError::State("llm service lock was poisoned".to_string()))?;
+        Ok(service.generate_chat_reply(request))
+    }
+
+    pub fn health(&self) -> Result<Vec<LlmProviderHealth>, LlmError> {
+        let service = self
+            .service
+            .lock()
+            .map_err(|_| LlmError::State("llm service lock was poisoned".to_string()))?;
+        Ok(service.health())
+    }
+
     pub fn set_route(&self, model_route: &str, fallback_enabled: bool) -> Result<(), LlmError> {
         let route = LlmProviderRoute::from_model_route(model_route)?;
         let mut service = self
@@ -452,46 +481,6 @@ impl LlmState {
         service.configure_local(endpoint, model_path);
         Ok(())
     }
-}
-
-#[tauri::command]
-pub fn get_llm_provider_health(
-    state: State<'_, LlmState>,
-) -> Result<Vec<LlmProviderHealth>, CommandError> {
-    let service = state.service.lock().map_err(|_| {
-        CommandError::from(LlmError::State("llm service lock was poisoned".to_string()))
-    })?;
-    Ok(service.health())
-}
-
-#[tauri::command]
-pub fn generate_test_utterance(state: State<'_, LlmState>) -> Result<LlmGeneration, CommandError> {
-    state
-        .generate_utterance(&LlmInputEnvelope {
-            provider_grade: ProviderInputGrade::LocalRedacted,
-            persona_summary: None,
-            safe_memory_summary: None,
-            trigger_type: "milestone".to_string(),
-            trigger_reason: "manual_test".to_string(),
-            tone_hint: "calm".to_string(),
-            coarse_context_label: "manual_test".to_string(),
-            redacted_window_title: None,
-            redacted_ocr_summary: None,
-            score_summary: None,
-            fallback_message: "조용히 오래 해내고 있었네.".to_string(),
-        })
-        .map_err(CommandError::from)
-}
-
-#[tauri::command]
-pub fn generate_chat_reply(
-    state: State<'_, LlmState>,
-    input: LlmChatRequest,
-) -> Result<LlmGeneration, CommandError> {
-    let service = state.service.lock().map_err(|_| {
-        CommandError::from(LlmError::State("llm service lock was poisoned".to_string()))
-    })?;
-    Ok(service.generate_chat_reply(&input))
 }
 
 #[cfg(test)]

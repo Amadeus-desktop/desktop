@@ -132,13 +132,26 @@ impl TriggerEngineState {
     }
 }
 
-#[derive(Debug, Default)]
 struct TriggerRuntimeState {
+    started_at: Instant,
     last_utterance_at: Option<Instant>,
     last_automatic_evaluation_at: Option<Instant>,
     utterances_today: i64,
     dismissed_recent_count: i64,
     process_history: ProcessHistoryWindow,
+}
+
+impl Default for TriggerRuntimeState {
+    fn default() -> Self {
+        Self {
+            started_at: Instant::now(),
+            last_utterance_at: None,
+            last_automatic_evaluation_at: None,
+            utterances_today: 0,
+            dismissed_recent_count: 0,
+            process_history: ProcessHistoryWindow::default(),
+        }
+    }
 }
 
 impl TriggerRuntimeState {
@@ -147,7 +160,11 @@ impl TriggerRuntimeState {
         snapshot: MacosContextSnapshot,
         privacy: PrivacyAssessment,
     ) -> TriggerInput {
-        self.process_history.observe_snapshot(&snapshot, &privacy);
+        self.process_history.observe_snapshot_at(
+            &snapshot,
+            &privacy,
+            self.started_at.elapsed().as_millis(),
+        );
         TriggerInput {
             snapshot,
             privacy,

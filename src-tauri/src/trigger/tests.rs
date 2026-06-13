@@ -104,12 +104,11 @@ fn creates_drift_bubble_for_non_work_duration() {
 
 #[test]
 fn spotify_short_foreground_does_not_trigger_drift() {
-    let mut snapshot = snapshot(AppCategory::NonWork, 4.0, 2 * 60 * 1000);
+    let mut snapshot = snapshot(AppCategory::NonWork, 4.0, 30_000);
     snapshot.app_name = "Spotify".to_string();
     snapshot.bundle_identifier = "com.spotify.client".to_string();
     let mut history = ProcessHistoryWindow::default();
-    history.known_music_app_seen = true;
-    history.known_music_app_frontmost_ms = 30_000;
+    history.observe_snapshot_at(&snapshot, &normal_privacy("Spotify"), 30_000);
 
     let evaluation = evaluate_trigger(TriggerInput {
         snapshot,
@@ -151,14 +150,14 @@ fn meeting_app_suppresses_deep_pause() {
 }
 
 #[test]
-fn work_cluster_app_switching_suppresses_drift() {
+fn work_cluster_app_switching_suppresses_short_non_work_detour() {
     let mut history = ProcessHistoryWindow::default();
     history.work_cluster_duration_ms = 12 * 60 * 1000;
     history.app_switch_count = 4;
     history.non_work_single_app_max_duration_ms = 3 * 60 * 1000;
 
     let evaluation = evaluate_trigger(TriggerInput {
-        snapshot: snapshot(AppCategory::NonWork, 4.0, 11 * 60 * 1000),
+        snapshot: snapshot(AppCategory::NonWork, 4.0, 3 * 60 * 1000),
         privacy: normal_privacy("API docs"),
         history: Some(history),
 
@@ -172,6 +171,60 @@ fn work_cluster_app_switching_suppresses_drift() {
         evaluation.suppression_reason,
         Some("work_cluster".to_string())
     );
+}
+
+#[test]
+fn expired_meeting_segment_does_not_suppress_later_work() {
+    let mut history = ProcessHistoryWindow::default();
+    let mut meeting = snapshot(AppCategory::Work, 5.0, 60_000);
+    meeting.app_name = "Zoom".to_string();
+    meeting.bundle_identifier = "us.zoom.xos".to_string();
+    history.observe_snapshot_at(&meeting, &normal_privacy("Zoom"), 60_000);
+
+    let work = snapshot(AppCategory::Work, 180.0, 12 * 60 * 1000);
+    history.observe_snapshot_at(&work, &normal_privacy("main.rs"), 12 * 60 * 1000 + 60_001);
+
+    let evaluation = evaluate_trigger(TriggerInput {
+        snapshot: work,
+        privacy: normal_privacy("main.rs"),
+        history: Some(history),
+        recent_utterance_minutes_ago: None,
+        dismissed_recent_count: 0,
+        utterances_today: 0,
+    });
+
+    assert_ne!(evaluation.suppression_reason, Some("meeting".to_string()));
+    assert_eq!(evaluation.action, TriggerAction::Bubble);
+}
+
+#[test]
+fn prior_short_music_foreground_does_not_suppress_youtube_drift() {
+    let mut history = ProcessHistoryWindow::default();
+    let mut spotify = snapshot(AppCategory::NonWork, 2.0, 30_000);
+    spotify.app_name = "Spotify".to_string();
+    spotify.bundle_identifier = "com.spotify.client".to_string();
+    history.observe_snapshot_at(&spotify, &normal_privacy("Spotify"), 30_000);
+
+    let mut youtube = snapshot(AppCategory::NonWork, 2.0, 15 * 60 * 1000);
+    youtube.app_name = "Google Chrome".to_string();
+    youtube.bundle_identifier = "com.google.Chrome".to_string();
+    youtube.window_title = "YouTube".to_string();
+    history.observe_snapshot_at(&youtube, &normal_privacy("YouTube"), 16 * 60 * 1000);
+
+    let evaluation = evaluate_trigger(TriggerInput {
+        snapshot: youtube,
+        privacy: normal_privacy("YouTube"),
+        history: Some(history),
+        recent_utterance_minutes_ago: None,
+        dismissed_recent_count: 0,
+        utterances_today: 0,
+    });
+
+    assert_ne!(
+        evaluation.suppression_reason,
+        Some("music_short_foreground".to_string())
+    );
+    assert_eq!(evaluation.action, TriggerAction::Bubble);
 }
 
 #[test]

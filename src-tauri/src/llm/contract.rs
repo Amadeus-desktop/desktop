@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use super::redaction::sanitize_prompt_field;
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LlmInputEnvelope {
@@ -59,7 +61,7 @@ impl LlmInputEnvelope {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LlmChatMessage {
     pub role: String,
@@ -70,6 +72,50 @@ pub struct LlmChatMessage {
 #[serde(rename_all = "camelCase")]
 pub struct LlmChatRequest {
     pub messages: Vec<LlmChatMessage>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LlmChatEnvelope {
+    pub provider_grade: ProviderInputGrade,
+    pub messages: Vec<LlmChatMessage>,
+}
+
+impl LlmChatEnvelope {
+    pub fn from_request(request: LlmChatRequest) -> Self {
+        Self {
+            provider_grade: ProviderInputGrade::LocalRedacted,
+            messages: request.messages,
+        }
+    }
+
+    pub fn for_provider(&self, provider_grade: ProviderInputGrade) -> Self {
+        let mut envelope = self.clone();
+        envelope.provider_grade = provider_grade;
+        envelope.messages = match provider_grade {
+            ProviderInputGrade::Template => envelope
+                .messages
+                .iter()
+                .rev()
+                .find(|message| message.role == "user")
+                .map(|message| {
+                    vec![LlmChatMessage {
+                        role: "user".to_string(),
+                        content: sanitize_prompt_field(&message.content),
+                    }]
+                })
+                .unwrap_or_default(),
+            ProviderInputGrade::ApiRedacted | ProviderInputGrade::LocalRedacted => envelope
+                .messages
+                .into_iter()
+                .map(|message| LlmChatMessage {
+                    role: sanitize_prompt_field(&message.role),
+                    content: sanitize_prompt_field(&message.content),
+                })
+                .collect(),
+        };
+        envelope
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]

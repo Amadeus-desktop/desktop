@@ -49,7 +49,7 @@ Desktop app default policy:
 
 ## 3. LlmInputEnvelope
 
-All provider calls must use `LlmInputEnvelope`. This document is the canonical source of truth for the envelope shape.
+Utterance provider calls must use `LlmInputEnvelope`. This document is the canonical source of truth for the utterance envelope shape.
 
 ```text
 LlmInputEnvelope {
@@ -83,15 +83,38 @@ Provider-grade field rules:
 | --- | --- | --- | --- |
 | persona_summary | no | yes | yes |
 | safe_memory_summary | no | yes, cloud-safe only | yes, local-safe only |
+| trigger_reason | no | no | yes |
+| tone_hint | no | no | yes |
 | coarse_context_label | no | yes | yes |
 | redacted_window_title | no | no | yes |
 | redacted_ocr_summary | no | no | yes |
-| score_summary | no | bucket only | bucket only |
+| score_summary | no | no | bucket only |
 | fallback_message | yes | yes | yes |
 
 ---
 
-## 4. OCR Architecture
+## 4. LlmChatEnvelope
+
+Chat provider calls must use `LlmChatEnvelope`, not raw `LlmChatRequest`.
+
+```text
+LlmChatEnvelope {
+  provider_grade: Template | ApiRedacted | LocalRedacted
+  messages: Vec<LlmChatMessage>
+}
+```
+
+Provider-grade chat rules:
+
+| Field | Template | API | Local llama.cpp |
+| --- | --- | --- | --- |
+| messages | last sanitized user message only | sanitized messages only | sanitized messages only |
+| raw path / URL / token-like text | no | no | no |
+| raw OCR text | no | no | no |
+
+---
+
+## 5. OCR Architecture
 
 OCR is optional and gated.
 
@@ -121,7 +144,7 @@ OcrObservation {
 
 ---
 
-## 5. OCR Provider Candidates
+## 6. OCR Provider Candidates
 
 ### Apple Vision
 
@@ -161,7 +184,7 @@ post-MVP 후보.
 
 ---
 
-## 6. Prompt Policy
+## 7. Prompt Policy
 
 Prompt는 raw context를 포함하지 않는다.
 
@@ -176,7 +199,6 @@ API:
 ```text
 persona summary
 trigger type
-tone hint
 coarse context label
 cloud-safe memory summary
 ```
@@ -195,7 +217,7 @@ safe local memory summary
 
 ---
 
-## 7. Local LLM Sidecar
+## 8. Local LLM Sidecar
 
 llama.cpp sidecar는 앱이 lifecycle을 관리한다.
 
@@ -218,7 +240,7 @@ Security:
 
 ---
 
-## 8. Summary Generation
+## 9. Summary Generation
 
 Safe summary generation은 raw local context를 서버로 올리기 위한 단계가 아니다. 먼저 로컬에서 redaction과 policy gate를 통과해야 한다.
 
