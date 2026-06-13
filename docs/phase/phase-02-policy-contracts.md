@@ -1,5 +1,7 @@
 # Phase 02. Policy Contracts
 
+Status: Completed
+
 ## Goal
 
 Architecture 문서의 정책 계약을 코드 타입과 테스트로 고정한다.
@@ -50,3 +52,21 @@ SuppressionReason
 - 정책 타입이 Rust에서 컴파일된다.
 - 기존 trigger tests가 유지된다.
 - provider input redaction tests가 통과한다.
+
+## Completion Evidence
+
+- `PolicyScores`, `CaptureDecision`, `OcrDecision`, `LlmGateDecision`, `SuppressionReason` 추가
+- `LlmInputEnvelope`, `ProviderInputGrade`, `PolicyScoreSummary` 추가
+- LLM utterance provider 입력을 raw `app_name`/`window_title` request에서 provider-grade envelope로 전환
+- Template provider는 fallback 중심 입력만 사용
+- API provider envelope는 OCR summary/window title을 제거
+- Local provider prompt는 redacted envelope만 사용하고 file path/URL 형태 값을 redaction
+- Trigger에서 LLM request 생성 시 raw window title을 전달하지 않도록 변경
+
+Verified:
+
+```text
+cargo check --manifest-path src-tauri/Cargo.toml
+cargo test --manifest-path src-tauri/Cargo.toml
+pnpm build
+```

@@ -13,12 +13,56 @@ const LLAMA_TIMEOUT: Duration = Duration::from_secs(3);
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct LlmUtteranceRequest {
+pub struct LlmInputEnvelope {
+    pub provider_grade: ProviderInputGrade,
+    pub persona_summary: Option<String>,
+    pub safe_memory_summary: Option<String>,
     pub trigger_type: String,
     pub trigger_reason: String,
-    pub app_name: String,
-    pub window_title: String,
+    pub tone_hint: String,
+    pub coarse_context_label: String,
+    pub redacted_window_title: Option<String>,
+    pub redacted_ocr_summary: Option<String>,
+    pub score_summary: Option<PolicyScoreSummary>,
     pub fallback_message: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ProviderInputGrade {
+    Template,
+    ApiRedacted,
+    LocalRedacted,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PolicyScoreSummary {
+    pub privacy_bucket: String,
+    pub speakability_bucket: String,
+}
+
+impl LlmInputEnvelope {
+    pub fn for_provider(&self, provider_grade: ProviderInputGrade) -> Self {
+        let mut envelope = self.clone();
+        envelope.provider_grade = provider_grade;
+        match provider_grade {
+            ProviderInputGrade::Template => {
+                envelope.persona_summary = None;
+                envelope.safe_memory_summary = None;
+                envelope.coarse_context_label.clear();
+                envelope.redacted_window_title = None;
+                envelope.redacted_ocr_summary = None;
+                envelope.score_summary = None;
+            }
+            ProviderInputGrade::ApiRedacted => {
+                envelope.redacted_window_title = None;
+                envelope.redacted_ocr_summary = None;
+            }
+            ProviderInputGrade::LocalRedacted => {}
+        }
+        envelope
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -113,7 +157,7 @@ impl From<LlmError> for CommandError {
 pub trait LlmProvider: Send + Sync {
     fn id(&self) -> &'static str;
     fn health(&self) -> LlmProviderHealth;
-    fn generate_utterance(&self, request: &LlmUtteranceRequest) -> Result<LlmGeneration, LlmError>;
+    fn generate_utterance(&self, request: &LlmInputEnvelope) -> Result<LlmGeneration, LlmError>;
     fn generate_chat_reply(&self, request: &LlmChatRequest) -> Result<LlmGeneration, LlmError>;
 }
 
@@ -132,7 +176,8 @@ impl LlmProvider for TemplateLlmProvider {
         }
     }
 
-    fn generate_utterance(&self, request: &LlmUtteranceRequest) -> Result<LlmGeneration, LlmError> {
+    fn generate_utterance(&self, request: &LlmInputEnvelope) -> Result<LlmGeneration, LlmError> {
+        let request = request.for_provider(ProviderInputGrade::Template);
         let message = match request.trigger_type.as_str() {
             "deep_pause" => "잠깐 멈춘 것 같아서. 말 안 해도 괜찮아.",
             "milestone" => "조용히 오래 해내고 있었네.",
@@ -182,10 +227,7 @@ impl LlmProvider for ApiLlmProvider {
         }
     }
 
-    fn generate_utterance(
-        &self,
-        _request: &LlmUtteranceRequest,
-    ) -> Result<LlmGeneration, LlmError> {
+    fn generate_utterance(&self, _request: &LlmInputEnvelope) -> Result<LlmGeneration, LlmError> {
         Err(LlmError::Unavailable(
             "api provider is not configured".to_string(),
         ))
@@ -285,11 +327,9 @@ impl LlmProvider for LocalLlamaProvider {
         }
     }
 
-    fn generate_utterance(&self, request: &LlmUtteranceRequest) -> Result<LlmGeneration, LlmError> {
-        let prompt = format!(
-            "너는 조용하고 다정한 데스크톱 companion이다. 한 문장으로만 말해라.\n트리거: {}\n이유: {}\n앱: {}\n창: {}\n말:",
-            request.trigger_type, request.trigger_reason, request.app_name, request.window_title
-        );
+    fn generate_utterance(&self, request: &LlmInputEnvelope) -> Result<LlmGeneration, LlmError> {
+        let request = request.for_provider(ProviderInputGrade::LocalRedacted);
+        let prompt = local_utterance_prompt(&request);
         Ok(LlmGeneration {
             message: self.complete(prompt)?,
             provider: self.id().to_string(),
@@ -364,7 +404,7 @@ impl LlmService {
         self.local.configure(endpoint, model_path);
     }
 
-    pub fn generate_utterance(&self, request: &LlmUtteranceRequest) -> LlmGeneration {
+    pub fn generate_utterance(&self, request: &LlmInputEnvelope) -> LlmGeneration {
         self.try_generate_utterance(request).unwrap_or_else(|_| {
             self.template
                 .generate_utterance(request)
@@ -395,17 +435,19 @@ impl LlmService {
 
     fn try_generate_utterance(
         &self,
-        request: &LlmUtteranceRequest,
+        request: &LlmInputEnvelope,
     ) -> Result<LlmGeneration, LlmError> {
         match self.route {
-            LlmProviderRoute::Template => self.template.generate_utterance(request),
+            LlmProviderRoute::Template => self
+                .template
+                .generate_utterance(&request.for_provider(ProviderInputGrade::Template)),
             LlmProviderRoute::LocalLlama => self
                 .local
-                .generate_utterance(request)
+                .generate_utterance(&request.for_provider(ProviderInputGrade::LocalRedacted))
                 .or_else(|error| self.fallback_utterance(request, error)),
             LlmProviderRoute::Api => self
                 .api
-                .generate_utterance(request)
+                .generate_utterance(&request.for_provider(ProviderInputGrade::ApiRedacted))
                 .or_else(|error| self.fallback_utterance(request, error)),
         }
     }
@@ -426,11 +468,12 @@ impl LlmService {
 
     fn fallback_utterance(
         &self,
-        request: &LlmUtteranceRequest,
+        request: &LlmInputEnvelope,
         error: LlmError,
     ) -> Result<LlmGeneration, LlmError> {
         if self.fallback_enabled {
-            self.template.generate_utterance(request)
+            self.template
+                .generate_utterance(&request.for_provider(ProviderInputGrade::Template))
         } else {
             Err(error)
         }
@@ -462,7 +505,7 @@ impl LlmState {
 
     pub fn generate_utterance(
         &self,
-        request: &LlmUtteranceRequest,
+        request: &LlmInputEnvelope,
     ) -> Result<LlmGeneration, LlmError> {
         let service = self
             .service
@@ -508,11 +551,17 @@ pub fn get_llm_provider_health(
 #[tauri::command]
 pub fn generate_test_utterance(state: State<'_, LlmState>) -> Result<LlmGeneration, CommandError> {
     state
-        .generate_utterance(&LlmUtteranceRequest {
+        .generate_utterance(&LlmInputEnvelope {
+            provider_grade: ProviderInputGrade::LocalRedacted,
+            persona_summary: None,
+            safe_memory_summary: None,
             trigger_type: "milestone".to_string(),
             trigger_reason: "manual_test".to_string(),
-            app_name: "Amadeus".to_string(),
-            window_title: "LLM Test".to_string(),
+            tone_hint: "calm".to_string(),
+            coarse_context_label: "manual_test".to_string(),
+            redacted_window_title: None,
+            redacted_ocr_summary: None,
+            score_summary: None,
             fallback_message: "조용히 오래 해내고 있었네.".to_string(),
         })
         .map_err(CommandError::from)
@@ -562,19 +611,129 @@ fn normalize_llama_content(content: String) -> Result<String, LlmError> {
     Ok(content.to_string())
 }
 
+fn local_utterance_prompt(request: &LlmInputEnvelope) -> String {
+    let sanitized_reason = sanitize_prompt_field(&request.trigger_reason);
+    let mut lines = vec![
+        "너는 조용하고 다정한 데스크톱 companion이다. 한 문장으로만 말해라.".to_string(),
+        format!("트리거: {}", sanitize_prompt_field(&request.trigger_type)),
+        format!("이유: {sanitized_reason}"),
+        format!(
+            "맥락: {}",
+            sanitize_prompt_field(&request.coarse_context_label)
+        ),
+        format!("톤: {}", sanitize_prompt_field(&request.tone_hint)),
+    ];
+
+    if let Some(title) = request.redacted_window_title.as_deref() {
+        lines.push(format!("창 단서: {}", sanitize_prompt_field(title)));
+    }
+    if let Some(ocr_summary) = request.redacted_ocr_summary.as_deref() {
+        lines.push(format!("화면 요약: {}", sanitize_prompt_field(ocr_summary)));
+    }
+    lines.push("말:".to_string());
+    lines.join("\n")
+}
+
+fn sanitize_prompt_field(value: &str) -> String {
+    value
+        .split_whitespace()
+        .map(|part| {
+            if part.contains('/') || part.contains('\\') || part.contains("://") {
+                "[redacted]"
+            } else {
+                part
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn policy_envelope() -> LlmInputEnvelope {
+        LlmInputEnvelope {
+            provider_grade: ProviderInputGrade::LocalRedacted,
+            persona_summary: Some("quiet companion".to_string()),
+            safe_memory_summary: Some("prefers concise support".to_string()),
+            trigger_type: "milestone".to_string(),
+            trigger_reason: "long_work_session_milestone".to_string(),
+            tone_hint: "calm".to_string(),
+            coarse_context_label: "work".to_string(),
+            redacted_window_title: Some("[redacted-title]".to_string()),
+            redacted_ocr_summary: Some("[redacted-ocr-summary]".to_string()),
+            score_summary: Some(PolicyScoreSummary {
+                privacy_bucket: "low".to_string(),
+                speakability_bucket: "high".to_string(),
+            }),
+            fallback_message: "fallback".to_string(),
+        }
+    }
+
+    #[test]
+    fn template_provider_envelope_excludes_context() {
+        let envelope = policy_envelope().for_provider(ProviderInputGrade::Template);
+
+        assert_eq!(envelope.provider_grade, ProviderInputGrade::Template);
+        assert_eq!(envelope.fallback_message, "fallback");
+        assert_eq!(envelope.persona_summary, None);
+        assert_eq!(envelope.safe_memory_summary, None);
+        assert_eq!(envelope.coarse_context_label, "");
+        assert_eq!(envelope.redacted_window_title, None);
+        assert_eq!(envelope.redacted_ocr_summary, None);
+        assert_eq!(envelope.score_summary, None);
+    }
+
+    #[test]
+    fn api_provider_envelope_excludes_ocr_and_title() {
+        let envelope = policy_envelope().for_provider(ProviderInputGrade::ApiRedacted);
+
+        assert_eq!(envelope.provider_grade, ProviderInputGrade::ApiRedacted);
+        assert_eq!(
+            envelope.persona_summary,
+            Some("quiet companion".to_string())
+        );
+        assert_eq!(
+            envelope.safe_memory_summary,
+            Some("prefers concise support".to_string())
+        );
+        assert_eq!(envelope.coarse_context_label, "work");
+        assert_eq!(envelope.redacted_window_title, None);
+        assert_eq!(envelope.redacted_ocr_summary, None);
+        assert!(envelope.score_summary.is_some());
+    }
+
+    #[test]
+    fn local_provider_prompt_uses_redacted_envelope_only() {
+        let mut envelope = policy_envelope();
+        envelope.trigger_reason = "raw-file-/Users/user/secret/report.xlsx".to_string();
+
+        let prompt =
+            local_utterance_prompt(&envelope.for_provider(ProviderInputGrade::LocalRedacted));
+
+        assert!(prompt.contains("[redacted-title]"));
+        assert!(prompt.contains("[redacted-ocr-summary]"));
+        assert!(!prompt.contains("/Users/user/secret/report.xlsx"));
+        assert!(!prompt.contains("raw screenshot"));
+        assert!(!prompt.contains("raw OCR"));
+    }
 
     #[test]
     fn template_generates_trigger_specific_utterance() {
         let provider = TemplateLlmProvider;
         let result = provider
-            .generate_utterance(&LlmUtteranceRequest {
+            .generate_utterance(&LlmInputEnvelope {
+                provider_grade: ProviderInputGrade::Template,
+                persona_summary: None,
+                safe_memory_summary: None,
                 trigger_type: "milestone".to_string(),
                 trigger_reason: "long_work_session_milestone".to_string(),
-                app_name: "Visual Studio Code".to_string(),
-                window_title: "main.rs".to_string(),
+                tone_hint: "calm".to_string(),
+                coarse_context_label: "work".to_string(),
+                redacted_window_title: None,
+                redacted_ocr_summary: None,
+                score_summary: None,
                 fallback_message: "fallback".to_string(),
             })
             .expect("template generation succeeds");

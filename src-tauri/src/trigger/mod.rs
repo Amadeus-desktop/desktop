@@ -8,7 +8,7 @@ use std::{
 use tauri::State;
 
 use crate::{
-    llm::{LlmState, LlmUtteranceRequest},
+    llm::{LlmInputEnvelope, LlmState, PolicyScoreSummary, ProviderInputGrade},
     macos_context::{
         read_current_snapshot, AppCategory, ContextBridgeState, MacosContextError,
         MacosContextSnapshot,
@@ -402,7 +402,9 @@ fn persist_trigger_events(
         })
         .map_err(|error| CommandError::from(error.to_string()))?;
     let generation = llm_state
-        .generate_utterance(&llm_request_for_trigger(snapshot, candidate))
+        .generate_utterance(&llm_request_for_trigger(
+            snapshot, privacy, evaluation, candidate,
+        ))
         .map_err(|error| CommandError::from(error.to_string()))?;
     let utterance_event = repository
         .create_utterance_event(CreateUtteranceEventInput {
@@ -419,13 +421,28 @@ fn persist_trigger_events(
 
 fn llm_request_for_trigger(
     snapshot: &MacosContextSnapshot,
+    privacy: &PrivacyAssessment,
+    evaluation: &TriggerEvaluation,
     candidate: &TriggerCandidate,
-) -> LlmUtteranceRequest {
-    LlmUtteranceRequest {
+) -> LlmInputEnvelope {
+    let redacted_window_title = privacy
+        .is_sensitive
+        .then(|| privacy.redacted_window_title.clone());
+
+    LlmInputEnvelope {
+        provider_grade: ProviderInputGrade::LocalRedacted,
+        persona_summary: None,
+        safe_memory_summary: None,
         trigger_type: candidate.trigger_type.as_str().to_string(),
         trigger_reason: candidate.reason.clone(),
-        app_name: snapshot.app_name.clone(),
-        window_title: snapshot.window_title.clone(),
+        tone_hint: "calm".to_string(),
+        coarse_context_label: category_label(snapshot.category).to_string(),
+        redacted_window_title,
+        redacted_ocr_summary: None,
+        score_summary: Some(PolicyScoreSummary {
+            privacy_bucket: if privacy.is_sensitive { "high" } else { "low" }.to_string(),
+            speakability_bucket: score_bucket(evaluation.speakability_score).to_string(),
+        }),
         fallback_message: candidate.message.clone(),
     }
 }
@@ -503,6 +520,23 @@ fn action_for_score(score: i64) -> TriggerAction {
         60..=79 => TriggerAction::Bubble,
         40..=59 => TriggerAction::StatusOnly,
         _ => TriggerAction::NoAction,
+    }
+}
+
+fn score_bucket(score: i64) -> &'static str {
+    match score {
+        80..=100 => "high",
+        60..=79 => "medium",
+        40..=59 => "low",
+        _ => "blocked",
+    }
+}
+
+fn category_label(category: AppCategory) -> &'static str {
+    match category {
+        AppCategory::Work => "work",
+        AppCategory::NonWork => "non_work",
+        AppCategory::Unknown => "unknown",
     }
 }
 
@@ -648,7 +682,10 @@ mod tests {
 
         assert_eq!(evaluation.action, TriggerAction::NoAction);
         assert!(!evaluation.should_persist);
-        assert_eq!(evaluation.suppression_reason, Some("daily_limit".to_string()));
+        assert_eq!(
+            evaluation.suppression_reason,
+            Some("daily_limit".to_string())
+        );
     }
 
     #[test]
@@ -663,7 +700,10 @@ mod tests {
 
         assert_eq!(evaluation.action, TriggerAction::NoAction);
         assert!(!evaluation.should_persist);
-        assert_eq!(evaluation.suppression_reason, Some("no_trigger".to_string()));
+        assert_eq!(
+            evaluation.suppression_reason,
+            Some("no_trigger".to_string())
+        );
     }
 
     #[test]
@@ -728,21 +768,31 @@ mod tests {
     }
 
     #[test]
-    fn trigger_utterance_request_uses_candidate_context() {
+    fn trigger_utterance_request_uses_policy_envelope_without_raw_title() {
         let snapshot = snapshot(AppCategory::Work, 12.0, 120 * 60 * 1000);
+        let privacy = normal_privacy("Amadeus");
         let candidate = TriggerCandidate {
             trigger_type: TriggerType::Milestone,
             message: "fallback".to_string(),
             reason: "long_work_session_milestone".to_string(),
             base_score: 82,
         };
+        let evaluation = TriggerEvaluation {
+            candidate: Some(candidate.clone()),
+            speakability_score: 82,
+            action: TriggerAction::Conversation,
+            should_persist: true,
+            suppression_reason: None,
+        };
 
-        let request = llm_request_for_trigger(&snapshot, &candidate);
+        let request = llm_request_for_trigger(&snapshot, &privacy, &evaluation, &candidate);
 
         assert_eq!(request.trigger_type, "milestone");
         assert_eq!(request.trigger_reason, "long_work_session_milestone");
         assert_eq!(request.fallback_message, "fallback");
-        assert_eq!(request.app_name, "Visual Studio Code");
+        assert_eq!(request.coarse_context_label, "work");
+        assert_eq!(request.redacted_window_title, None);
+        assert_eq!(request.redacted_ocr_summary, None);
     }
 
     #[test]
