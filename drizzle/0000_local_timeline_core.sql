@@ -34,3 +34,63 @@ CREATE INDEX IF NOT EXISTS utterance_events_occurred_at_idx
 
 CREATE INDEX IF NOT EXISTS user_reactions_occurred_at_idx
   ON user_reactions (occurred_at DESC);
+
+CREATE TABLE IF NOT EXISTS local_personas (
+  id TEXT PRIMARY KEY NOT NULL,
+  remote_persona_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  tone TEXT NOT NULL,
+  personality_json TEXT NOT NULL,
+  system_prompt TEXT NOT NULL,
+  remote_version INTEGER NOT NULL CHECK (remote_version >= 1),
+  sync_status TEXT NOT NULL CHECK (sync_status IN ('synced', 'pending', 'conflict')),
+  updated_at_ms INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS local_memories (
+  id TEXT PRIMARY KEY NOT NULL,
+  persona_id TEXT,
+  memory_type TEXT NOT NULL,
+  content TEXT NOT NULL,
+  scope TEXT NOT NULL CHECK (scope IN ('local_private', 'syncable_summary')),
+  confidence INTEGER NOT NULL CHECK (confidence >= 0 AND confidence <= 100),
+  created_at_ms INTEGER NOT NULL,
+  updated_at_ms INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS work_sessions (
+  id TEXT PRIMARY KEY NOT NULL,
+  started_at_ms INTEGER NOT NULL,
+  ended_at_ms INTEGER,
+  summary_redacted TEXT,
+  dominant_app_category TEXT,
+  retention_policy TEXT NOT NULL CHECK (retention_policy IN ('Ephemeral', 'Session', 'Timeline')),
+  redaction_level TEXT NOT NULL CHECK (redaction_level IN ('None', 'TitleRedacted', 'SummaryRedacted', 'SensitiveSuppressed')),
+  source_kind TEXT NOT NULL CHECK (source_kind IN ('Process', 'Capture', 'Ocr', 'Llm')),
+  expires_at_ms INTEGER,
+  created_at_ms INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS sync_queue (
+  id TEXT PRIMARY KEY NOT NULL,
+  event_type TEXT NOT NULL,
+  payload_json TEXT NOT NULL,
+  idempotency_key TEXT NOT NULL UNIQUE,
+  safety_grade TEXT NOT NULL CHECK (safety_grade IN ('Public', 'Account', 'Persona', 'SharedMemory', 'SafeWorkSummary')),
+  redaction_level TEXT NOT NULL CHECK (redaction_level IN ('None', 'TitleRedacted', 'SummaryRedacted', 'SensitiveSuppressed')),
+  retention_policy TEXT NOT NULL CHECK (retention_policy IN ('Ephemeral', 'Session', 'Timeline')),
+  status TEXT NOT NULL CHECK (status IN ('pending', 'synced', 'failed')),
+  retry_count INTEGER NOT NULL DEFAULT 0 CHECK (retry_count >= 0),
+  last_error TEXT,
+  created_at_ms INTEGER NOT NULL,
+  updated_at_ms INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS local_memories_updated_at_idx
+  ON local_memories (updated_at_ms DESC);
+
+CREATE INDEX IF NOT EXISTS work_sessions_started_at_idx
+  ON work_sessions (started_at_ms DESC);
+
+CREATE INDEX IF NOT EXISTS sync_queue_status_idx
+  ON sync_queue (status, updated_at_ms ASC);

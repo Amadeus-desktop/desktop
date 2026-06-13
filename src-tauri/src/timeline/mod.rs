@@ -1,5 +1,8 @@
+mod commands;
+mod contract;
+mod validation;
+
 use rusqlite::{params, Connection};
-use serde::{Deserialize, Serialize};
 use std::{
     error::Error,
     fmt::{Display, Formatter},
@@ -7,7 +10,17 @@ use std::{
     sync::Mutex,
     time::{SystemTime, SystemTimeError, UNIX_EPOCH},
 };
-use tauri::State;
+
+pub use commands::{
+    create_context_event, create_local_memory, create_user_reaction, create_utterance_event,
+    enqueue_sync_payload, list_timeline_events,
+};
+pub use contract::{
+    ContextEvent, CreateContextEventInput, CreateLocalMemoryInput, CreateUserReactionInput,
+    CreateUtteranceEventInput, EnqueueSyncPayloadInput, LocalMemory, SyncPayloadEnvelope,
+    SyncQueueRow, TimelineEvent, UserReaction, UtteranceEvent,
+};
+use validation::{validate_local_memory_input, validate_sync_payload_envelope};
 
 const MIGRATION_SQL: &str = include_str!("../../../drizzle/0000_local_timeline_core.sql");
 
@@ -16,6 +29,7 @@ pub enum TimelineError {
     Database(rusqlite::Error),
     Io(std::io::Error),
     Time(SystemTimeError),
+    Validation(String),
     State(String),
 }
 
@@ -25,6 +39,7 @@ impl Display for TimelineError {
             Self::Database(error) => write!(formatter, "database error: {error}"),
             Self::Io(error) => write!(formatter, "io error: {error}"),
             Self::Time(error) => write!(formatter, "time error: {error}"),
+            Self::Validation(message) => write!(formatter, "validation error: {message}"),
             Self::State(message) => write!(formatter, "state error: {message}"),
         }
     }
@@ -50,7 +65,7 @@ impl From<SystemTimeError> for TimelineError {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CommandError {
     message: String,
@@ -62,74 +77,6 @@ impl From<TimelineError> for CommandError {
             message: error.to_string(),
         }
     }
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateContextEventInput {
-    pub app_name: String,
-    pub window_title: String,
-    pub event_type: String,
-    pub metadata_json: String,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateUtteranceEventInput {
-    pub trigger_type: String,
-    pub speakability_score: i64,
-    pub message: String,
-    pub provider: String,
-    pub context_event_id: Option<String>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateUserReactionInput {
-    pub utterance_event_id: Option<String>,
-    pub reaction_type: String,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ContextEvent {
-    pub id: String,
-    pub occurred_at: i64,
-    pub app_name: String,
-    pub window_title: String,
-    pub event_type: String,
-    pub metadata_json: String,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UtteranceEvent {
-    pub id: String,
-    pub occurred_at: i64,
-    pub trigger_type: String,
-    pub speakability_score: i64,
-    pub message: String,
-    pub provider: String,
-    pub context_event_id: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UserReaction {
-    pub id: String,
-    pub occurred_at: i64,
-    pub utterance_event_id: Option<String>,
-    pub reaction_type: String,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TimelineEvent {
-    pub id: String,
-    pub occurred_at: i64,
-    pub kind: String,
-    pub title: String,
-    pub subtitle: String,
 }
 
 pub struct TimelineRepository {
@@ -167,6 +114,16 @@ impl TimelineRepository {
     pub fn migrate(&mut self) -> Result<(), TimelineError> {
         self.connection.execute_batch(MIGRATION_SQL)?;
         Ok(())
+    }
+
+    #[cfg(test)]
+    fn table_exists(&self, table_name: &str) -> Result<bool, TimelineError> {
+        let exists: i64 = self.connection.query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?1",
+            params![table_name],
+            |row| row.get(0),
+        )?;
+        Ok(exists == 1)
     }
 
     pub fn create_context_event(
@@ -274,6 +231,111 @@ impl TimelineRepository {
         Ok(reaction)
     }
 
+    pub fn create_local_memory(
+        &mut self,
+        input: CreateLocalMemoryInput,
+    ) -> Result<LocalMemory, TimelineError> {
+        validate_local_memory_input(&input)?;
+        let (id, created_at_ms) = self.next_marker("mem")?;
+        let memory = LocalMemory {
+            id,
+            persona_id: input.persona_id,
+            memory_type: input.memory_type,
+            content: input.content,
+            scope: input.scope,
+            confidence: input.confidence,
+            created_at_ms,
+            updated_at_ms: created_at_ms,
+        };
+
+        self.connection.execute(
+            "INSERT INTO local_memories (
+                id,
+                persona_id,
+                memory_type,
+                content,
+                scope,
+                confidence,
+                created_at_ms,
+                updated_at_ms
+             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            params![
+                memory.id,
+                memory.persona_id,
+                memory.memory_type,
+                memory.content,
+                memory.scope,
+                memory.confidence,
+                memory.created_at_ms,
+                memory.updated_at_ms
+            ],
+        )?;
+
+        Ok(memory)
+    }
+
+    pub fn enqueue_sync_payload(
+        &mut self,
+        input: EnqueueSyncPayloadInput,
+    ) -> Result<SyncQueueRow, TimelineError> {
+        let envelope = validate_sync_payload_envelope(&input)?;
+        let (id, created_at_ms) = self.next_marker("sync")?;
+        let row = SyncQueueRow {
+            id,
+            event_type: input.event_type,
+            payload_json: input.payload_json,
+            idempotency_key: input.idempotency_key,
+            safety_grade: envelope.safety_grade,
+            redaction_level: envelope.redaction_level,
+            retention_policy: envelope.retention_policy,
+            status: "pending".to_string(),
+            retry_count: 0,
+            last_error: None,
+            created_at_ms,
+            updated_at_ms: created_at_ms,
+        };
+
+        self.connection.execute(
+            "INSERT INTO sync_queue (
+                id,
+                event_type,
+                payload_json,
+                idempotency_key,
+                safety_grade,
+                redaction_level,
+                retention_policy,
+                status,
+                retry_count,
+                last_error,
+                created_at_ms,
+                updated_at_ms
+             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+            params![
+                row.id,
+                row.event_type,
+                row.payload_json,
+                row.idempotency_key,
+                row.safety_grade,
+                row.redaction_level,
+                row.retention_policy,
+                row.status,
+                row.retry_count,
+                row.last_error,
+                row.created_at_ms,
+                row.updated_at_ms
+            ],
+        )?;
+
+        Ok(row)
+    }
+
+    #[cfg(test)]
+    fn persist_ocr_summary_for_test(&mut self, _summary: &str) -> Result<(), TimelineError> {
+        Err(TimelineError::Validation(
+            "ocr summary persistence requires retention fields and source contract".to_string(),
+        ))
+    }
+
     pub fn list_timeline_events(&self, limit: i64) -> Result<Vec<TimelineEvent>, TimelineError> {
         let safe_limit = limit.clamp(1, 100);
         let mut statement = self.connection.prepare(
@@ -347,53 +409,6 @@ impl TimelineState {
     }
 }
 
-#[tauri::command]
-pub fn create_context_event(
-    state: State<'_, TimelineState>,
-    input: CreateContextEventInput,
-) -> Result<ContextEvent, CommandError> {
-    with_repository(&state, |repository| repository.create_context_event(input))
-}
-
-#[tauri::command]
-pub fn create_utterance_event(
-    state: State<'_, TimelineState>,
-    input: CreateUtteranceEventInput,
-) -> Result<UtteranceEvent, CommandError> {
-    with_repository(&state, |repository| {
-        repository.create_utterance_event(input)
-    })
-}
-
-#[tauri::command]
-pub fn create_user_reaction(
-    state: State<'_, TimelineState>,
-    input: CreateUserReactionInput,
-) -> Result<UserReaction, CommandError> {
-    with_repository(&state, |repository| repository.create_user_reaction(input))
-}
-
-#[tauri::command]
-pub fn list_timeline_events(
-    state: State<'_, TimelineState>,
-    limit: i64,
-) -> Result<Vec<TimelineEvent>, CommandError> {
-    with_repository(&state, |repository| repository.list_timeline_events(limit))
-}
-
-fn with_repository<T>(
-    state: &State<'_, TimelineState>,
-    operation: impl FnOnce(&mut TimelineRepository) -> Result<T, TimelineError>,
-) -> Result<T, CommandError> {
-    let mut repository = state.repository.lock().map_err(|_| {
-        CommandError::from(TimelineError::State(
-            "timeline repository lock was poisoned".to_string(),
-        ))
-    })?;
-
-    operation(&mut repository).map_err(CommandError::from)
-}
-
 fn current_time_ms() -> Result<i64, TimelineError> {
     Ok(SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis() as i64)
 }
@@ -407,50 +422,4 @@ fn normalized_metadata_json(metadata_json: String) -> String {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn stores_context_utterance_and_reaction_as_timeline_rows() {
-        let mut repository = TimelineRepository::open_in_memory().expect("in-memory db opens");
-        repository.migrate().expect("migration succeeds");
-
-        let context = repository
-            .create_context_event(CreateContextEventInput {
-                app_name: "Visual Studio Code".to_string(),
-                window_title: "Amadeus".to_string(),
-                event_type: "active_window_changed".to_string(),
-                metadata_json: "{}".to_string(),
-            })
-            .expect("context event is stored");
-
-        let utterance = repository
-            .create_utterance_event(CreateUtteranceEventInput {
-                trigger_type: "deep_pause".to_string(),
-                speakability_score: 72,
-                message: "잠깐 멈춘 것 같아서. 말 안 해도 괜찮아.".to_string(),
-                provider: "mock".to_string(),
-                context_event_id: Some(context.id),
-            })
-            .expect("utterance event is stored");
-
-        repository
-            .create_user_reaction(CreateUserReactionInput {
-                utterance_event_id: Some(utterance.id),
-                reaction_type: "opened".to_string(),
-            })
-            .expect("reaction is stored");
-
-        let timeline = repository
-            .list_timeline_events(10)
-            .expect("timeline rows are listed");
-
-        assert_eq!(timeline.len(), 3);
-        assert_eq!(timeline[0].kind, "reaction");
-        assert_eq!(timeline[0].title, "opened");
-        assert_eq!(timeline[1].kind, "utterance");
-        assert_eq!(timeline[1].title, "잠깐 멈춘 것 같아서. 말 안 해도 괜찮아.");
-        assert_eq!(timeline[2].kind, "context");
-        assert_eq!(timeline[2].title, "Visual Studio Code");
-    }
-}
+mod tests;

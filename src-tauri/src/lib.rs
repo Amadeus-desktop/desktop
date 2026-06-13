@@ -20,8 +20,8 @@ use privacy::{
 use settings::{get_app_settings, llama_endpoint, update_app_settings, SettingsState};
 use tauri::Manager;
 use timeline::{
-    create_context_event, create_user_reaction, create_utterance_event, list_timeline_events,
-    TimelineRepository, TimelineState,
+    create_context_event, create_local_memory, create_user_reaction, create_utterance_event,
+    enqueue_sync_payload, list_timeline_events, TimelineRepository, TimelineState,
 };
 use trigger::{
     poll_trigger_engine, record_trigger_reaction_for_scoring, run_trigger_engine_once,
@@ -106,6 +106,8 @@ pub fn run() {
             create_context_event,
             create_utterance_event,
             create_user_reaction,
+            create_local_memory,
+            enqueue_sync_payload,
             list_timeline_events,
             run_trigger_engine_once,
             poll_trigger_engine,

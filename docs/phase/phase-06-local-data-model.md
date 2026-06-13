@@ -36,3 +36,12 @@ MVP local-first DB를 architecture 계약에 맞춰 확장할 준비를 한다.
 
 - local DB extension plan is migration-ready.
 - no raw context is syncable by schema.
+
+## Implementation Notes
+
+- local migration now prepares `local_personas`, `local_memories`, `work_sessions`, and `sync_queue`.
+- Drizzle schema mirrors the new local tables for frontend type alignment.
+- Rust repository exposes guarded MVP commands for local memory and sync queue drafts.
+- `local_private` memory cannot be marked syncable.
+- `sync_queue.payload_json` requires `SyncPayloadEnvelope` and rejects raw context keys.
+- OCR summary persistence remains blocked until retention/source fields are present.

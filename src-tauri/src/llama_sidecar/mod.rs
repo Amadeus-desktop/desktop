@@ -2,9 +2,12 @@ use crate::settings::AppSettings;
 use serde::Serialize;
 use std::{
     fs,
+    io::Read,
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
     sync::Mutex,
+    thread,
+    time::Duration,
 };
 use tauri::State;
 
@@ -12,6 +15,7 @@ use tauri::State;
 pub enum LlamaSidecarError {
     Io(std::io::Error),
     NotConfigured(String),
+    Readiness(String),
     State(String),
 }
 
@@ -21,6 +25,9 @@ impl std::fmt::Display for LlamaSidecarError {
             Self::Io(error) => write!(formatter, "llama sidecar io error: {error}"),
             Self::NotConfigured(message) => {
                 write!(formatter, "llama sidecar not configured: {message}")
+            }
+            Self::Readiness(message) => {
+                write!(formatter, "llama sidecar readiness failed: {message}")
             }
             Self::State(message) => write!(formatter, "llama sidecar state error: {message}"),
         }
@@ -192,17 +199,31 @@ impl LlamaSidecarState {
             }
         }
 
-        let spawned = Command::new(&config.binary_path)
+        let mut spawned = Command::new(&config.binary_path)
             .args(config.args())
             .stdin(Stdio::null())
             .stdout(Stdio::null())
-            .stderr(Stdio::null())
+            .stderr(Stdio::piped())
             .spawn()
             .map_err(|error| {
                 let sidecar_error = LlamaSidecarError::Io(error);
                 let _ = self.record_error(sidecar_error.to_string());
                 sidecar_error
             })?;
+        for _ in 0..40 {
+            thread::sleep(Duration::from_millis(25));
+            if let Some(status) = spawned.try_wait()? {
+                let stderr = read_child_stderr(&mut spawned);
+                let detail = if stderr.is_empty() {
+                    format!("process exited before readiness with status {status}")
+                } else {
+                    stderr
+                };
+                let sidecar_error = LlamaSidecarError::Readiness(detail);
+                let _ = self.record_error(sidecar_error.to_string());
+                return Err(sidecar_error);
+            }
+        }
         *child = Some(spawned);
         *self.last_error.lock().map_err(|_| {
             LlamaSidecarError::State("sidecar error lock was poisoned".to_string())
@@ -261,6 +282,14 @@ impl LlamaSidecarState {
     }
 }
 
+fn read_child_stderr(child: &mut Child) -> String {
+    let mut buffer = String::new();
+    if let Some(stderr) = child.stderr.as_mut() {
+        let _ = stderr.read_to_string(&mut buffer);
+    }
+    buffer.trim().to_string()
+}
+
 impl Drop for LlamaSidecarState {
     fn drop(&mut self) {
         if let Ok(mut child) = self.child.lock() {
@@ -298,6 +327,7 @@ mod tests {
     use super::*;
     use std::{
         fs,
+        os::unix::fs::PermissionsExt,
         time::{SystemTime, UNIX_EPOCH},
     };
 
@@ -319,6 +349,15 @@ mod tests {
         let path = std::env::temp_dir().join(format!("amadeus-{name}-{nonce}"));
         fs::create_dir_all(&path).expect("temp dir is created");
         path
+    }
+
+    fn executable_script(dir: &Path, name: &str, body: &str) -> String {
+        let path = dir.join(name);
+        fs::write(&path, body).expect("script is written");
+        let mut permissions = fs::metadata(&path).expect("script metadata").permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(&path, permissions).expect("script is executable");
+        path.to_string_lossy().to_string()
     }
 
     #[test]
@@ -381,6 +420,35 @@ mod tests {
 
         let _ = fs::remove_dir_all(binary_dir);
         let _ = fs::remove_file(binary_path);
+        let _ = fs::remove_file(model_path);
+    }
+
+    #[test]
+    fn sidecar_readiness_failure_records_stderr_status() {
+        let binary_dir = temp_dir("sidecars");
+        let binary_path = executable_script(
+            &binary_dir,
+            "llama-server",
+            "#!/bin/sh\necho 'llama boot failed' >&2\nexit 42\n",
+        );
+        let model_path = temp_file("model.gguf");
+        let mut settings = AppSettings::default();
+        settings.llama_server_binary_path = Some(binary_path);
+        settings.local_model_path = Some(model_path.clone());
+        let state = LlamaSidecarState::new(binary_dir.clone());
+
+        state.configure(&settings).expect("sidecar config is valid");
+        let error = state
+            .ensure_running()
+            .expect_err("sidecar exits during readiness check");
+        let status = state.status();
+
+        assert!(error.to_string().contains("llama boot failed"));
+        assert!(status.configured);
+        assert!(!status.running);
+        assert!(status.detail.contains("llama boot failed"));
+
+        let _ = fs::remove_dir_all(binary_dir);
         let _ = fs::remove_file(model_path);
     }
 }

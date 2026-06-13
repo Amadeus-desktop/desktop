@@ -2,9 +2,13 @@ import { invoke } from "@tauri-apps/api/core";
 import { isTauriRuntime } from "../../lib/tauriRuntime";
 import type {
   ContextEvent,
+  CreateLocalMemoryInput,
   CreateContextEventInput,
   CreateUserReactionInput,
   CreateUtteranceEventInput,
+  EnqueueSyncPayloadInput,
+  LocalMemory,
+  SyncQueueRow,
   TimelineEvent,
   UserReaction,
   UtteranceEvent,
@@ -101,6 +105,56 @@ export async function createUserReaction(
   });
 
   return reaction;
+}
+
+export async function createLocalMemory(
+  input: CreateLocalMemoryInput,
+): Promise<LocalMemory> {
+  if (isTauriRuntime()) {
+    return invoke<LocalMemory>("create_local_memory", { input });
+  }
+
+  if (input.scope === "local_private" && input.syncable) {
+    throw new Error("local_private memory cannot be marked syncable");
+  }
+
+  return {
+    personaId: input.personaId ?? null,
+    memoryType: input.memoryType,
+    content: input.content,
+    scope: input.scope,
+    confidence: input.confidence,
+    id: nextMockId("mem"),
+    createdAtMs: nextMockOccurredAt(),
+    updatedAtMs: nextMockOccurredAt(),
+  };
+}
+
+export async function enqueueSyncPayload(
+  input: EnqueueSyncPayloadInput,
+): Promise<SyncQueueRow> {
+  if (isTauriRuntime()) {
+    return invoke<SyncQueueRow>("enqueue_sync_payload", { input });
+  }
+
+  const envelope = JSON.parse(input.payloadJson) as {
+    safetyGrade?: string;
+    redactionLevel?: string;
+    retentionPolicy?: string;
+  };
+
+  return {
+    ...input,
+    id: nextMockId("sync"),
+    safetyGrade: envelope.safetyGrade ?? "SafeWorkSummary",
+    redactionLevel: envelope.redactionLevel ?? "SummaryRedacted",
+    retentionPolicy: envelope.retentionPolicy ?? "Timeline",
+    status: "pending",
+    retryCount: 0,
+    lastError: null,
+    createdAtMs: nextMockOccurredAt(),
+    updatedAtMs: nextMockOccurredAt(),
+  };
 }
 
 export async function listTimelineEvents(limit = 20): Promise<TimelineEvent[]> {
