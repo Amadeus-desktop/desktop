@@ -1,4 +1,4 @@
-# Local Perception SPA Architecture
+# Local Perception Signal Architecture
 
 > Amadeus의 로컬 인지 도메인을 감지, 캡처, OCR, 추론, 발화 정책으로 분리하는 아키텍처 문서.
 
@@ -77,10 +77,11 @@ macOS process/window/idle snapshot
 ```text
 Process SPA
   -> Policy Gate
-  -> Capture SPA
-  -> OCR/Vision SPA
-  -> Local Reasoning SPA
+  -> optional Capture/OCR
+  -> PolicyScores
   -> Utterance Policy SPA
+  -> LlmInputEnvelope
+  -> Local Reasoning SPA
   -> Companion UI + Timeline
 ```
 
@@ -112,6 +113,18 @@ LLM은 문장 생성과 tone 제안만 할 수 있다. LLM은 아래 결정을 �
 | Utterance Policy SPA | Rust module | 별도 프로세스 금지 |
 
 정책 결정은 프로세스 밖으로 빼지 않는다. 외부 프로세스가 죽어도 앱은 process-only, template utterance, no capture 상태로 degrade 해야 한다.
+
+### 4.3 Concept-To-Code Mapping
+
+| SPA concept | Rust module | owns | primary output |
+| --- | --- | --- | --- |
+| Process SPA | `macos_context` | active app/window/idle/history | `ProcessSnapshot`, `ProcessHistoryWindow` |
+| Policy Gate | `privacy` + `trigger` policy helpers | privacy and capture/LLM gates | suppression reason, gate decisions |
+| Capture SPA | future `capture` module | capture decision execution | capture metadata, no raw persistence |
+| OCR/Vision SPA | future `ocr` module | OCR adapter and redaction | `OcrObservation` |
+| Utterance Policy SPA | `trigger` | final action/persistence decision | `TriggerEvaluation` |
+| Local Reasoning SPA | `llm` | provider message generation | generated message |
+| Persistence | `timeline` | local event storage | context/utterance/reaction events |
 
 ---
 
@@ -217,7 +230,7 @@ PreOcrGate
   output: OcrDecision
 
 PreLlmGate
-  input: ProcessSignals + OcrObservation redacted fields + PolicyScores
+  input: ProcessSignals + OcrObservation redacted fields + PolicyScores + ProviderInputGrade
   output: LlmInputEnvelope
 ```
 
@@ -263,6 +276,8 @@ Capture SPA는 화면 캡처 실행 여부와 범위를 결정한다.
 - 캡처 대상 범위 결정
 - 캡처 TTL 결정
 - 캡처 결과를 OCR/Vision SPA로 전달
+
+Capture SPA는 `capture_value_score`를 계산하지 않는다. 캡처 실행 여부를 결정하기 전에 필요한 점수이므로 `Policy Gate`가 pre-capture 단계에서 계산한다.
 
 ### 캡처 원칙
 
@@ -378,10 +393,9 @@ Local Reasoning SPA는 정책 엔진이 허용한 신호만 받아 상황 해석
 
 출력:
 
-- short situation interpretation
-- suggested tone
-- candidate utterance
-- confidence adjustment proposal
+- generated utterance message
+- provider name
+- optional tone used
 
 ### 금지
 
@@ -389,6 +403,7 @@ Local Reasoning SPA는 정책 엔진이 허용한 신호만 받아 상황 해석
 - 개인정보 위험 정책을 우회하지 않는다.
 - 발화 여부, action band, persistence 여부를 결정하지 않는다.
 - score를 직접 보정하지 않는다.
+- policy confidence를 보정하지 않는다.
 - 사용자 파일 또는 앱 조작 명령을 생성하지 않는다.
 
 ### 10.1 Provider Input Grade
@@ -414,21 +429,7 @@ coarse context label examples:
 
 ### 10.2 LlmInputEnvelope
 
-```text
-LlmInputEnvelope {
-  provider_grade: Template | ApiRedacted | LocalRedacted,
-  trigger_type: TriggerType,
-  trigger_reason: String,
-  tone_hint: String,
-  coarse_context_label: String,
-  redacted_window_title: Option<String>,
-  redacted_ocr_summary: Option<String>,
-  score_summary: PolicyScoreSummary,
-  fallback_message: String,
-}
-```
-
-`LlmInputEnvelope`는 raw input을 포함하지 않는 것을 타입 수준에서 보장해야 한다.
+`LlmInputEnvelope`의 canonical contract는 [local-ai-ocr-llm.md](./local-ai-ocr-llm.md)에 둔다. 이 문서는 perception gate가 envelope을 만들기 전에 raw input을 제거해야 한다는 책임만 정의한다.
 
 ---
 
@@ -496,7 +497,7 @@ PolicyScores {
 | privacy_risk_score | Policy Gate | privacy assessment, app/window rules, user settings |
 | context_confidence_score | Policy Gate | process history, OCR confidence, conflicting signals |
 | attention_stability_score | Process SPA | work cluster, app switches, idle, meeting/media mode |
-| capture_value_score | Capture SPA | low confidence, trigger candidate, privacy risk |
+| capture_value_score | Policy Gate | low confidence, trigger candidate, privacy risk |
 | speakability_score | Utterance Policy SPA | trigger base, policy scores, reaction feedback |
 
 LLM은 점수 계산 소유자가 아니다.
@@ -511,6 +512,15 @@ LLM은 점수 계산 소유자가 아니다.
 | 30..49 | 주의 | capture 가능, OCR 요약만 허용 |
 | 50..69 | 높음 | process-only, proactive utterance 감점 |
 | 70..100 | 매우 높음 | capture/OCR/utterance 차단 |
+
+Privacy deny reason:
+
+```text
+70..100 -> PrivacyHardDeny
+50..69  -> PrivacyProcessOnly
+30..49  -> PrivacyCaution
+0..29   -> PrivacyLow
+```
 
 ### context_confidence_score
 

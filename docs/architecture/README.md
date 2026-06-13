@@ -24,10 +24,29 @@ Tauri Desktop App
 ```text
 Persona source of truth = Supabase
 Companion runtime source of truth = Tauri local app
-Sensitive work-context source of truth = local SQLite only
-Shared safe summary source of truth = Supabase
+Ephemeral raw context = memory only
+Persisted redacted work context = local SQLite only
+Accepted shared safe summary = Supabase
+Sync delivery state = local sync_queue until ack
 Final utterance decision source of truth = Rust policy engine
 ```
+
+### 1.1 문서 우선순위
+
+문서 간 표현이 충돌하면 아래 순서를 따른다.
+
+```text
+policy-and-security.md
+  > data-model.md
+  > local-ai-ocr-llm.md
+  > local-perception-spa.md
+  > sync-and-web.md
+  > state-management.md
+  > system-overview.md
+  > README.md
+```
+
+보안/프라이버시 정책은 제품 설명보다 우선한다. DB 제약과 RLS 정책은 sync 흐름 설명보다 우선한다.
 
 ---
 

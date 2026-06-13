@@ -49,20 +49,21 @@ Desktop app default policy:
 
 ## 3. LlmInputEnvelope
 
-All provider calls must use `LlmInputEnvelope`.
+All provider calls must use `LlmInputEnvelope`. This document is the canonical source of truth for the envelope shape.
 
 ```text
 LlmInputEnvelope {
-  provider_grade
-  persona_summary
-  trigger_type
-  trigger_reason
-  tone_hint
-  coarse_context_label
-  redacted_window_title
-  redacted_ocr_summary
-  score_summary
-  fallback_message
+  provider_grade: Template | ApiRedacted | LocalRedacted
+  persona_summary: Option<String>
+  safe_memory_summary: Option<String>
+  trigger_type: TriggerType
+  trigger_reason: String
+  tone_hint: String
+  coarse_context_label: String
+  redacted_window_title: Option<String>
+  redacted_ocr_summary: Option<String>
+  score_summary: PolicyScoreSummary
+  fallback_message: String
 }
 ```
 
@@ -75,6 +76,18 @@ Forbidden fields:
 - full URL
 - token
 - keystroke
+
+Provider-grade field rules:
+
+| Field | Template | API | Local llama.cpp |
+| --- | --- | --- | --- |
+| persona_summary | no | yes | yes |
+| safe_memory_summary | no | yes, cloud-safe only | yes, local-safe only |
+| coarse_context_label | no | yes | yes |
+| redacted_window_title | no | no | yes |
+| redacted_ocr_summary | no | no | yes |
+| score_summary | no | bucket only | bucket only |
+| fallback_message | yes | yes | yes |
 
 ---
 
@@ -165,7 +178,7 @@ persona summary
 trigger type
 tone hint
 coarse context label
-safe memory summary
+cloud-safe memory summary
 ```
 
 Local:
@@ -209,11 +222,21 @@ Security:
 
 Safe summary generation은 raw local context를 서버로 올리기 위한 단계가 아니다. 먼저 로컬에서 redaction과 policy gate를 통과해야 한다.
 
+Summary 용어는 분리한다.
+
+| Term | Sync | Storage | Meaning |
+| --- | --- | --- | --- |
+| SafeWorkSummary | optional allowed | `cloud_work_summaries` after ack | 작업 흐름의 비식별 요약 |
+| CloudMemorySummary | allowed | `cloud_memories` | 선호/성향/관계성 요약 |
+| OcrObservationSummary | MVP blocked | memory only | OCR 결과에서 나온 화면 내용 요약 |
+
+`OcrObservationSummary`는 retention contract, user consent, redaction validator가 구현되기 전까지 `SafeWorkSummary`나 `CloudMemorySummary`로 승격할 수 없다.
+
 ```text
 raw local events
   -> local summarizer
   -> sensitive scan
-  -> safe summary
+  -> SafeWorkSummary candidate
   -> user/policy allow
   -> sync_queue
 ```

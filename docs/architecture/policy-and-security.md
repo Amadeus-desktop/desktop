@@ -57,8 +57,35 @@ Required:
 - `device_sessions.user_id = auth.uid()`
 - `sync_events.user_id = auth.uid()`
 - `cloud_conversations.user_id = auth.uid()`
+- `cloud_conversation_messages.user_id = auth.uid()`
+- `cloud_work_summaries.user_id = auth.uid()`
+- `pairing_requests.created_by_user_id = auth.uid()`
 
 RLS 없는 table에 user data를 저장하지 않는다.
+
+### 4.1 Write Policy Baseline
+
+RLS는 read뿐 아니라 write에도 적용한다.
+
+Required:
+
+- `select using (user_id = auth.uid())`
+- `insert with check (user_id = auth.uid())`
+- `update using (user_id = auth.uid()) with check (user_id = auth.uid())`
+- `delete using (user_id = auth.uid())` 또는 soft-delete only
+
+Cross-table FK는 같은 owner인지 검증한다.
+
+```sql
+exists (
+  select 1
+  from personas
+  where personas.id = cloud_memories.persona_id
+    and personas.user_id = auth.uid()
+)
+```
+
+Service-role-only writes are allowed only for Edge Functions listed in [sync-and-web.md](./sync-and-web.md).
 
 ---
 
@@ -80,6 +107,20 @@ Secret은 클라이언트로 내려가지 않는다.
 - App secure storage에 user/device session 저장
 
 Edge Function은 secret 전달자가 아니라 secret 사용자다.
+
+### 5.1 Device Session Security
+
+Device session은 long-lived bearer token 하나로 끝나면 안 된다.
+
+Required:
+
+- pairing code raw value never stored
+- refresh token hash only
+- refresh token rotation
+- token family reuse detection
+- revoked device revokes sessions
+- device public key challenge before session issue
+- rate limit on pairing attempts
 
 ---
 
@@ -153,14 +194,21 @@ Allowed log fields:
 | LLM provider로 원문 유출 | LlmInputEnvelope |
 | sync_queue 민감 payload | safety validation |
 | repeated intrusive utterance | cooldown/reaction penalty |
+| service role overreach | route allowlist and Edge Function-only use |
+| stolen pairing code | short expiry, code hash, attempt limit, single-use |
+| stolen device token | token rotation and family reuse revocation |
 
 ---
 
 ## 9. Test Requirements
 
 - RLS policy migration test 또는 SQL review fixture
+- RLS insert/update/delete `with check` tests
+- cross-user FK rejection tests
 - provider input redaction unit test
 - sync payload safety validator test
+- sync envelope forbidden-key tests
+- device session rotation/reuse tests
 - sensitive context capture block test
 - OCR raw text non-persistence test
 - logs do not include raw context test

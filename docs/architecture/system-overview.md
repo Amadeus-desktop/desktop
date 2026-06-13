@@ -131,8 +131,9 @@ Tauri App
 ```text
 Context Bridge
   -> Privacy/Policy Gate
-  -> Trigger Engine
+  -> optional Capture/OCR
   -> PolicyScores
+  -> Trigger Engine
   -> Utterance Policy
   -> LlmInputEnvelope
   -> Local LLM/template
@@ -148,7 +149,7 @@ local raw events
   -> local summarizer
   -> redaction policy
   -> sync_queue
-  -> Supabase cloud_memories
+  -> Supabase cloud_memories or cloud_work_summaries
 ```
 
 ---

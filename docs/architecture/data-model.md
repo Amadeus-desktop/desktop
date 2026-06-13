@@ -107,13 +107,35 @@ device_sessions {
   user_id uuid references auth.users(id)
   device_id uuid references devices(id)
   refresh_token_hash text
+  token_family_id uuid not null
+  hash_alg text not null
   expires_at timestamptz
+  rotated_at timestamptz null
+  last_used_at timestamptz null
   created_at timestamptz
   revoked_at timestamptz null
+  revoked_reason text null
 }
 ```
 
 Raw refresh token은 DB에 저장하지 않는다.
+
+### pairing_requests
+
+```text
+pairing_requests {
+  id uuid primary key
+  created_by_user_id uuid references auth.users(id)
+  code_hash text not null
+  device_name text null
+  expires_at timestamptz not null
+  used_at timestamptz null
+  attempt_count integer not null default 0
+  created_at timestamptz not null
+}
+```
+
+Pairing code raw value는 저장하지 않는다. Pairing request는 short-lived, single-use, rate-limited여야 한다.
 
 ### sync_events
 
@@ -124,7 +146,10 @@ sync_events {
   device_id uuid references devices(id)
   event_type text not null
   idempotency_key text not null
-  payload_json jsonb not null
+  payload_json jsonb not null -- SyncPayloadEnvelope only
+  safety_grade text not null
+  redaction_level text not null
+  retention_policy text not null
   status text not null
   created_at timestamptz
 }
@@ -145,6 +170,43 @@ cloud_conversations {
   updated_at timestamptz
 }
 ```
+
+### cloud_conversation_messages
+
+```text
+cloud_conversation_messages {
+  id uuid primary key
+  user_id uuid references auth.users(id)
+  conversation_id uuid references cloud_conversations(id)
+  role text not null
+  content text not null
+  provider text null
+  safety_grade text not null
+  created_at timestamptz
+}
+```
+
+Cloud conversation message는 웹 대화용이다. Desktop raw work context를 message content에 저장하지 않는다.
+
+### cloud_work_summaries
+
+```text
+cloud_work_summaries {
+  id uuid primary key
+  user_id uuid references auth.users(id)
+  persona_id uuid references personas(id) null
+  source_device_id uuid references devices(id)
+  local_session_id text not null
+  summary_redacted text not null
+  redaction_level text not null
+  retention_policy text not null
+  expires_at timestamptz null
+  idempotency_key text not null
+  created_at timestamptz
+}
+```
+
+`cloud_work_summaries`는 accepted safe work summary의 Supabase 원장이다. `sync_events`는 delivery/event log이고, summary 원장이 아니다.
 
 ---
 
@@ -272,8 +334,11 @@ conversation_messages {
 sync_queue {
   id text primary key
   event_type text not null
-  payload_json text not null
+  payload_json text not null -- SyncPayloadEnvelope only
   idempotency_key text not null
+  safety_grade text not null
+  redaction_level text not null
+  retention_policy text not null
   status text not null
   retry_count integer not null
   last_error text null
@@ -281,6 +346,36 @@ sync_queue {
   updated_at_ms integer not null
 }
 ```
+
+### SyncPayloadEnvelope
+
+Local `sync_queue.payload_json`과 Supabase `sync_events.payload_json`은 반드시 아래 envelope만 허용한다.
+
+```text
+SyncPayloadEnvelope {
+  schema_version: integer
+  event_type: text
+  payload_class: SafeSummary | PersonaPull | PreferenceAllowlist | SyncAck
+  safety_grade: Public | Account | Persona | SharedMemory | SafeWorkSummary
+  redaction_level: None | TitleRedacted | SummaryRedacted | SensitiveSuppressed
+  retention_policy: Ephemeral | Session | Timeline
+  validator_version: text
+  payload: object
+}
+```
+
+Envelope 금지 키:
+
+- raw_window_title
+- raw_ocr_text
+- screenshot_path
+- file_path
+- full_url
+- url_query
+- token
+- keystroke_text
+
+새 `event_type`을 추가하려면 allowlist schema와 validator test를 먼저 추가한다.
 
 ---
 
@@ -313,3 +408,36 @@ using (user_id = auth.uid());
 ```
 
 RLS 없는 shared table은 MVP에서 금지한다.
+
+### 6.1 RLS Matrix
+
+| Table | select | insert | update | delete |
+| --- | --- | --- | --- | --- |
+| profiles | `user_id = auth.uid()` | `user_id = auth.uid()` | `user_id = auth.uid()` | no hard delete |
+| personas | `user_id = auth.uid()` | `user_id = auth.uid()` | `user_id = auth.uid()` | soft delete only |
+| cloud_memories | `user_id = auth.uid()` | `user_id = auth.uid()` | `user_id = auth.uid()` | soft delete or owner delete |
+| cloud_work_summaries | `user_id = auth.uid()` | Edge Function or owner insert | owner read/update limited | retention delete |
+| devices | `user_id = auth.uid()` | Edge Function only | owner revoke only | no hard delete |
+| device_sessions | owner metadata only | Edge Function only | Edge Function only | Edge Function only |
+| pairing_requests | `created_by_user_id = auth.uid()` | `created_by_user_id = auth.uid()` | Edge Function only | expiry cleanup |
+| sync_events | `user_id = auth.uid()` | Edge Function or owner device insert | status update by owner/device | no hard delete |
+| cloud_conversations | `user_id = auth.uid()` | `user_id = auth.uid()` | `user_id = auth.uid()` | owner delete |
+| cloud_conversation_messages | `user_id = auth.uid()` | `user_id = auth.uid()` | no update except moderation metadata | owner delete |
+
+`insert`와 `update`에는 `with check (user_id = auth.uid())`가 필요하다. `persona_id`, `device_id`, `conversation_id` 같은 FK는 같은 `user_id` 소유인지 `exists`로 검증해야 한다.
+
+### 6.2 Database Constraints
+
+필수 제약:
+
+- `personas`: `unique(user_id, id)` and `check(version >= 1)`
+- `cloud_memories`: `check(confidence >= 0 and confidence <= 100)`
+- `cloud_work_summaries`: `unique(user_id, source_device_id, idempotency_key)`
+- `cloud_conversation_messages`: role enum/check and same-user conversation FK
+- `devices`: revoked device cannot create new sessions
+- `device_sessions`: `unique(user_id, device_id, token_family_id)`
+- `pairing_requests`: `unique(code_hash)`, `check(attempt_count >= 0)`, short expiry
+- `sync_events`: `unique(user_id, device_id, idempotency_key)`
+- `sync_queue`: local `unique(idempotency_key)`
+- status fields: enum/check only
+- safety/redaction/retention fields: enum/check only

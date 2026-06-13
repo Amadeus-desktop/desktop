@@ -50,6 +50,21 @@ Browser
 - Next.js Server Functions는 서버에서 실행되는 async 함수이며 client에서 network request로 호출될 수 있다.
 - Route Handlers는 route 파일에서 HTTP request handling을 담당한다.
 
+### 2.1 Server Auth Boundary
+
+Browser-originated 요청은 기본적으로 user-scoped Supabase client를 사용한다. Service role은 RLS를 우회할 수 있으므로 좁은 서버/Edge Function 경로에서만 사용한다.
+
+| Route/Action | Auth required | Supabase client | Service role allowed |
+| --- | --- | --- | --- |
+| persona CRUD | yes | user-scoped | no |
+| cloud conversation | yes | user-scoped + server LLM key | no |
+| pairing request create | yes | user-scoped | no |
+| pairing code verify | yes/device proof | Edge Function internal | yes, narrow |
+| sync safe summary | device session | Edge Function internal | yes, validator only |
+| public marketing page | no | none | no |
+
+Server Functions and Route Handlers must validate origin/session before mutation. Service role use requires a named allowlist and a test fixture.
+
 ---
 
 ## 3. Device Pairing
@@ -66,12 +81,15 @@ Pairing flow:
 ```text
 1. User logs in on Web
 2. Web creates pairing request
-3. Supabase stores short-lived pairing code
+3. Supabase stores short-lived pairing code hash
 4. User opens desktop app or deep link
-5. App submits pairing code to Edge Function
-6. Edge Function verifies code and user
-7. Edge Function creates device + device session
-8. App stores session in secure storage
+5. App generates or loads device keypair
+6. App submits pairing code + device public key to Edge Function
+7. Edge Function verifies code, attempts, expiry, and user
+8. Edge Function creates device and challenge
+9. App signs challenge with device private key
+10. Edge Function creates device session
+11. App stores session in secure storage
 ```
 
 Pairing code must be:
@@ -81,6 +99,14 @@ Pairing code must be:
 - user-bound
 - rate-limited
 - revocable
+
+Device sessions:
+
+- refresh token raw value is shown once to the app
+- DB stores only token hash
+- refresh token rotates on use
+- token family reuse revokes the family
+- revoked device invalidates all device sessions
 
 ---
 
@@ -104,6 +130,8 @@ Rules:
 - Sync queue never contains raw window title.
 - Sync payload must include `safety_grade`.
 - Sync mutation must include `idempotency_key`.
+- Sync payload must be `SyncPayloadEnvelope`.
+- Sync validator runs before local queue insert and before Supabase write.
 
 ---
 
@@ -125,6 +153,10 @@ Blocked:
 - raw screenshots
 - full file paths
 - URL query strings
+
+Allowed payloads are allowlist-based. A new payload type is blocked until its schema, validator, and tests exist.
+
+`work session safe summary` means `SafeWorkSummary`, not `OcrObservationSummary`. OCR-derived summaries are blocked until retention and consent policy exists.
 
 ---
 
@@ -156,6 +188,17 @@ Conflict rule:
 ### Local Private Memory
 
 No conflict policy needed because it does not sync.
+
+### Safe Work Summary
+
+Supabase owns accepted `cloud_work_summaries`. Local app owns drafts and delivery attempts.
+
+Conflict rule:
+
+- `idempotency_key` deduplicates retries.
+- same `local_session_id` from same device replaces only if `validator_version` is newer or summary version is higher.
+- user-edited cloud summary wins over generated summary.
+- expired summary must not be used for persona memory.
 
 ---
 

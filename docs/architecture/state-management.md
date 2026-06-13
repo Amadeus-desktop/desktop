@@ -16,7 +16,8 @@
 | Trigger runtime | Rust backend | memory + SQLite events | summary만 가능 |
 | Work context raw events | Tauri App | SQLite | sync 금지 |
 | Local private memory | Tauri App | SQLite | sync 금지 |
-| Syncable summary memory | Supabase | Postgres `cloud_memories` | sync_queue |
+| Local safe summary draft | Tauri App | SQLite/sync_queue | pending delivery |
+| Accepted shared safe summary | Supabase | Postgres `cloud_memories` / `cloud_work_summaries` | sync_queue ack 이후 |
 | Device sessions | Supabase + App | Postgres + secure storage | Edge Function |
 
 ---
@@ -31,6 +32,7 @@ desktop work context  -> Tauri owns
 trigger decision      -> Rust owns
 UI open/closed state  -> React owns
 sync delivery state   -> local sync_queue owns until ack
+accepted safe summary -> Supabase owns after ack
 ```
 
 동일 데이터를 Web과 App이 동시에 수정하지 않는다. App이 cloud persona를 수정해야 한다면 local draft가 아니라 Supabase mutation으로 보낸다.
@@ -189,3 +191,36 @@ sync_queue {
 ```
 
 원본 민감 데이터는 sync_queue에 넣지 않는다.
+
+### 7.1 Sync Ownership States
+
+Safe summary는 전송 단계에 따라 소유자가 바뀐다.
+
+```text
+LocalDraft
+  owner: Tauri App
+  storage: SQLite or memory
+  server visible: no
+
+QueuedDelivery
+  owner: local sync_queue
+  storage: SQLite sync_queue
+  server visible: no
+
+AcceptedCloudRecord
+  owner: Supabase
+  storage: cloud_memories or cloud_work_summaries
+  server visible: yes
+```
+
+Supabase는 ack된 record만 소유한다. `sync_queue`는 데이터 원장이 아니라 delivery attempt 원장이다.
+
+### 7.2 Context Source Classes
+
+`work context`라는 표현은 아래 세 등급으로 나눈다.
+
+| 등급 | Source of Truth | 예시 | 저장 |
+| --- | --- | --- | --- |
+| EphemeralRawContext | memory only | screenshot, OCR raw text | 저장 금지 |
+| PersistedRedactedContext | local SQLite | redacted title, app event, trigger metadata | local only |
+| SyncableSafeSummary | Supabase after ack | 비식별 작업 요약 | optional sync |
