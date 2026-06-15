@@ -1,13 +1,20 @@
+import {
+  buildPromptMemoryContext,
+  rankPromptMemoryCards,
+  type MemoryCard,
+} from "../../domain/memory/cards";
 import type { PersonaId } from "../../domain/persona/types";
 import type { Persona } from "../../domain/persona/types";
 import {
   buildCompanionPromptEnvelope,
   type CompanionPromptEnvelope,
+  type PromptCurrentContext,
+  type PromptMode,
 } from "../../domain/prompt/assembly";
 import type { LocaleCode } from "../../i18n/types";
 import type { CompanionMessage } from "../companion/types";
 
-export type LlmChatRole = "companion" | "user";
+export type LlmChatRole = "assistant" | "user";
 
 export type LlmChatMessage = {
   role: LlmChatRole;
@@ -40,12 +47,24 @@ export function toLlmChatRequest(
     personaId: PersonaId;
     nickname: string;
     persona: Persona;
+    memoryCards?: MemoryCard[];
+    mode?: PromptMode;
+    currentContext?: PromptCurrentContext | null;
+    nowMs?: number;
   },
 ): LlmChatRequest {
-  const llmMessages = messages.map((message) => ({
-    role: message.sender,
+  const llmMessages: LlmChatMessage[] = messages.map((message) => ({
+    role: message.sender === "companion" ? "assistant" : "user",
     content: message.text,
   }));
+  const promptMemoryContext = buildPromptMemoryContext(
+    rankPromptMemoryCards(context.memoryCards ?? [], {
+      nowMs: context.nowMs ?? Date.now(),
+      personaId: context.personaId,
+      mode: context.mode ?? "deep",
+      provider: "local_qwen",
+    }),
+  );
 
   return {
     messages: llmMessages,
@@ -54,7 +73,7 @@ export function toLlmChatRequest(
     nickname: context.nickname,
     promptEnvelope: buildCompanionPromptEnvelope({
       surface: "app",
-      mode: "deep",
+      mode: context.mode ?? "deep",
       locale: context.locale,
       isConversationStart: messages.length === 0,
       personaStatic: {
@@ -83,8 +102,8 @@ export function toLlmChatRequest(
         },
       },
       personaState: null,
-      semanticMemories: [],
-      episodicContext: [],
+      semanticMemories: promptMemoryContext.semanticMemories,
+      episodicContext: promptMemoryContext.episodicContext,
       sessionMessages: messages.map((message, index) => ({
         id: message.id,
         role: message.sender === "companion" ? "assistant" : "user",
@@ -92,7 +111,7 @@ export function toLlmChatRequest(
         createdAtMs: index + 1,
         clientSequence: index + 1,
       })),
-      currentContext: null,
+      currentContext: context.currentContext ?? null,
     }),
   };
 }

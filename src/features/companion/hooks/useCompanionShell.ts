@@ -196,6 +196,15 @@ export function useCompanionShell({
         nextMessages,
         selectedPersona,
         settings,
+        {
+          currentContext: nudge
+            ? {
+                source: "user_visible",
+                summary: nudge,
+                allowed_surface: "both",
+              }
+            : null,
+        },
       );
       const replyMessage: CompanionMessage = {
         id: `companion-${Date.now()}`,
@@ -214,6 +223,7 @@ export function useCompanionShell({
     draft,
     isSending,
     messages,
+    nudge,
     recordReaction,
     selectedPersona,
     setDraft,

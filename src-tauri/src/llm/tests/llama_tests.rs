@@ -64,3 +64,50 @@ fn builds_llama_chat_completions_url() {
     assert!(llama_chat_completions_url("https://127.0.0.1:8080").is_err());
     assert!(llama_chat_completions_url("http://127.0.0.1:8080/api").is_err());
 }
+
+#[test]
+fn qwen_chat_payload_uses_phase_05_sampling_defaults() {
+    let payload = qwen_chat_completion_payload(
+        vec![LlmChatMessage {
+            role: "user".to_string(),
+            content: "/no_think\n안녕".to_string(),
+        }],
+        "deep",
+    )
+    .expect("payload builds");
+
+    assert_eq!(payload["max_tokens"], 900);
+    assert_eq!(payload["temperature"], 0.7);
+    assert_eq!(payload["top_p"], 0.8);
+    assert_eq!(payload["top_k"], 20);
+    assert_eq!(payload["presence_penalty"], 1.5);
+    assert_eq!(payload["stream"], false);
+}
+
+#[test]
+fn qwen_input_budget_rejects_oversized_nudge_input() {
+    let oversized = "가".repeat(4_900);
+    let result = qwen_chat_completion_payload(
+        vec![LlmChatMessage {
+            role: "user".to_string(),
+            content: oversized,
+        }],
+        "nudge",
+    );
+
+    assert!(result.is_err());
+    assert!(result
+        .expect_err("oversized nudge input should fail")
+        .to_string()
+        .contains("qwen input budget exceeded"));
+}
+
+#[test]
+fn protocol_errors_do_not_use_legacy_completion_fallback() {
+    assert!(!local_llama_should_fallback_to_completion(&LlmError::Protocol(
+        "qwen input budget exceeded".to_string()
+    )));
+    assert!(local_llama_should_fallback_to_completion(&LlmError::Unavailable(
+        "chat endpoint unavailable".to_string()
+    )));
+}

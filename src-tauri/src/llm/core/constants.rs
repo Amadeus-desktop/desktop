@@ -9,6 +9,16 @@ pub const PROVIDER_ID_LOCAL_LLAMA: &str = "local-llama";
 
 pub const LOCAL_COMPLETION_MAX_TOKENS: u16 = 80;
 pub const LOCAL_COMPLETION_TEMPERATURE: f32 = 0.7;
+pub const QWEN_TEMPERATURE: f64 = 0.7;
+pub const QWEN_TOP_P: f64 = 0.8;
+pub const QWEN_TOP_K: u8 = 20;
+pub const QWEN_PRESENCE_PENALTY: f64 = 1.5;
+pub const QWEN_NUDGE_INPUT_TOKEN_CAP: usize = 1_200;
+pub const QWEN_POCKET_INPUT_TOKEN_CAP: usize = 2_800;
+pub const QWEN_DEEP_INPUT_TOKEN_CAP: usize = 8_000;
+pub const QWEN_NUDGE_OUTPUT_TOKEN_CAP: u16 = 80;
+pub const QWEN_POCKET_OUTPUT_TOKEN_CAP: u16 = 300;
+pub const QWEN_DEEP_OUTPUT_TOKEN_CAP: u16 = 900;
 pub const LOCAL_HEALTH_MAX_TOKENS: u8 = 1;
 pub const LOCAL_HEALTH_TEMPERATURE: f32 = 0.0;
 pub const LOCAL_STOP_SEQUENCE: &str = "\n";

@@ -7,6 +7,11 @@ import {
 import { getAppLocale } from "../../../i18n";
 import { isTauriRuntime } from "../../../lib/tauri/runtime";
 import type { Persona } from "../../../domain/persona/types";
+import type { MemoryCard } from "../../../domain/memory/cards";
+import type {
+  PromptCurrentContext,
+  PromptMode,
+} from "../../../domain/prompt/assembly";
 import type { CompanionMessage } from "../../companion/types";
 import type { GeneralSettings } from "../../settings/types";
 import type { LlmGeneration, LlmProviderHealth } from "../types";
@@ -17,12 +22,20 @@ export async function generateChatReply(
   messages: CompanionMessage[],
   persona: Persona,
   settings: GeneralSettings,
+  options: {
+    mode?: PromptMode;
+    memoryCards?: MemoryCard[];
+    currentContext?: PromptCurrentContext | null;
+  } = {},
 ): Promise<LlmGeneration> {
   const input = toLlmChatRequest(messages, {
     locale: settings.locale,
     personaId: persona.id,
     nickname: settings.nickname,
     persona,
+    mode: options.mode,
+    memoryCards: options.memoryCards,
+    currentContext: options.currentContext,
   });
 
   if (settings.modelRoute === "api-first") {

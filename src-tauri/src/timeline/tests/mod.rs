@@ -153,6 +153,30 @@ fn migration_prepares_phase_6_local_tables() {
         );
     }
 
+    let local_memory_columns = repository
+        .table_columns("local_memories")
+        .expect("schema query works");
+    for column_name in [
+        "memory_category",
+        "source",
+        "normalized_key",
+        "source_message_ids_json",
+        "evidence_excerpt_redacted",
+        "observed_at_ms",
+        "valid_from_ms",
+        "expires_at_ms",
+        "user_confirmed",
+        "contradicts_memory_id",
+        "write_reason",
+        "deleted_at_ms",
+        "metadata_json",
+    ] {
+        assert!(
+            local_memory_columns.iter().any(|column| column == column_name),
+            "local_memories should include {column_name}"
+        );
+    }
+
     let conversation_session_columns = repository
         .table_columns("conversation_sessions")
         .expect("schema query works");
@@ -192,6 +216,37 @@ fn migration_prepares_phase_6_local_tables() {
             "conversation_messages should include {column_name}"
         );
     }
+}
+
+#[test]
+fn migration_upgrades_legacy_local_memories_table() {
+    let mut repository = TimelineRepository::open_in_memory().expect("in-memory db opens");
+    repository
+        .execute_batch_for_test(
+            "CREATE TABLE local_memories (
+              id TEXT PRIMARY KEY NOT NULL,
+              persona_id TEXT,
+              memory_type TEXT NOT NULL,
+              content TEXT NOT NULL,
+              scope TEXT NOT NULL CHECK (scope IN ('local_private', 'syncable_summary')),
+              confidence INTEGER NOT NULL CHECK (confidence >= 0 AND confidence <= 100),
+              created_at_ms INTEGER NOT NULL,
+              updated_at_ms INTEGER NOT NULL
+            );",
+        )
+        .expect("legacy local_memories schema is created");
+
+    repository.migrate().expect("migration succeeds");
+
+    let local_memory_columns = repository
+        .table_columns("local_memories")
+        .expect("schema query works");
+    assert!(local_memory_columns
+        .iter()
+        .any(|column| column == "memory_category"));
+    assert!(local_memory_columns
+        .iter()
+        .any(|column| column == "deleted_at_ms"));
 }
 
 #[test]

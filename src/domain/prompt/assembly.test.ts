@@ -41,7 +41,14 @@ const input: CompanionPromptInput = {
       scope: "cloud_safe",
     },
   ],
-  episodicContext: [{ id: "episode-1", summary: "최근 대화 요약", createdAtMs: 2 }],
+  episodicContext: [
+    {
+      id: "episode-1",
+      summary: "최근 대화 요약",
+      createdAtMs: 2,
+      scope: "cloud_safe",
+    },
+  ],
   sessionMessages: [
     { id: "m2", role: "assistant", content: "응.", createdAtMs: 2, clientSequence: 2 },
     { id: "m1", role: "user", content: "오늘 힘들어.", createdAtMs: 1, clientSequence: 1 },
@@ -91,6 +98,32 @@ describe("buildCompanionPromptEnvelope", () => {
     expect(filtered.semanticMemories).toHaveLength(2);
   });
 
+  it("strips local private episodic context for web cloud provider input", () => {
+    const envelope = buildCompanionPromptEnvelope({
+      ...input,
+      episodicContext: [
+        {
+          id: "episode-cloud",
+          summary: "서버 공유 가능 요약",
+          createdAtMs: 2,
+          scope: "cloud_safe",
+        },
+        {
+          id: "episode-local",
+          summary: "로컬 작업 요약",
+          createdAtMs: 3,
+          scope: "local_private",
+        },
+      ],
+    });
+
+    const filtered = filterPromptEnvelopeForProvider(envelope, "web_cloud");
+
+    expect(filtered.episodicContext.map((episode) => episode.id)).toEqual([
+      "episode-cloud",
+    ]);
+  });
+
   it("rejects current context with forbidden raw keys before envelope creation", () => {
     expect(() =>
       buildCompanionPromptEnvelope({
@@ -107,5 +140,22 @@ describe("buildCompanionPromptEnvelope", () => {
         },
       }),
     ).toThrow("prompt_context_forbidden_key:raw_ocr_text");
+  });
+
+  it("rejects current context with forbidden raw values before envelope creation", () => {
+    expect(() =>
+      buildCompanionPromptEnvelope({
+        ...input,
+        currentContext: {
+          source: "local_desktop",
+          summary: "/Users/user/private.pdf",
+          trigger_type: "deep_pause",
+          coarse_context_label: "coding",
+          confidence_bucket: "medium",
+          redaction_policy_version: "v1",
+          forbidden_keys_removed: [],
+        },
+      }),
+    ).toThrow("prompt_context_forbidden_value");
   });
 });

@@ -54,12 +54,25 @@ CREATE TABLE IF NOT EXISTS local_personas (
 CREATE TABLE IF NOT EXISTS local_memories (
   id TEXT PRIMARY KEY NOT NULL,
   persona_id TEXT,
+  memory_category TEXT NOT NULL DEFAULT 'semantic' CHECK (memory_category IN ('semantic', 'episodic', 'procedural')),
   memory_type TEXT NOT NULL,
   content TEXT NOT NULL,
   scope TEXT NOT NULL CHECK (scope IN ('local_private', 'syncable_summary')),
   confidence INTEGER NOT NULL CHECK (confidence >= 0 AND confidence <= 100),
+  source TEXT NOT NULL DEFAULT 'conversation' CHECK (source IN ('conversation', 'nudge_reaction', 'desktop_context', 'manual')),
+  normalized_key TEXT,
+  source_message_ids_json TEXT NOT NULL DEFAULT '[]',
+  evidence_excerpt_redacted TEXT,
+  observed_at_ms INTEGER,
+  valid_from_ms INTEGER,
+  expires_at_ms INTEGER,
+  user_confirmed INTEGER NOT NULL DEFAULT 0 CHECK (user_confirmed IN (0, 1)),
+  contradicts_memory_id TEXT,
+  write_reason TEXT NOT NULL DEFAULT 'legacy_local_memory',
   created_at_ms INTEGER NOT NULL,
-  updated_at_ms INTEGER NOT NULL
+  updated_at_ms INTEGER NOT NULL,
+  deleted_at_ms INTEGER,
+  metadata_json TEXT NOT NULL DEFAULT '{}'
 );
 
 CREATE TABLE IF NOT EXISTS work_sessions (

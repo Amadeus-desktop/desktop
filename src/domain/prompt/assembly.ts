@@ -15,6 +15,7 @@ export type EpisodicPromptItem = {
   id: string;
   summary: string;
   createdAtMs: number;
+  scope: "cloud_safe" | "local_private";
 };
 
 export type SessionPromptMessage = {
@@ -130,11 +131,15 @@ const FORBIDDEN_CONTEXT_KEYS = new Set([
   "token",
 ]);
 
+const FORBIDDEN_CONTEXT_VALUE_PATTERN =
+  /(?:\/Users\/|[A-Z]:\\|https?:\/\/|\?.*=|token=|password=|passwd=|api_key=|apikey=|secret=|\.pdf|\.docx|\.xlsx|\.hwp)/i;
+
 export function buildCompanionPromptEnvelope(
   input: CompanionPromptInput,
 ): CompanionPromptEnvelope {
   if (input.currentContext) {
     assertNoForbiddenContextKeys(input.currentContext);
+    assertNoForbiddenContextValues(input.currentContext);
   }
 
   const personaStatic = input.personaStatic;
@@ -206,6 +211,9 @@ export function filterPromptEnvelopeForProvider(
     semanticMemories: envelope.semanticMemories.filter(
       (memory) => memory.scope === "cloud_safe",
     ),
+    episodicContext: envelope.episodicContext.filter(
+      (episode) => episode.scope === "cloud_safe",
+    ),
     currentContext:
       envelope.currentContext?.source === "local_desktop"
         ? null
@@ -219,4 +227,19 @@ function assertNoForbiddenContextKeys(context: PromptCurrentContext): void {
       throw new Error(`prompt_context_forbidden_key:${key}`);
     }
   }
+}
+
+function assertNoForbiddenContextValues(value: unknown): void {
+  if (typeof value === "string") {
+    if (FORBIDDEN_CONTEXT_VALUE_PATTERN.test(value)) {
+      throw new Error("prompt_context_forbidden_value");
+    }
+    return;
+  }
+  if (Array.isArray(value)) {
+    value.forEach(assertNoForbiddenContextValues);
+    return;
+  }
+  if (!value || typeof value !== "object") return;
+  Object.values(value).forEach(assertNoForbiddenContextValues);
 }

@@ -49,12 +49,27 @@ export const localPersonas = sqliteTable("local_personas", {
 export const localMemories = sqliteTable("local_memories", {
   id: text("id").primaryKey(),
   personaId: text("persona_id"),
+  memoryCategory: text("memory_category").notNull().default("semantic"),
   memoryType: text("memory_type").notNull(),
   content: text("content").notNull(),
   scope: text("scope").notNull(),
   confidence: integer("confidence", { mode: "number" }).notNull(),
+  source: text("source").notNull().default("conversation"),
+  normalizedKey: text("normalized_key"),
+  sourceMessageIdsJson: text("source_message_ids_json").notNull().default("[]"),
+  evidenceExcerptRedacted: text("evidence_excerpt_redacted"),
+  observedAtMs: integer("observed_at_ms", { mode: "number" }),
+  validFromMs: integer("valid_from_ms", { mode: "number" }),
+  expiresAtMs: integer("expires_at_ms", { mode: "number" }),
+  userConfirmed: integer("user_confirmed", { mode: "boolean" })
+    .notNull()
+    .default(false),
+  contradictsMemoryId: text("contradicts_memory_id"),
+  writeReason: text("write_reason").notNull().default("legacy_local_memory"),
   createdAtMs: integer("created_at_ms", { mode: "number" }).notNull(),
   updatedAtMs: integer("updated_at_ms", { mode: "number" }).notNull(),
+  deletedAtMs: integer("deleted_at_ms", { mode: "number" }),
+  metadataJson: text("metadata_json").notNull().default("{}"),
 });
 
 export const workSessions = sqliteTable("work_sessions", {

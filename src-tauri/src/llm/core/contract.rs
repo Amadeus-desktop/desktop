@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::redaction::sanitize_prompt_field;
+use super::redaction::{sanitize_prompt_field, sanitize_prompt_json};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -87,6 +87,8 @@ pub struct LlmChatRequest {
     pub locale: String,
     pub persona_id: Option<String>,
     pub nickname: Option<String>,
+    #[serde(default)]
+    pub prompt_envelope: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -98,6 +100,8 @@ pub struct LlmChatEnvelope {
     pub locale: String,
     pub persona_id: Option<String>,
     pub nickname: Option<String>,
+    #[serde(default)]
+    pub prompt_envelope: Option<serde_json::Value>,
 }
 
 impl LlmChatEnvelope {
@@ -108,6 +112,7 @@ impl LlmChatEnvelope {
             locale: request.locale,
             persona_id: request.persona_id,
             nickname: request.nickname,
+            prompt_envelope: request.prompt_envelope,
         }
     }
 
@@ -136,6 +141,7 @@ impl LlmChatEnvelope {
                 })
                 .collect(),
         };
+        envelope.prompt_envelope = envelope.prompt_envelope.map(sanitize_prompt_json);
         envelope
     }
 }

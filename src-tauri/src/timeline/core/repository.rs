@@ -45,7 +45,84 @@ impl TimelineRepository {
 
     pub fn migrate(&mut self) -> Result<(), TimelineError> {
         self.connection.execute_batch(MIGRATION_SQL)?;
+        self.ensure_local_memory_card_columns()?;
+        self.connection.execute_batch(
+            "CREATE INDEX IF NOT EXISTS local_memories_persona_scope_idx
+              ON local_memories (persona_id, scope, memory_category, confidence DESC, updated_at_ms DESC)
+              WHERE deleted_at_ms IS NULL;",
+        )?;
         Ok(())
+    }
+
+    fn ensure_local_memory_card_columns(&self) -> Result<(), TimelineError> {
+        self.add_column_if_missing(
+            "local_memories",
+            "memory_category",
+            "memory_category TEXT NOT NULL DEFAULT 'semantic' CHECK (memory_category IN ('semantic', 'episodic', 'procedural'))",
+        )?;
+        self.add_column_if_missing(
+            "local_memories",
+            "source",
+            "source TEXT NOT NULL DEFAULT 'conversation' CHECK (source IN ('conversation', 'nudge_reaction', 'desktop_context', 'manual'))",
+        )?;
+        self.add_column_if_missing("local_memories", "normalized_key", "normalized_key TEXT")?;
+        self.add_column_if_missing(
+            "local_memories",
+            "source_message_ids_json",
+            "source_message_ids_json TEXT NOT NULL DEFAULT '[]'",
+        )?;
+        self.add_column_if_missing(
+            "local_memories",
+            "evidence_excerpt_redacted",
+            "evidence_excerpt_redacted TEXT",
+        )?;
+        self.add_column_if_missing("local_memories", "observed_at_ms", "observed_at_ms INTEGER")?;
+        self.add_column_if_missing("local_memories", "valid_from_ms", "valid_from_ms INTEGER")?;
+        self.add_column_if_missing("local_memories", "expires_at_ms", "expires_at_ms INTEGER")?;
+        self.add_column_if_missing(
+            "local_memories",
+            "user_confirmed",
+            "user_confirmed INTEGER NOT NULL DEFAULT 0 CHECK (user_confirmed IN (0, 1))",
+        )?;
+        self.add_column_if_missing(
+            "local_memories",
+            "contradicts_memory_id",
+            "contradicts_memory_id TEXT",
+        )?;
+        self.add_column_if_missing(
+            "local_memories",
+            "write_reason",
+            "write_reason TEXT NOT NULL DEFAULT 'legacy_local_memory'",
+        )?;
+        self.add_column_if_missing("local_memories", "deleted_at_ms", "deleted_at_ms INTEGER")?;
+        self.add_column_if_missing(
+            "local_memories",
+            "metadata_json",
+            "metadata_json TEXT NOT NULL DEFAULT '{}'",
+        )?;
+        Ok(())
+    }
+
+    fn add_column_if_missing(
+        &self,
+        table_name: &str,
+        column_name: &str,
+        column_definition: &str,
+    ) -> Result<(), TimelineError> {
+        if self.column_exists(table_name, column_name)? {
+            return Ok(());
+        }
+        self.connection.execute_batch(&format!(
+            "ALTER TABLE {table_name} ADD COLUMN {column_definition};"
+        ))?;
+        Ok(())
+    }
+
+    fn column_exists(&self, table_name: &str, column_name: &str) -> Result<bool, TimelineError> {
+        Ok(self
+            .table_columns_inner(table_name)?
+            .iter()
+            .any(|column| column == column_name))
     }
 
     #[cfg(test)]
@@ -60,12 +137,22 @@ impl TimelineRepository {
 
     #[cfg(test)]
     pub(crate) fn table_columns(&self, table_name: &str) -> Result<Vec<String>, TimelineError> {
+        self.table_columns_inner(table_name)
+    }
+
+    fn table_columns_inner(&self, table_name: &str) -> Result<Vec<String>, TimelineError> {
         let mut statement = self
             .connection
             .prepare(&format!("PRAGMA table_info({table_name})"))?;
         let rows = statement.query_map([], |row| row.get::<_, String>(1))?;
         rows.collect::<Result<Vec<_>, _>>()
             .map_err(TimelineError::from)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn execute_batch_for_test(&self, sql: &str) -> Result<(), TimelineError> {
+        self.connection.execute_batch(sql)?;
+        Ok(())
     }
 
     pub fn create_context_event(

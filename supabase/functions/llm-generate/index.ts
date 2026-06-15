@@ -1,5 +1,5 @@
 type LlmChatMessage = {
-  role: "companion" | "user";
+  role: "assistant" | "companion" | "user";
   content: string;
 };
 
@@ -68,14 +68,16 @@ function validateRequest(value: unknown): LlmChatRequest {
     }
     const item = message as Record<string, unknown>;
     if (
-      (item.role !== "companion" && item.role !== "user") ||
+      (item.role !== "assistant" &&
+        item.role !== "companion" &&
+        item.role !== "user") ||
       typeof item.content !== "string" ||
       !item.content.trim()
     ) {
       throw new Error("invalid_message");
     }
     return {
-      role: item.role,
+      role: item.role === "companion" ? "assistant" : item.role,
       content: item.content.slice(0, 2_000),
     };
   });
@@ -133,7 +135,7 @@ async function generateWithOpenAi(input: LlmChatRequest): Promise<string> {
       messages: [
         { role: "system", content: systemPrompt(input) },
         ...input.messages.map((message) => ({
-          role: message.role === "companion" ? "assistant" : "user",
+          role: message.role === "user" ? "user" : "assistant",
           content: message.content,
         })),
       ],
@@ -161,7 +163,7 @@ async function generateWithGemini(input: LlmChatRequest): Promise<string> {
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemPrompt(input) }] },
         contents: input.messages.map((message) => ({
-          role: message.role === "companion" ? "model" : "user",
+          role: message.role === "user" ? "user" : "model",
           parts: [{ text: message.content }],
         })),
         generationConfig: {

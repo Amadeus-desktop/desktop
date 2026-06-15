@@ -31,5 +31,6 @@ fn chat_request(messages: Vec<LlmChatMessage>) -> LlmChatRequest {
         locale: "ko".to_string(),
         persona_id: None,
         nickname: None,
+        prompt_envelope: None,
     }
 }

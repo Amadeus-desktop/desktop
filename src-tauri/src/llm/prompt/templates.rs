@@ -5,7 +5,10 @@ use super::{
     persona::{PERSONA_BOUNDARY_RULE, PERSONA_PRIVACY_RULE, PERSONA_ROLE, PERSONA_STYLE_RULE},
     utterance_instruction,
 };
-use crate::llm::{redaction::sanitize_prompt_field, LlmChatEnvelope, LlmInputEnvelope};
+use crate::llm::{
+    redaction::sanitize_prompt_field, LlmChatEnvelope, LlmChatMessage, LlmError, LlmInputEnvelope,
+    ProviderInputGrade,
+};
 
 pub(crate) fn local_utterance_prompt(request: &LlmInputEnvelope) -> String {
     json!({
@@ -57,6 +60,48 @@ pub(crate) fn local_chat_prompt(request: &LlmChatEnvelope) -> String {
         }
     })
     .to_string()
+}
+
+pub(crate) fn qwen_local_chat_messages(
+    request: &LlmChatEnvelope,
+) -> Result<Vec<LlmChatMessage>, LlmError> {
+    let request = request.for_provider(ProviderInputGrade::LocalRedacted);
+    let prompt_envelope = request
+        .prompt_envelope
+        .as_ref()
+        .map(serde_json::to_string)
+        .transpose()?
+        .unwrap_or_else(|| local_chat_prompt(&request));
+
+    let mut messages = vec![LlmChatMessage {
+        role: "system".to_string(),
+        content: [
+            "/no_think",
+            "You are the local Qwen persona runtime for Amadeus.",
+        "Use promptEnvelope as the already-assembled source of truth.",
+        "Do not rebuild persona, memory, or desktop context outside this envelope.",
+        "Never claim access to hidden raw screen/OCR/file/URL/token data.",
+        &format!(
+            "personaId: {}",
+            request.persona_id.as_deref().unwrap_or("unknown")
+        ),
+        &format!("promptEnvelope: {prompt_envelope}"),
+    ]
+        .join("\n"),
+    }];
+    messages.extend(request.messages.into_iter().map(|message| LlmChatMessage {
+        role: normalize_chat_role(&message.role),
+        content: message.content,
+    }));
+    Ok(messages)
+}
+
+fn normalize_chat_role(role: &str) -> String {
+    match role {
+        "assistant" | "companion" => "assistant".to_string(),
+        "system" => "system".to_string(),
+        _ => "user".to_string(),
+    }
 }
 
 fn persona_json(summary: Option<&str>) -> serde_json::Value {
