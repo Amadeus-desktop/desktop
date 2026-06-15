@@ -142,6 +142,11 @@ export const base: AppLocale = {
       subtitle: "Mask locally before analysis",
       switchLabel: "Sensitive data filter",
     },
+    privacyKeywords: {
+      label: "Custom keywords",
+      subtitle: "Comma-separated patterns treated as sensitive",
+      inputLabel: "Sensitive keywords",
+    },
     liveContext: {
       activeApp: "Active app",
       windowTitle: "Window title",
@@ -174,6 +179,17 @@ export const base: AppLocale = {
       sensitiveBlocked: "Sensitive context blocked",
       analysisWaiting: "Waiting to analyze",
       analysisPaused: "Analysis paused",
+      analysisLoading: "Refreshing context",
+      analysisError: "Context refresh failed",
+    },
+    contextLabels: {
+      idleActive: "ACTIVE ({seconds}s idle)",
+      idlePaused: "IDLE ({minutes}m idle)",
+      categories: {
+        work: "Work app",
+        non_work: "Non-work app",
+        unknown: "Unknown",
+      },
     },
   },
   report: {

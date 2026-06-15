@@ -1,5 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
+import { getPrivacyKeywords, getTalkFrequencyPolicy } from "../../domain/settings";
 import { isTauriRuntime } from "../../lib/tauriRuntime";
+import { getAppSettingsSnapshot } from "../settings/appSettingsStore";
 import { assessCurrentPrivacyContext } from "../context";
 import { createContextEvent, createUtteranceEvent } from "../timeline";
 import type {
@@ -10,18 +12,34 @@ import type {
   TriggerRuntimeSnapshot,
 } from "./types";
 
-const MOCK_POLL_INTERVAL_MS = 60_000;
-
 let mockLastUtteranceAt: number | null = null;
 let mockLastPollAt: number | null = null;
 let mockDismissedRecentCount = 0;
 let mockUtterancesToday = 0;
 
+function readTriggerSettings() {
+  const { settings } = getAppSettingsSnapshot();
+
+  return {
+    keywords: getPrivacyKeywords(
+      settings.privacyFilterEnabled,
+      settings.customPrivacyKeywords,
+    ),
+    policy: getTalkFrequencyPolicy(settings.talkFrequency),
+    proactiveTriggerEnabled: settings.proactiveTriggerEnabled,
+  };
+}
+
 export async function runTriggerEngineOnce(
-  keywords: string[] = [],
+  keywords: string[] = readTriggerSettings().keywords,
 ): Promise<TriggerRunResult> {
   if (isTauriRuntime()) {
     return invoke<TriggerRunResult>("run_trigger_engine_once", { keywords });
+  }
+
+  const triggerSettings = readTriggerSettings();
+  if (!triggerSettings.proactiveTriggerEnabled) {
+    return buildSuppressedResult("proactive_disabled");
   }
 
   const context = await assessCurrentPrivacyContext(keywords);
@@ -37,8 +55,9 @@ export async function runTriggerEngineOnce(
   };
   const suppressed =
     context.assessment.shouldSuppressUtterance ||
-    mockUtterancesToday >= 12 ||
-    (recentUtteranceMinutesAgo !== null && recentUtteranceMinutesAgo < 30);
+    mockUtterancesToday >= triggerSettings.policy.dailyUtteranceLimit ||
+    (recentUtteranceMinutesAgo !== null &&
+      recentUtteranceMinutesAgo < triggerSettings.policy.cooldownMinutes);
   const speakabilityScore = Math.max(
     0,
     Math.min(100, candidate.baseScore - mockDismissedRecentCount * 10),
@@ -94,21 +113,40 @@ export async function runTriggerEngineOnce(
 }
 
 export async function pollTriggerEngine(
-  keywords: string[] = [],
+  keywords: string[] = readTriggerSettings().keywords,
 ): Promise<TriggerPollResult> {
   if (isTauriRuntime()) {
     return invoke<TriggerPollResult>("poll_trigger_engine", { keywords });
   }
 
+  const triggerSettings = readTriggerSettings();
+  if (!triggerSettings.proactiveTriggerEnabled) {
+    return {
+      didEvaluate: false,
+      decision: {
+        ready: false,
+        waitSeconds: 0,
+        suppressionReason: "proactive_disabled",
+      },
+      runResult: null,
+    };
+  }
+
   const now = Date.now();
-  if (mockLastPollAt && now - mockLastPollAt < MOCK_POLL_INTERVAL_MS) {
+  if (
+    mockLastPollAt &&
+    now - mockLastPollAt < triggerSettings.policy.pollIntervalMs
+  ) {
     return {
       didEvaluate: false,
       decision: {
         ready: false,
         waitSeconds: Math.max(
           1,
-          Math.ceil((MOCK_POLL_INTERVAL_MS - (now - mockLastPollAt)) / 1000),
+          Math.ceil(
+            (triggerSettings.policy.pollIntervalMs - (now - mockLastPollAt)) /
+              1000,
+          ),
         ),
         suppressionReason: "poll_cadence",
       },
@@ -126,6 +164,26 @@ export async function pollTriggerEngine(
       suppressionReason: null,
     },
     runResult: await runTriggerEngineOnce(keywords),
+  };
+}
+
+async function buildSuppressedResult(
+  reason: string,
+): Promise<TriggerRunResult> {
+  const context = await assessCurrentPrivacyContext(readTriggerSettings().keywords);
+
+  return {
+    snapshot: context.snapshot,
+    privacy: context.assessment,
+    evaluation: {
+      candidate: null,
+      speakabilityScore: 0,
+      action: "no_action",
+      shouldPersist: false,
+      suppressionReason: reason,
+    },
+    contextEvent: null,
+    utteranceEvent: null,
   };
 }
 

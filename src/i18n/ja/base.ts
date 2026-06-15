@@ -140,6 +140,11 @@ export const base: AppLocale = {
       subtitle: "分析前にローカルでマスキング",
       switchLabel: "機微情報フィルター",
     },
+    privacyKeywords: {
+      label: "ユーザー語",
+      subtitle: "カンマ区切りで追加の機微パターンを登録",
+      inputLabel: "機微キーワード",
+    },
     liveContext: {
       activeApp: "現在のアプリ",
       windowTitle: "ウィンドウタイトル",
@@ -171,6 +176,17 @@ export const base: AppLocale = {
       sensitiveBlocked: "機微コンテキストをブロック",
       analysisWaiting: "分析待機中",
       analysisPaused: "分析一時停止",
+      analysisLoading: "コンテキスト更新中",
+      analysisError: "コンテキスト取得失敗",
+    },
+    contextLabels: {
+      idleActive: "アクティブ ({seconds}秒 idle)",
+      idlePaused: "アイドル ({minutes}分 idle)",
+      categories: {
+        work: "業務アプリ",
+        non_work: "非業務アプリ",
+        unknown: "未分類",
+      },
     },
   },
   report: {

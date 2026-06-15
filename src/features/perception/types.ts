@@ -4,10 +4,3 @@ export type LiveContextStatus = {
   stateSync: string;
   category: string;
 };
-
-export type PerceptionState = {
-  analysisEnabled: boolean;
-  proactiveTriggerEnabled: boolean;
-  privacyFilterEnabled: boolean;
-  liveContext: LiveContextStatus;
-};

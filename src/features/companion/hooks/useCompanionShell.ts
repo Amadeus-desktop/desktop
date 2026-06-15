@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { getTalkFrequencyPolicy } from "../../../domain/settings";
 import { getPersonas } from "../../../domain/persona/registry";
 import { useI18n } from "../../../i18n";
+import { useAppSettings } from "../../settings/appSettingsStore";
 import { createTimelineEvent } from "../lib/state";
 import {
   generateDeepReply,
@@ -20,12 +22,16 @@ import type { TriggerType } from "../../../domain/trigger/types";
 import { syncCompanionWindow } from "../window/syncCompanionWindow";
 
 const MOCK_TRIGGER_TYPE: TriggerType = "milestone";
-const MOCK_TRIGGER_DELAY_MS = 900;
 
 export function useCompanionShell() {
   const locale = useI18n();
+  const { settings } = useAppSettings();
   const t = locale.companion;
   const personas = useMemo(() => getPersonas(locale), [locale]);
+  const triggerPolicy = useMemo(
+    () => getTalkFrequencyPolicy(settings.talkFrequency),
+    [settings.talkFrequency],
+  );
   const [mode, setMode] = useState<CompanionMode>("quiet");
   const [selectedPersonaId, setSelectedPersonaId] =
     useState<PersonaId>("warm_friend");
@@ -60,6 +66,7 @@ export function useCompanionShell() {
   }, []);
 
   useEffect(() => {
+    if (!settings.proactiveTriggerEnabled) return;
     if (triggerPresentedRef.current) return;
 
     const timeoutId = window.setTimeout(() => {
@@ -69,10 +76,16 @@ export function useCompanionShell() {
       setNudge(nextNudge);
       void transitionMode("new_note");
       appendEvent("nudge_shown", "new_note", nextNudge);
-    }, MOCK_TRIGGER_DELAY_MS);
+    }, triggerPolicy.mockTriggerDelayMs);
 
     return () => window.clearTimeout(timeoutId);
-  }, [appendEvent, selectedPersona, transitionMode]);
+  }, [
+    appendEvent,
+    selectedPersona,
+    settings.proactiveTriggerEnabled,
+    transitionMode,
+    triggerPolicy.mockTriggerDelayMs,
+  ]);
 
   const openPocket = useCallback(async () => {
     const intro = generatePocketIntro(nudge, selectedPersona);
@@ -105,6 +118,7 @@ export function useCompanionShell() {
     }
 
     if (mode === "quiet") {
+      if (!settings.proactiveTriggerEnabled) return;
       const nextNudge = generateNudge(MOCK_TRIGGER_TYPE, selectedPersona);
       setNudge(nextNudge);
       appendEvent("nudge_shown", "nudge", nextNudge);
@@ -125,6 +139,7 @@ export function useCompanionShell() {
     nudge,
     openPocket,
     selectedPersona,
+    settings.proactiveTriggerEnabled,
     transitionMode,
   ]);
 
@@ -143,9 +158,10 @@ export function useCompanionShell() {
   }, [transitionMode]);
 
   const openDailyCare = useCallback(async () => {
+    if (!settings.nightCareEnabled) return;
     appendEvent("daily_care_opened", "daily_care", t.dailyCare.intro);
     await transitionMode("daily_care");
-  }, [appendEvent, t.dailyCare.intro, transitionMode]);
+  }, [appendEvent, settings.nightCareEnabled, t.dailyCare.intro, transitionMode]);
 
   const closeDailyCare = useCallback(async () => {
     await transitionMode("quiet");
@@ -219,6 +235,9 @@ export function useCompanionShell() {
     messages,
     timelineEvents,
     showPresence,
+    modelRoute: settings.modelRoute,
+    nightCareEnabled: settings.nightCareEnabled,
+    nickname: settings.nickname,
     setDraft,
     openIcon,
     openPocket,

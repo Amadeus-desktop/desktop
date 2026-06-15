@@ -1,5 +1,10 @@
-import { IosSwitch, SectionHeading, SettingRow, StatusPill } from "../../ui";
+import { IosSwitch, MacInput, SectionHeading, SettingRow, StatusPill } from "../../ui";
+import {
+  formatPrivacyKeywordsInput,
+  parsePrivacyKeywordsInput,
+} from "../../domain/context";
 import { useI18n } from "../../i18n";
+import { useSettings } from "../settings/useSettings";
 import { LiveContextLog } from "./LiveContextLog";
 import { PrivacyFilterCard } from "./PrivacyFilterCard";
 import { usePerceptionStatus } from "./usePerceptionStatus";
@@ -13,10 +18,26 @@ export function PerceptionPanel() {
     setProactiveTriggerEnabled,
     privacyFilterEnabled,
     setPrivacyFilterEnabled,
+    customPrivacyKeywords,
+    setCustomPrivacyKeywords,
+  } = useSettings();
+  const {
     liveContext,
     privacyAssessment,
     screenCapturePermission,
+    contextStatus,
   } = usePerceptionStatus();
+
+  const statusLabel =
+    contextStatus === "error"
+      ? t.perception.status.analysisError
+      : contextStatus === "loading"
+        ? t.perception.status.analysisLoading
+        : privacyAssessment?.isSensitive
+          ? t.perception.status.sensitiveBlocked
+          : analysisEnabled
+            ? t.perception.status.analysisWaiting
+            : t.perception.status.analysisPaused;
 
   return (
     <section className="tab-panel-enter">
@@ -61,9 +82,29 @@ export function PerceptionPanel() {
           label={t.perception.privacyFilter.switchLabel}
         />
       </SettingRow>
+      {privacyFilterEnabled ? (
+        <SettingRow
+          title={t.perception.privacyKeywords.label}
+          subtitle={t.perception.privacyKeywords.subtitle}
+        >
+          <MacInput
+            value={formatPrivacyKeywordsInput(customPrivacyKeywords)}
+            onChange={(value) =>
+              setCustomPrivacyKeywords(parsePrivacyKeywordsInput(value))
+            }
+            label={t.perception.privacyKeywords.inputLabel}
+            className="min-w-[260px] rounded-md border border-white/12 bg-white/8 px-2.5 py-1.5 text-left text-xs text-white outline-none transition focus:border-[#007aff]"
+          />
+        </SettingRow>
+      ) : null}
 
       <SectionHeading>{t.perception.sections.liveContext}</SectionHeading>
-      <LiveContextLog liveContext={liveContext} labels={t.perception.liveContext} />
+      <LiveContextLog
+        liveContext={liveContext}
+        labels={t.perception.liveContext}
+        loading={contextStatus === "loading" && analysisEnabled}
+        loadingLabel={t.perception.status.analysisLoading}
+      />
 
       <div className="mt-3 grid grid-cols-[minmax(0,1fr)_180px] gap-3 max-sm:grid-cols-1">
         <PrivacyFilterCard
@@ -72,12 +113,18 @@ export function PerceptionPanel() {
           permissionStatus={screenCapturePermission}
           labels={t.perception.privacyCard}
         />
-        <StatusPill tone={privacyAssessment?.isSensitive ? "blue" : analysisEnabled ? "green" : "blue"}>
-          {privacyAssessment?.isSensitive
-            ? t.perception.status.sensitiveBlocked
-            : analysisEnabled
-              ? t.perception.status.analysisWaiting
-              : t.perception.status.analysisPaused}
+        <StatusPill
+          tone={
+            contextStatus === "error"
+              ? "blue"
+              : privacyAssessment?.isSensitive
+                ? "blue"
+                : analysisEnabled
+                  ? "green"
+                  : "blue"
+          }
+        >
+          {statusLabel}
         </StatusPill>
       </div>
     </section>

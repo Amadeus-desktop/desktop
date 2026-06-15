@@ -16,6 +16,11 @@ use crate::{
         read_current_snapshot, ContextBridgeState, MacosContextError, MacosContextSnapshot,
     },
     privacy::{assess_privacy, get_screen_capture_permission_status, PrivacyAssessment},
+    settings::{
+        privacy_keywords_for, talk_frequency_cooldown_minutes,
+        talk_frequency_daily_utterance_limit, talk_frequency_poll_interval, AppSettings,
+        SettingsState,
+    },
     timeline::{
         ContextEvent, CreateContextEventInput, CreateUtteranceEventInput, TimelineState,
         UtteranceEvent,
@@ -26,10 +31,6 @@ use scoring::{
     action_for_score, exception_suppression, llm_gate_for_trigger, llm_request_for_trigger,
     select_candidate, suppressed,
 };
-
-const COOLDOWN_MINUTES: i64 = 30;
-const DAILY_UTTERANCE_LIMIT: i64 = 12;
-const AUTOMATIC_POLL_INTERVAL: Duration = Duration::from_secs(60);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -269,16 +270,36 @@ pub fn run_trigger_engine_once(
     timeline_state: State<'_, TimelineState>,
     llm_state: State<'_, LlmState>,
     trigger_state: State<'_, TriggerEngineState>,
+    settings_state: State<'_, SettingsState>,
     keywords: Vec<String>,
 ) -> Result<TriggerRunResult, CommandError> {
+    let settings = settings_state
+        .current()
+        .map_err(|error| CommandError::from(error.to_string()))?;
+    let effective_keywords = if keywords.is_empty() {
+        privacy_keywords_for(&settings)
+    } else {
+        keywords
+    };
     let snapshot = read_current_snapshot(&context_state)?;
-    let privacy = assess_privacy(&snapshot, &keywords);
+    let privacy = assess_privacy(&snapshot, &effective_keywords);
+
+    if !settings.proactive_trigger_enabled {
+        return Ok(TriggerRunResult {
+            snapshot,
+            privacy,
+            evaluation: suppressed("proactive_disabled"),
+            context_event: None,
+            utterance_event: None,
+        });
+    }
+
     let trigger_input = trigger_state
         .runtime
         .lock()
         .map_err(|_| CommandError::from("trigger runtime lock was poisoned".to_string()))?
         .input_for(snapshot.clone(), privacy.clone());
-    let evaluation = evaluate_trigger(trigger_input);
+    let evaluation = evaluate_trigger(trigger_input, &settings);
 
     let (context_event, utterance_event) = if evaluation.should_persist {
         persist_trigger_events(
@@ -315,14 +336,32 @@ pub fn poll_trigger_engine(
     timeline_state: State<'_, TimelineState>,
     llm_state: State<'_, LlmState>,
     trigger_state: State<'_, TriggerEngineState>,
+    settings_state: State<'_, SettingsState>,
     keywords: Vec<String>,
 ) -> Result<TriggerPollResult, CommandError> {
+    let settings = settings_state
+        .current()
+        .map_err(|error| CommandError::from(error.to_string()))?;
+
+    if !settings.proactive_trigger_enabled {
+        return Ok(TriggerPollResult {
+            did_evaluate: false,
+            decision: TriggerPollDecision {
+                ready: false,
+                wait_seconds: 0,
+                suppression_reason: Some("proactive_disabled".to_string()),
+            },
+            run_result: None,
+        });
+    }
+
+    let poll_interval = talk_frequency_poll_interval(&settings.talk_frequency);
     let decision = {
         let mut runtime = trigger_state
             .runtime
             .lock()
             .map_err(|_| CommandError::from("trigger runtime lock was poisoned".to_string()))?;
-        let decision = runtime.automatic_poll_decision(AUTOMATIC_POLL_INTERVAL);
+        let decision = runtime.automatic_poll_decision(poll_interval);
         if decision.ready {
             runtime.record_automatic_evaluation();
         }
@@ -342,6 +381,7 @@ pub fn poll_trigger_engine(
         timeline_state,
         llm_state,
         trigger_state,
+        settings_state,
         keywords,
     )?;
 
@@ -365,19 +405,20 @@ pub fn record_trigger_reaction_for_scoring(
     Ok(runtime.snapshot())
 }
 
-pub fn evaluate_trigger(input: TriggerInput) -> TriggerEvaluation {
+pub fn evaluate_trigger(input: TriggerInput, settings: &AppSettings) -> TriggerEvaluation {
     if input.privacy.should_suppress_utterance {
         return suppressed("privacy");
     }
 
-    if input.utterances_today >= DAILY_UTTERANCE_LIMIT {
+    if input.utterances_today
+        >= talk_frequency_daily_utterance_limit(&settings.talk_frequency)
+    {
         return suppressed("daily_limit");
     }
 
-    if input
-        .recent_utterance_minutes_ago
-        .is_some_and(|minutes| minutes < COOLDOWN_MINUTES)
-    {
+    if input.recent_utterance_minutes_ago.is_some_and(|minutes| {
+        minutes < talk_frequency_cooldown_minutes(&settings.talk_frequency)
+    }) {
         return suppressed("cooldown");
     }
 

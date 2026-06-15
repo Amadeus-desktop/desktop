@@ -1,4 +1,10 @@
+mod apple_vision;
+
 use serde::Serialize;
+use std::sync::Mutex;
+use tauri::State;
+
+pub use apple_vision::platform_ocr_adapter;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CaptureGateInput {
@@ -32,6 +38,108 @@ pub struct OcrObservation {
     pub confidence: f64,
     pub sensitive_hits: usize,
     pub source_ttl_ms: u128,
+}
+
+#[derive(Debug)]
+pub enum OcrError {
+    Unsupported(String),
+    Adapter(String),
+    State(String),
+}
+
+impl std::fmt::Display for OcrError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Unsupported(message) => write!(formatter, "ocr unsupported: {message}"),
+            Self::Adapter(message) => write!(formatter, "ocr adapter error: {message}"),
+            Self::State(message) => write!(formatter, "ocr state error: {message}"),
+        }
+    }
+}
+
+impl std::error::Error for OcrError {}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OcrProviderStatus {
+    pub provider: String,
+    pub available: bool,
+    pub detail: String,
+}
+
+pub trait OcrAdapter: Send {
+    fn id(&self) -> &'static str;
+    fn status(&self) -> OcrProviderStatus;
+    fn recognize_image_bytes(&self, image_bytes: Vec<u8>) -> Result<OcrObservation, OcrError>;
+}
+
+pub struct DisabledOcrAdapter {
+    detail: String,
+}
+
+impl DisabledOcrAdapter {
+    pub fn new(detail: impl Into<String>) -> Self {
+        Self {
+            detail: detail.into(),
+        }
+    }
+}
+
+#[tauri::command]
+pub fn get_ocr_provider_status(state: State<'_, OcrState>) -> OcrProviderStatus {
+    state.status()
+}
+
+impl OcrAdapter for DisabledOcrAdapter {
+    fn id(&self) -> &'static str {
+        "disabled"
+    }
+
+    fn status(&self) -> OcrProviderStatus {
+        OcrProviderStatus {
+            provider: self.id().to_string(),
+            available: false,
+            detail: self.detail.clone(),
+        }
+    }
+
+    fn recognize_image_bytes(&self, _image_bytes: Vec<u8>) -> Result<OcrObservation, OcrError> {
+        Err(OcrError::Unsupported(self.detail.clone()))
+    }
+}
+
+pub struct OcrState {
+    adapter: Mutex<Box<dyn OcrAdapter>>,
+}
+
+impl OcrState {
+    pub fn platform_default() -> Self {
+        Self::new(platform_ocr_adapter())
+    }
+
+    pub fn new(adapter: Box<dyn OcrAdapter>) -> Self {
+        Self {
+            adapter: Mutex::new(adapter),
+        }
+    }
+
+    pub fn status(&self) -> OcrProviderStatus {
+        self.adapter
+            .lock()
+            .map(|adapter| adapter.status())
+            .unwrap_or_else(|_| OcrProviderStatus {
+                provider: "unknown".to_string(),
+                available: false,
+                detail: "ocr adapter lock was poisoned".to_string(),
+            })
+    }
+
+    pub fn recognize_image_bytes(&self, image_bytes: Vec<u8>) -> Result<OcrObservation, OcrError> {
+        self.adapter
+            .lock()
+            .map_err(|_| OcrError::State("ocr adapter lock was poisoned".to_string()))?
+            .recognize_image_bytes(image_bytes)
+    }
 }
 
 #[derive(Debug, Clone)]

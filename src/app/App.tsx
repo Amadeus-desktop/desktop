@@ -1,6 +1,12 @@
+import { useEffect } from "react";
 import { ControlCenter } from "../features/control-center";
+import { ensureSettingsSync } from "../features/settings/appSettingsStore";
 
 function App() {
+  useEffect(() => {
+    ensureSettingsSync();
+  }, []);
+
   return (
     <main
       data-tauri-drag-region

@@ -26,6 +26,7 @@ type PocketChatProps = {
   draft: string;
   timelineEvents: LocalTimelineEvent[];
   devToolsOpen: boolean;
+  nightCareEnabled: boolean;
   labels: CompanionLocale;
   onDraftChange: (value: string) => void;
   onSubmit: () => void;
@@ -43,6 +44,7 @@ export function PocketChat({
   draft,
   timelineEvents,
   devToolsOpen,
+  nightCareEnabled,
   labels,
   onDraftChange,
   onSubmit,
@@ -92,7 +94,7 @@ export function PocketChat({
         )}
       </div>
 
-      {deep ? (
+      {deep && nightCareEnabled ? (
         <div className="shrink-0 px-3 pb-1">
           <button type="button" onClick={onOpenDailyCare} className={companionStyles.textLink}>
             {labels.chat.dailyCareLink}

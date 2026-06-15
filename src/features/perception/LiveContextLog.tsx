@@ -4,6 +4,8 @@ import type { LiveContextStatus } from "./types";
 type LiveContextLogProps = {
   liveContext: LiveContextStatus;
   labels: AppLocale["perception"]["liveContext"];
+  loading?: boolean;
+  loadingLabel?: string;
 };
 
 const rowKeys = [
@@ -13,9 +15,17 @@ const rowKeys = [
   "category",
 ] as const satisfies ReadonlyArray<keyof LiveContextStatus>;
 
-export function LiveContextLog({ liveContext, labels }: LiveContextLogProps) {
+export function LiveContextLog({
+  liveContext,
+  labels,
+  loading = false,
+  loadingLabel,
+}: LiveContextLogProps) {
   return (
     <div className="rounded-lg border border-white/6 bg-black/18 p-4">
+      {loading && loadingLabel ? (
+        <p className="mb-3 text-[11px] text-white/35">{loadingLabel}</p>
+      ) : null}
       {rowKeys.map((key) => (
         <div
           key={key}

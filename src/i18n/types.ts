@@ -117,6 +117,11 @@ export type AppLocale = {
       subtitle: string;
       switchLabel: string;
     };
+    privacyKeywords: {
+      label: string;
+      subtitle: string;
+      inputLabel: string;
+    };
     liveContext: {
       activeApp: string;
       windowTitle: string;
@@ -149,6 +154,17 @@ export type AppLocale = {
       sensitiveBlocked: string;
       analysisWaiting: string;
       analysisPaused: string;
+      analysisLoading: string;
+      analysisError: string;
+    };
+    contextLabels: {
+      idleActive: string;
+      idlePaused: string;
+      categories: {
+        work: string;
+        non_work: string;
+        unknown: string;
+      };
     };
   };
   report: {

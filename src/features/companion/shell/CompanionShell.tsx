@@ -33,6 +33,7 @@ export function CompanionShell() {
           draft={shell.draft}
           timelineEvents={shell.timelineEvents}
           devToolsOpen={devToolsOpen}
+          nightCareEnabled={shell.nightCareEnabled}
           labels={shell.t}
           onDraftChange={shell.setDraft}
           onSubmit={() => void shell.sendMessage()}

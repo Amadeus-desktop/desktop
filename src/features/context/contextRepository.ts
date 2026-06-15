@@ -3,36 +3,16 @@ import { isTauriRuntime } from "../../lib/tauriRuntime";
 import type { ContextEvent } from "../timeline/types";
 import type {
   MacosContextSnapshot,
-  PrivacyAssessment,
   PrivacyCheckedContextEvent,
   PrivacyContext,
   ScreenCapturePermissionStatus,
 } from "./types";
 
-const mockContextSnapshot: MacosContextSnapshot = {
-  appName: "HWP",
-  bundleIdentifier: "com.hancom.hwp",
-  processId: 1001,
-  windowTitle: "2024_공무_보고서.hwp",
-  idleSeconds: 183,
-  category: "work",
-  frontmostDurationMs: 1000 * 60 * 12,
-};
-
-const mockPrivacyAssessment: PrivacyAssessment = {
-  isSensitive: false,
-  reason: null,
-  matchedKeyword: null,
-  shouldSuppressCapture: false,
-  shouldSuppressUtterance: false,
-  redactedWindowTitle: mockContextSnapshot.windowTitle,
-};
-
-const mockPermissionStatus: ScreenCapturePermissionStatus = {
-  platform: "browser",
-  granted: false,
-  canRequest: false,
-};
+import {
+  mockContextSnapshot,
+  mockPermissionStatus,
+  mockPrivacyAssessment,
+} from "../../mocks/context";
 
 export async function getCurrentContextSnapshot(): Promise<MacosContextSnapshot> {
   if (isTauriRuntime()) {

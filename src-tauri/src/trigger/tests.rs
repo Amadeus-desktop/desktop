@@ -2,6 +2,7 @@ use super::*;
 use crate::{
     macos_context::{AppCategory, MacosContextSnapshot},
     privacy::PrivacyAssessment,
+    settings::AppSettings,
 };
 use std::time::Duration;
 
@@ -15,7 +16,7 @@ fn suppresses_sensitive_privacy_context() {
         recent_utterance_minutes_ago: None,
         dismissed_recent_count: 0,
         utterances_today: 0,
-    });
+    }, &AppSettings::default());
 
     assert_eq!(evaluation.action, TriggerAction::NoAction);
     assert!(!evaluation.should_persist);
@@ -55,7 +56,7 @@ fn creates_deep_pause_bubble_for_work_idle() {
         recent_utterance_minutes_ago: None,
         dismissed_recent_count: 0,
         utterances_today: 0,
-    });
+    }, &AppSettings::default());
 
     let candidate = evaluation.candidate.expect("deep pause candidate");
     assert_eq!(candidate.trigger_type, TriggerType::DeepPause);
@@ -74,7 +75,7 @@ fn creates_milestone_conversation_for_long_work_session() {
         recent_utterance_minutes_ago: None,
         dismissed_recent_count: 0,
         utterances_today: 0,
-    });
+    }, &AppSettings::default());
 
     let candidate = evaluation.candidate.expect("milestone candidate");
     assert_eq!(candidate.trigger_type, TriggerType::Milestone);
@@ -93,7 +94,7 @@ fn creates_drift_bubble_for_non_work_duration() {
         recent_utterance_minutes_ago: None,
         dismissed_recent_count: 0,
         utterances_today: 0,
-    });
+    }, &AppSettings::default());
 
     let candidate = evaluation.candidate.expect("drift candidate");
     assert_eq!(candidate.trigger_type, TriggerType::Drift);
@@ -118,7 +119,7 @@ fn spotify_short_foreground_does_not_trigger_drift() {
         recent_utterance_minutes_ago: None,
         dismissed_recent_count: 0,
         utterances_today: 0,
-    });
+    }, &AppSettings::default());
 
     assert_eq!(evaluation.action, TriggerAction::NoAction);
     assert_eq!(
@@ -143,7 +144,7 @@ fn meeting_app_suppresses_deep_pause() {
         recent_utterance_minutes_ago: None,
         dismissed_recent_count: 0,
         utterances_today: 0,
-    });
+    }, &AppSettings::default());
 
     assert_eq!(evaluation.action, TriggerAction::NoAction);
     assert_eq!(evaluation.suppression_reason, Some("meeting".to_string()));
@@ -164,7 +165,7 @@ fn work_cluster_app_switching_suppresses_short_non_work_detour() {
         recent_utterance_minutes_ago: None,
         dismissed_recent_count: 0,
         utterances_today: 0,
-    });
+    }, &AppSettings::default());
 
     assert_eq!(evaluation.action, TriggerAction::NoAction);
     assert_eq!(
@@ -191,7 +192,7 @@ fn expired_meeting_segment_does_not_suppress_later_work() {
         recent_utterance_minutes_ago: None,
         dismissed_recent_count: 0,
         utterances_today: 0,
-    });
+    }, &AppSettings::default());
 
     assert_ne!(evaluation.suppression_reason, Some("meeting".to_string()));
     assert_eq!(evaluation.action, TriggerAction::Bubble);
@@ -218,7 +219,7 @@ fn prior_short_music_foreground_does_not_suppress_youtube_drift() {
         recent_utterance_minutes_ago: None,
         dismissed_recent_count: 0,
         utterances_today: 0,
-    });
+    }, &AppSettings::default());
 
     assert_ne!(
         evaluation.suppression_reason,
@@ -237,7 +238,7 @@ fn suppresses_recent_utterance_cooldown() {
         recent_utterance_minutes_ago: Some(12),
         dismissed_recent_count: 0,
         utterances_today: 0,
-    });
+    }, &AppSettings::default());
 
     assert_eq!(evaluation.action, TriggerAction::NoAction);
     assert!(!evaluation.should_persist);
@@ -254,7 +255,7 @@ fn dismissed_reactions_lower_action_intensity() {
         recent_utterance_minutes_ago: None,
         dismissed_recent_count: 2,
         utterances_today: 0,
-    });
+    }, &AppSettings::default());
 
     assert_eq!(evaluation.action, TriggerAction::StatusOnly);
     assert_eq!(evaluation.speakability_score, 52);
@@ -271,7 +272,7 @@ fn dismissed_reactions_can_suppress_bubble_persistence() {
         recent_utterance_minutes_ago: None,
         dismissed_recent_count: 3,
         utterances_today: 0,
-    });
+    }, &AppSettings::default());
 
     assert_eq!(evaluation.action, TriggerAction::NoAction);
     assert_eq!(evaluation.speakability_score, 34);
@@ -288,7 +289,7 @@ fn suppresses_daily_utterance_limit() {
         recent_utterance_minutes_ago: None,
         dismissed_recent_count: 0,
         utterances_today: 12,
-    });
+    }, &AppSettings::default());
 
     assert_eq!(evaluation.action, TriggerAction::NoAction);
     assert!(!evaluation.should_persist);
@@ -308,7 +309,7 @@ fn suppresses_when_no_trigger_threshold_matches() {
         recent_utterance_minutes_ago: None,
         dismissed_recent_count: 0,
         utterances_today: 0,
-    });
+    }, &AppSettings::default());
 
     assert_eq!(evaluation.action, TriggerAction::NoAction);
     assert!(!evaluation.should_persist);
@@ -328,7 +329,7 @@ fn deep_pause_takes_priority_over_milestone_when_idle_after_long_work() {
         recent_utterance_minutes_ago: None,
         dismissed_recent_count: 0,
         utterances_today: 0,
-    });
+    }, &AppSettings::default());
 
     let candidate = evaluation.candidate.expect("deep pause candidate");
     assert_eq!(candidate.trigger_type, TriggerType::DeepPause);

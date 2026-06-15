@@ -10,6 +10,10 @@ export type GeneralSettings = {
   localFallbackEnabled: boolean;
   nickname: string;
   nightCareEnabled: boolean;
+  analysisEnabled: boolean;
+  proactiveTriggerEnabled: boolean;
+  privacyFilterEnabled: boolean;
+  customPrivacyKeywords: string[];
   localModelPath: string | null;
   llamaServerBinaryPath: string | null;
   llamaServerHost: string;

@@ -1,6 +1,6 @@
 use crate::{llama_sidecar::LlamaSidecarState, llm::LlmState};
 use serde::{Deserialize, Serialize};
-use std::{fs, path::PathBuf, sync::Mutex};
+use std::{fs, path::PathBuf, sync::Mutex, time::Duration};
 use tauri::State;
 
 #[derive(Debug)]
@@ -45,6 +45,10 @@ pub struct AppSettings {
     pub local_fallback_enabled: bool,
     pub nickname: String,
     pub night_care_enabled: bool,
+    pub analysis_enabled: bool,
+    pub proactive_trigger_enabled: bool,
+    pub privacy_filter_enabled: bool,
+    pub custom_privacy_keywords: Vec<String>,
     pub local_model_path: Option<String>,
     pub llama_server_binary_path: Option<String>,
     pub llama_server_host: String,
@@ -60,6 +64,10 @@ impl Default for AppSettings {
             local_fallback_enabled: true,
             nickname: "작업자".to_string(),
             night_care_enabled: true,
+            analysis_enabled: true,
+            proactive_trigger_enabled: true,
+            privacy_filter_enabled: true,
+            custom_privacy_keywords: Vec::new(),
             local_model_path: None,
             llama_server_binary_path: None,
             llama_server_host: "127.0.0.1".to_string(),
@@ -233,6 +241,38 @@ pub fn update_app_settings(
 
 pub fn llama_endpoint(host: &str, port: u16) -> String {
     format!("http://{host}:{port}")
+}
+
+pub fn talk_frequency_cooldown_minutes(talk_frequency: &str) -> i64 {
+    match talk_frequency {
+        "quiet" => 45,
+        "active" => 15,
+        _ => 30,
+    }
+}
+
+pub fn talk_frequency_poll_interval(talk_frequency: &str) -> Duration {
+    match talk_frequency {
+        "quiet" => Duration::from_secs(120),
+        "active" => Duration::from_secs(30),
+        _ => Duration::from_secs(60),
+    }
+}
+
+pub fn talk_frequency_daily_utterance_limit(talk_frequency: &str) -> i64 {
+    match talk_frequency {
+        "quiet" => 6,
+        "active" => 18,
+        _ => 12,
+    }
+}
+
+pub fn privacy_keywords_for(settings: &AppSettings) -> Vec<String> {
+    if settings.privacy_filter_enabled {
+        settings.custom_privacy_keywords.clone()
+    } else {
+        Vec::new()
+    }
 }
 
 #[cfg(test)]
