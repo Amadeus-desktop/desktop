@@ -5,9 +5,14 @@ import { useEffect, useRef } from "react";
 import { isTauriRuntime } from "../../../lib/tauri/runtime";
 import { logger } from "../../../observability/logger";
 import { COMPANION_WINDOW_MEASURE_INSET } from "../lib/measureInsets";
+import {
+  computeCompanionWindowSize,
+  shouldSkipCompanionResize,
+  type CompanionWindowSize,
+} from "./companionWindowSyncPolicy";
 
 let contentElement: HTMLElement | null = null;
-let lastAppliedSize: { width: number; height: number } | null = null;
+let lastAppliedSize: CompanionWindowSize | null = null;
 let syncInFlight = false;
 let pendingSyncElement: HTMLElement | null = null;
 let syncTimer: ReturnType<typeof setTimeout> | null = null;
@@ -26,17 +31,14 @@ export async function syncTauriWindowToElement(element: HTMLElement | null) {
   const window = getCurrentWebviewWindow();
   if (window.label !== "companion") return;
 
-  const { width, height } = element.getBoundingClientRect();
-  const inset = COMPANION_WINDOW_MEASURE_INSET;
-  const nextWidth = Math.max(1, Math.ceil(width) + inset * 2);
-  const nextHeight = Math.max(1, Math.ceil(height) + inset * 2);
-  if (
-    lastAppliedSize?.width === nextWidth &&
-    lastAppliedSize.height === nextHeight
-  ) {
+  const nextSize = computeCompanionWindowSize(
+    element.getBoundingClientRect(),
+    COMPANION_WINDOW_MEASURE_INSET,
+  );
+  if (shouldSkipCompanionResize(lastAppliedSize, nextSize)) {
     logger.info("window", "companion native resize skipped unchanged size", {
-      width: nextWidth,
-      height: nextHeight,
+      width: nextSize.width,
+      height: nextSize.height,
     });
     return;
   }
@@ -45,15 +47,15 @@ export async function syncTauriWindowToElement(element: HTMLElement | null) {
   syncInFlight = true;
 
   try {
-    await window.setSize(new LogicalSize(nextWidth, nextHeight));
-    lastAppliedSize = { width: nextWidth, height: nextHeight };
+    await window.setSize(new LogicalSize(nextSize.width, nextSize.height));
+    lastAppliedSize = nextSize;
     await invoke("sync_companion_window_position");
     const durationMs = performance.now() - beganAt;
     const level = durationMs > 34 ? "warn" : "info";
     logger[level]("window", "companion native resize synced", {
       durationMs: Math.round(durationMs),
-      width: nextWidth,
-      height: nextHeight,
+      width: nextSize.width,
+      height: nextSize.height,
     });
   } finally {
     syncInFlight = false;

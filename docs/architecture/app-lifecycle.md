@@ -446,6 +446,12 @@ P2:
 - onboarding completion fallback layout test를 추가한다.
 - 현재 실패하는 테스트는 expected failure 또는 pending으로 두지 않는다. 구현 slice 안에서 바로 통과시킨다.
 
+진행 상태:
+
+- auth callback URL은 exact app route, exact dev loopback host/port/path만 허용하도록 adapter contract test를 보강했다.
+- companion resize loop 회귀 방지를 위해 native window size 계산과 unchanged-size skip 정책을 pure contract test로 고정했다.
+- 아직 남은 L1a 항목: Rust single-instance argv extraction, dev loopback pending replay, main-only frontend listener, onboarding completion fallback layout test.
+
 ### Phase L1b: Rust App Lifecycle Split
 
 - `app_lifecycle` module 추가.

@@ -62,4 +62,22 @@ describe("toAuthUser", () => {
     expect(extractAuthCallbackCode("amadeus://settings/callback?code=oauth-code")).toBeNull();
     expect(extractAuthCallbackCode("http://localhost:1420?code=oauth-code")).toBeNull();
   });
+
+  it("rejects fake auth callback URLs that do not match the exact route", () => {
+    expect(extractAuthCallbackCode("amadeus://auth.evil/callback?code=oauth-code")).toBeNull();
+    expect(extractAuthCallbackCode("amadeus://auth/callback/extra?code=oauth-code")).toBeNull();
+    expect(extractAuthCallbackCode("amadeus://auth/callback")).toBeNull();
+  });
+
+  it("accepts only loopback dev callbacks on the configured port and path", () => {
+    expect(
+      extractAuthCallbackCode("http://localhost:17421/auth/callback?code=oauth-code"),
+    ).toBe("oauth-code");
+    expect(
+      extractAuthCallbackCode("http://127.0.0.1:17422/auth/callback?code=oauth-code"),
+    ).toBeNull();
+    expect(
+      extractAuthCallbackCode("http://example.com:17421/auth/callback?code=oauth-code"),
+    ).toBeNull();
+  });
 });
