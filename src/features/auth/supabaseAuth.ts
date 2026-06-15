@@ -1,8 +1,15 @@
 import type { User } from "@supabase/supabase-js";
+import { invoke } from "@tauri-apps/api/core";
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { isTauriRuntime } from "../../lib/tauriRuntime";
 import { getSupabaseClient } from "../../lib/supabase/client";
 import type { AuthUser } from "./types";
 
 type SupabaseUserLike = Pick<User, "id" | "email" | "app_metadata" | "user_metadata">;
+
+export const AMADEUS_AUTH_CALLBACK_URL = "amadeus://auth/callback";
+export const AMADEUS_DEV_AUTH_CALLBACK_URL = "http://127.0.0.1:1421/auth/callback";
+export const AMADEUS_AUTH_CALLBACK_EVENT = "amadeus-auth-callback";
 
 export function toAuthUser(user: SupabaseUserLike): AuthUser {
   const name =
@@ -33,14 +40,96 @@ export async function getCurrentSupabaseUser(): Promise<AuthUser | null> {
 
 export async function signInWithGoogle(): Promise<AuthUser | null> {
   const supabase = getSupabaseClient();
-  const { error } = await supabase.auth.signInWithOAuth({
+  const shouldOpenExternalBrowser = isTauriRuntime();
+  const redirectTo = await resolveGoogleOAuthRedirectUrl(shouldOpenExternalBrowser);
+  const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: window.location.origin,
+      redirectTo,
+      skipBrowserRedirect: shouldOpenExternalBrowser,
     },
   });
   if (error) {
     throw error;
+  }
+
+  if (shouldOpenExternalBrowser) {
+    if (!data.url) {
+      throw new Error("Supabase did not return an OAuth redirect URL");
+    }
+    await openUrl(data.url);
+    return null;
+  }
+
+  return getCurrentSupabaseUser();
+}
+
+export function getGoogleOAuthRedirectUrl(
+  shouldUseAppDeepLink = isTauriRuntime(),
+  origin = typeof window === "undefined" ? "" : window.location.origin,
+) {
+  if (!shouldUseAppDeepLink) return origin;
+  return isLocalDevOrigin(origin) ? AMADEUS_DEV_AUTH_CALLBACK_URL : AMADEUS_AUTH_CALLBACK_URL;
+}
+
+async function resolveGoogleOAuthRedirectUrl(shouldUseAppDeepLink: boolean) {
+  const redirectUrl = getGoogleOAuthRedirectUrl(shouldUseAppDeepLink);
+  if (redirectUrl !== AMADEUS_DEV_AUTH_CALLBACK_URL) return redirectUrl;
+
+  return invoke<string>("start_dev_auth_callback_server");
+}
+
+export function extractAuthCallbackCode(callbackUrl: string): string | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(callbackUrl);
+  } catch {
+    return null;
+  }
+
+  if (!isSupportedAuthCallbackUrl(parsed)) return null;
+
+  const code = parsed.searchParams.get("code");
+  return code && code.trim() ? code : null;
+}
+
+function isSupportedAuthCallbackUrl(parsed: URL) {
+  const isAmadeusAuthCallback =
+    parsed.protocol === "amadeus:" &&
+    parsed.hostname === "auth" &&
+    parsed.pathname === "/callback";
+  const isDevLoopbackCallback =
+    (parsed.protocol === "http:" || parsed.protocol === "https:") &&
+    (parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost") &&
+    parsed.port === "1421" &&
+    parsed.pathname === "/auth/callback";
+
+  return isAmadeusAuthCallback || isDevLoopbackCallback;
+}
+
+function isLocalDevOrigin(origin: string) {
+  try {
+    const parsed = new URL(origin);
+    return (
+      (parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost") &&
+      parsed.port === "1420"
+    );
+  } catch {
+    return false;
+  }
+}
+
+export async function completeSupabaseAuthCallback(callbackUrl: string) {
+  const code = extractAuthCallbackCode(callbackUrl);
+  if (!code) return null;
+
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+  if (error) {
+    throw error;
+  }
+  if (data.user) {
+    return toAuthUser(data.user);
   }
   return getCurrentSupabaseUser();
 }

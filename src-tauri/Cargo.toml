@@ -45,3 +45,4 @@ objc2-foundation = { version = "0.3", default-features = false, features = ["std
 ureq = { version = "2", default-features = false, features = ["json"] }
 objc2-vision = { version = "0.3.2", default-features = false, features = ["std", "VNRecognizeTextRequest", "VNObservation", "VNRequestHandler", "VNRequest", "objc2-core-image", "objc2-image-io"] }
 tauri-plugin-deep-link = "2"
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }

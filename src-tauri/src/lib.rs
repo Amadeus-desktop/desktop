@@ -29,11 +29,18 @@ use settings::{get_app_settings, llama_endpoint, update_app_settings, SettingsSt
 use shared::constants::{
     APP_DATABASE_FILE_NAME, APP_LOG_FILE_NAME, APP_NAME, APP_SETTINGS_FILE_NAME,
 };
+use std::{
+    io::{Read, Write},
+    net::{TcpListener, TcpStream},
+    sync::atomic::{AtomicBool, Ordering},
+    thread,
+    time::Duration,
+};
 use tauri::{
     image::Image,
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Manager, WindowEvent,
+    Emitter, Manager, WindowEvent,
 };
 use timeline::{
     clear_local_timeline_data, create_context_event, create_local_memory, create_user_reaction,
@@ -49,6 +56,14 @@ const TRAY_ID: &str = "amadeus_menu_bar";
 const TRAY_OPEN_AMADEUS_ID: &str = "open_amadeus";
 const TRAY_TOGGLE_COMPANION_ID: &str = "toggle_companion";
 const TRAY_QUIT_AMADEUS_ID: &str = "quit_amadeus";
+const DEV_AUTH_CALLBACK_URL: &str = "http://127.0.0.1:1421/auth/callback";
+const AUTH_CALLBACK_EVENT: &str = "amadeus-auth-callback";
+static DEV_AUTH_CALLBACK_SERVER_RUNNING: AtomicBool = AtomicBool::new(false);
+
+#[derive(Debug, Clone, serde::Serialize)]
+struct AuthCallbackPayload {
+    url: String,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ResidentWindowCloseAction {
@@ -85,6 +100,127 @@ fn sync_companion_window_position(app: tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("companion") {
         position_companion_window(&window);
     }
+}
+
+#[tauri::command]
+fn start_dev_auth_callback_server(app: tauri::AppHandle) -> Result<String, String> {
+    if DEV_AUTH_CALLBACK_SERVER_RUNNING
+        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+        .is_err()
+    {
+        return Ok(DEV_AUTH_CALLBACK_URL.to_string());
+    }
+
+    let listener = TcpListener::bind("127.0.0.1:1421").map_err(|error| {
+        DEV_AUTH_CALLBACK_SERVER_RUNNING.store(false, Ordering::SeqCst);
+        format!("dev auth callback bind failed: {error}")
+    })?;
+    listener.set_nonblocking(false).map_err(|error| {
+        DEV_AUTH_CALLBACK_SERVER_RUNNING.store(false, Ordering::SeqCst);
+        format!("dev auth callback configure failed: {error}")
+    })?;
+
+    thread::spawn(move || {
+        if let Err(error) = serve_dev_auth_callback(app, listener) {
+            log_error(
+                LogArea::Auth,
+                format!("dev auth callback server failed: {error}"),
+            );
+        }
+        DEV_AUTH_CALLBACK_SERVER_RUNNING.store(false, Ordering::SeqCst);
+    });
+
+    Ok(DEV_AUTH_CALLBACK_URL.to_string())
+}
+
+fn serve_dev_auth_callback(app: tauri::AppHandle, listener: TcpListener) -> std::io::Result<()> {
+    listener.set_nonblocking(true)?;
+    let deadline = std::time::Instant::now() + Duration::from_secs(300);
+
+    loop {
+        match listener.accept() {
+            Ok((mut stream, _)) => {
+                handle_dev_auth_callback_stream(&app, &mut stream)?;
+                return Ok(());
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                if std::time::Instant::now() >= deadline {
+                    return Ok(());
+                }
+                thread::sleep(Duration::from_millis(50));
+            }
+            Err(error) => return Err(error),
+        }
+    }
+}
+
+fn handle_dev_auth_callback_stream(
+    app: &tauri::AppHandle,
+    stream: &mut TcpStream,
+) -> std::io::Result<()> {
+    let mut buffer = [0_u8; 4096];
+    let bytes_read = stream.read(&mut buffer)?;
+    let request = String::from_utf8_lossy(&buffer[..bytes_read]);
+    let Some(callback_url) = dev_auth_callback_url_from_request(&request) else {
+        write_dev_auth_callback_response(stream, 400, "Invalid Amadeus auth callback")?;
+        return Ok(());
+    };
+
+    let payload = AuthCallbackPayload { url: callback_url };
+    if let Err(error) = app.emit(AUTH_CALLBACK_EVENT, payload) {
+        log_error(
+            LogArea::Auth,
+            format!("dev auth callback event emit failed: {error}"),
+        );
+        write_dev_auth_callback_response(stream, 500, "Amadeus auth callback failed")?;
+        return Ok(());
+    }
+
+    write_dev_auth_callback_response(
+        stream,
+        200,
+        "Amadeus login completed. You can close this tab.",
+    )
+}
+
+fn dev_auth_callback_url_from_request(request: &str) -> Option<String> {
+    let request_line = request.lines().next()?;
+    let mut parts = request_line.split_whitespace();
+    let method = parts.next()?;
+    let target = parts.next()?;
+    if method != "GET" || !target.starts_with("/auth/callback?") {
+        return None;
+    }
+    if !target
+        .trim_start_matches("/auth/callback?")
+        .split('&')
+        .any(|part| part.starts_with("code="))
+    {
+        return None;
+    }
+
+    Some(format!("http://127.0.0.1:1421{target}"))
+}
+
+fn write_dev_auth_callback_response(
+    stream: &mut TcpStream,
+    status: u16,
+    message: &str,
+) -> std::io::Result<()> {
+    let status_text = match status {
+        200 => "OK",
+        400 => "Bad Request",
+        _ => "Internal Server Error",
+    };
+    let body = format!(
+        "<!doctype html><meta charset=\"utf-8\"><title>Amadeus</title><body>{message}</body>"
+    );
+    write!(
+        stream,
+        "HTTP/1.1 {status} {status_text}\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+        body.len(),
+        body
+    )
 }
 
 /// Position the companion overlay at the bottom-right of the primary monitor work area.
@@ -344,6 +480,10 @@ fn setup_menu_bar(app: &tauri::App) -> tauri::Result<()> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            show_main_window(app);
+        }))
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             let app_data_dir = app.path().app_data_dir()?;
@@ -433,7 +573,8 @@ pub fn run() {
             recognize_captured_image,
             capture_primary_display_ocr,
             generate_test_utterance,
-            generate_chat_reply
+            generate_chat_reply,
+            start_dev_auth_callback_server
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -478,5 +619,22 @@ mod tests {
             TrayMenuAction::QuitAmadeus
         );
         assert_eq!(tray_menu_action("unknown"), TrayMenuAction::Ignore);
+    }
+
+    #[test]
+    fn parses_dev_auth_callback_request() {
+        let request = "GET /auth/callback?code=oauth-code&state=state HTTP/1.1\r\nHost: 127.0.0.1:1421\r\n\r\n";
+
+        assert_eq!(
+            dev_auth_callback_url_from_request(request),
+            Some("http://127.0.0.1:1421/auth/callback?code=oauth-code&state=state".to_string())
+        );
+    }
+
+    #[test]
+    fn rejects_dev_auth_callback_without_code() {
+        let request = "GET /auth/callback?state=state HTTP/1.1\r\nHost: 127.0.0.1:1421\r\n\r\n";
+
+        assert_eq!(dev_auth_callback_url_from_request(request), None);
     }
 }

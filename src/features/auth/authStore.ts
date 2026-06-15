@@ -1,8 +1,12 @@
 import { createExternalStore } from "../../lib/createExternalStore";
+import { isTauriRuntime } from "../../lib/tauriRuntime";
 import { logger } from "../../observability/logger";
 import { getOnboardingSnapshot, hydrateOnboardingProgress } from "../onboarding/onboardingStore";
 import { animateMainWindowToControlCenter, animateMainWindowToOnboarding } from "./mainWindowLayout";
 import {
+  AMADEUS_AUTH_CALLBACK_EVENT,
+  completeSupabaseAuthCallback,
+  extractAuthCallbackCode,
   getCurrentSupabaseUser,
   signInWithGoogle,
   signOutSupabase,
@@ -17,6 +21,10 @@ const authStore = createExternalStore<AuthSnapshot>({
 });
 
 let hydratePromise: Promise<AuthUser | null> | null = null;
+let deepLinkAuthPromise: Promise<void> | null = null;
+let deepLinkUnlisten: (() => void) | null = null;
+let loopbackUnlisten: (() => void) | null = null;
+const consumedAuthCodes = new Set<string>();
 
 export function getAuthSnapshot() {
   return authStore.getSnapshot();
@@ -28,6 +36,12 @@ export function subscribeToAuth(listener: () => void) {
 
 function replaceSnapshot(user: AuthUser | null, hydrated = authStore.getSnapshot().hydrated) {
   authStore.setSnapshot({ user, hydrated });
+}
+
+function applyAuthenticatedUser(user: AuthUser) {
+  writeStoredUser(user);
+  replaceSnapshot(user, true);
+  hydrateOnboardingProgress();
 }
 
 function readStoredUser(): AuthUser | null {
@@ -79,6 +93,7 @@ export function hydrateAuth() {
   }
 
   if (!hydratePromise) {
+    startDeepLinkAuthListener();
     hydratePromise = getCurrentSupabaseUser().then((supabaseUser) => {
       const user = supabaseUser ?? readStoredUser();
       replaceSnapshot(user, true);
@@ -93,18 +108,18 @@ export function hydrateAuth() {
 function bootstrapAuth() {
   const snapshot = authStore.getSnapshot();
   if (typeof window === "undefined" || snapshot.hydrated) return;
+  startDeepLinkAuthListener();
   authStore.setSnapshot({ user: readStoredUser(), hydrated: true }, { notify: false });
 }
 
 bootstrapAuth();
 
 export async function signInWithGoogleAuth(): Promise<AuthUser | null> {
+  startDeepLinkAuthListener();
   const user = await signInWithGoogle();
   if (!user) return null;
 
-  writeStoredUser(user);
-  replaceSnapshot(user, true);
-  hydrateOnboardingProgress();
+  applyAuthenticatedUser(user);
   if (getOnboardingSnapshot().progress.setupDone) {
     try {
       await animateMainWindowToControlCenter();
@@ -115,7 +130,62 @@ export async function signInWithGoogleAuth(): Promise<AuthUser | null> {
   return user;
 }
 
+function startDeepLinkAuthListener() {
+  if (!isTauriRuntime() || deepLinkAuthPromise) return;
+
+  deepLinkAuthPromise = import("@tauri-apps/plugin-deep-link")
+    .then(async ({ getCurrent, onOpenUrl }) => {
+      await startLoopbackAuthListener();
+      const currentUrls = await getCurrent();
+      await consumeAuthDeepLinks(currentUrls ?? []);
+      deepLinkUnlisten = await onOpenUrl((urls) => {
+        void consumeAuthDeepLinks(urls);
+      });
+    })
+    .catch((error) => {
+      logger.error("auth", "deep link auth listener failed", { error });
+      deepLinkAuthPromise = null;
+    });
+}
+
+async function startLoopbackAuthListener() {
+  if (loopbackUnlisten) return;
+
+  const { listen } = await import("@tauri-apps/api/event");
+  loopbackUnlisten = await listen<{ url?: string }>(AMADEUS_AUTH_CALLBACK_EVENT, (event) => {
+    const url = event.payload.url;
+    if (typeof url !== "string") return;
+    void consumeAuthDeepLinks([url]);
+  });
+}
+
+async function consumeAuthDeepLinks(urls: string[]) {
+  for (const url of urls) {
+    const code = extractAuthCallbackCode(url);
+    if (!code || consumedAuthCodes.has(code)) continue;
+    consumedAuthCodes.add(code);
+
+    try {
+      const user = await completeSupabaseAuthCallback(url);
+      if (!user) continue;
+      applyAuthenticatedUser(user);
+      if (getOnboardingSnapshot().progress.setupDone) {
+        await animateMainWindowToControlCenter();
+      }
+      return;
+    } catch (error) {
+      logger.error("auth", "supabase auth callback failed", { error });
+    }
+  }
+}
+
 export function signOut() {
+  deepLinkUnlisten?.();
+  loopbackUnlisten?.();
+  deepLinkUnlisten = null;
+  loopbackUnlisten = null;
+  deepLinkAuthPromise = null;
+  consumedAuthCodes.clear();
   writeStoredUser(null);
   replaceSnapshot(null, true);
 }

@@ -18,6 +18,7 @@ pub enum LogLevel {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LogArea {
+    Auth,
     Window,
 }
 
@@ -33,6 +34,7 @@ impl LogLevel {
 impl LogArea {
     fn as_str(self) -> &'static str {
         match self {
+            Self::Auth => "auth",
             Self::Window => "window",
         }
     }

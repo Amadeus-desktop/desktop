@@ -30,6 +30,19 @@ Configure Google as a Supabase Auth provider using:
 
 Those values belong in Supabase Auth provider configuration. They are not read by the Tauri client.
 
+OAuth redirects are split across Google and Supabase:
+
+- Google Cloud Console authorized redirect URI: `https://<project-ref>.supabase.co/auth/v1/callback`
+- Supabase Auth redirect URL for installed app builds: `amadeus://auth/callback`
+- Supabase Auth redirect URL for Tauri dev builds: `http://127.0.0.1:1421/auth/callback`
+- Supabase Auth redirect URL for browser-only local development: `http://localhost:1420`
+
+The Tauri app starts Google OAuth in the system browser and uses `amadeus://auth/callback` to return to the app. The app then exchanges the PKCE `code` for a Supabase session.
+
+In Tauri dev builds, macOS cannot runtime-register a dev deep link handler. The app starts a one-shot loopback callback server on `127.0.0.1:1421`, receives the OAuth `code`, and exchanges it from the same Tauri WebView session that created the PKCE verifier.
+
+On macOS, the `amadeus://` handler is registered from the app bundle `Info.plist`. If Chrome reports that `amadeus://` has no registered handler, build or launch the bundled `.app` once so LaunchServices can see the scheme registration.
+
 ## Deploy
 
 ```bash
