@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
-import { useLifecycleFetch } from "../../../lib/useLifecycleFetch";
-import { listTimelineEvents } from "../../timeline/timelineRepository";
+import { useLifecycleFetch } from "../../../lib/hooks/useLifecycleFetch";
+import { listTimelineEvents } from "../../timeline";
 import type { TimelineEvent } from "../../timeline/types";
 
 export function useCompanionTimeline() {

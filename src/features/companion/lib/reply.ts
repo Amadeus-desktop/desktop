@@ -1,5 +1,5 @@
 import type { Persona } from "../../../domain/persona/types";
-import { generateChatReply } from "../../llm/llmRepository";
+import { generateChatReply } from "../../llm";
 import type { GeneralSettings } from "../../settings/types";
 import type { CompanionMessage } from "../types";
 import type { LlmGeneration } from "../../llm/types";

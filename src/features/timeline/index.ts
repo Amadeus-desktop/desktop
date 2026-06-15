@@ -3,7 +3,7 @@ export {
   createUserReaction,
   createUtteranceEvent,
   listTimelineEvents,
-} from "./timelineRepository";
+} from "./adapters/timelineRepository";
 export type {
   ContextEvent,
   CreateContextEventInput,

@@ -1,8 +1,8 @@
-export { LiveContextLog } from "./LiveContextLog";
-export { PerceptionPanel } from "./PerceptionPanel";
-export { PrivacyFilterCard } from "./PrivacyFilterCard";
-export { getOcrProviderStatus, recognizeCapturedImage } from "./ocrRepository";
-export { usePerceptionStatus } from "./usePerceptionStatus";
+export { LiveContextLog } from "./components/LiveContextLog";
+export { PerceptionPanel } from "./components/PerceptionPanel";
+export { PrivacyFilterCard } from "./components/PrivacyFilterCard";
+export { getOcrProviderStatus, recognizeCapturedImage } from "./adapters/ocrRepository";
+export { usePerceptionStatus } from "./hooks/usePerceptionStatus";
 export type {
   CaptureMetadata,
   LiveContextStatus,

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { getTalkFrequencyPolicy } from "../../../domain/settings/policy";
 import { getPrivacyKeywords } from "../../../domain/settings";
-import { useLifecycleFetch } from "../../../lib/useLifecycleFetch";
-import { pollTriggerEngine } from "../../trigger/triggerRepository";
+import { useLifecycleFetch } from "../../../lib/hooks/useLifecycleFetch";
+import { pollTriggerEngine } from "../../trigger";
 import type { TriggerAction } from "../../trigger/types";
 import type { GeneralSettings } from "../../settings/types";
 

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { setLocale } from "../../i18n";
-import { useAppSettings } from "../../features/settings/appSettingsStore";
+import { useAppSettings } from "../../features/settings";
 import { applyAccentColor } from "./applyAccentColor";
 import {
   DEFAULT_ACCENT_COLOR,

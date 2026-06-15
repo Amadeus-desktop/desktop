@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useTauriCompanionWindow } from "../window/useTauriCompanionWindow";
+import { useTauriCompanionWindow } from "../hooks/useTauriCompanionWindow";
 import { companionStyles } from "../ui/styles";
 
 type CompanionViewportProps = {

@@ -1,13 +1,13 @@
 import { useEffect } from "react";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { isTauriRuntime } from "../../../lib/tauriRuntime";
+import { isTauriRuntime } from "../../../lib/tauri/runtime";
 import {
   writeControlCenterWindowSize,
 } from "../../../ui/layout/controlCenterPreferences";
 import {
   clampControlCenterSize,
   readMainWindowLogicalSize,
-} from "../../auth/mainWindowLayout";
+} from "../../auth/lib/mainWindowLayout";
 
 export function useControlCenterWindow(enabled = true) {
   useEffect(() => {

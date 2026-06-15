@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Group, Panel } from "react-resizable-panels";
-import { cn } from "../../../../lib/cn";
+import { cn } from "../../../../lib/utils/cn";
 import { companionStyles } from "../../ui/styles";
 
 type CompanionPanelLayoutProps = {

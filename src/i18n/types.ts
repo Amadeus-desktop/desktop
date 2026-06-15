@@ -324,38 +324,60 @@ export type AppLocale = {
       logout: string;
       loggingOut: string;
     };
+    profile: {
+      eyebrow: string;
+      title: string;
+      description: string;
+      displayNameLabel: string;
+      displayNameHint: string;
+      emailLabel: string;
+      openSettings: string;
+      modelRouteLabel: string;
+      modelRouteHint: string;
+    };
   };
   onboarding: {
     steps: {
       login: string;
       permissions: string;
+      modelRoute: string;
       setup: string;
     };
     permissions: {
       headline: string;
       subheadline: string;
-      bullets: string[];
-      screenStatus: string;
-      ocrStatus: string;
+      promiseChips: string[];
+      statusLabel: string;
       granted: string;
       needed: string;
-      unavailable: string;
       checking: string;
       requestAccess: string;
-      openSettings: string;
-      checkAgain: string;
+      settingsHint: string;
+      requestFailed: string;
       next: string;
       skip: string;
     };
     setup: {
       headline: string;
       subheadline: string;
-      modelLabel: string;
-      modelApi: string;
-      modelLocal: string;
-      modelLocalHint: string;
-      personaLabel: string;
       continue: string;
+    };
+    modelRoute: {
+      headline: string;
+      subheadline: string;
+      continue: string;
+      apiHint: string;
+      localHint: string;
+      options: {
+        api: {
+          title: string;
+          description: string;
+        };
+        local: {
+          title: string;
+          description: string;
+        };
+      };
     };
   };
   persona: {

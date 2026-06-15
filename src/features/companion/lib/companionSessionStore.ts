@@ -1,4 +1,4 @@
-import { createExternalStore } from "../../../lib/createExternalStore";
+import { createExternalStore } from "../../../lib/store/createExternalStore";
 import type { CompanionMessage, CompanionMode } from "../types";
 
 export type CompanionSessionSnapshot = {

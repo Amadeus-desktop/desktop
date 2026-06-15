@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { cn } from "../lib/cn";
+import { cn } from "../lib/utils/cn";
 import { ControlCenter } from "../features/control-center";
 import { useControlCenterWindow } from "../features/control-center/hooks/useControlCenterWindow";
 import { hydrateAuth, useAuth, useAuthWindow } from "../features/auth";
@@ -8,18 +8,24 @@ import {
   OnboardingFlow,
   useOnboarding,
 } from "../features/onboarding";
-import { ensureSettingsSync } from "../features/settings/appSettingsStore";
-import { useShellTheme } from "../ui/theme/useShellTheme";
+import { ensureSettingsSync } from "../features/settings";
+import { useShellTheme } from "../ui";
 
 function App() {
-  const { hydrated: authHydrated, isAuthenticated } = useAuth();
-  const onboarding = useOnboarding(isAuthenticated);
+  const { hydrated: authHydrated, isAuthenticated, logoutTransitioning } = useAuth();
+  const onboarding = useOnboarding(isAuthenticated, logoutTransitioning);
   useShellTheme();
 
-  const { showOnboardingShell, isComplete } = onboarding;
+  const showOnboardingShell =
+    logoutTransitioning || onboarding.showOnboardingShell;
+  const { isComplete } = onboarding;
 
-  useAuthWindow(showOnboardingShell, authHydrated && onboarding.hydrated);
-  useControlCenterWindow(isAuthenticated && isComplete);
+  useAuthWindow(
+    showOnboardingShell,
+    authHydrated && onboarding.hydrated,
+    logoutTransitioning,
+  );
+  useControlCenterWindow(isAuthenticated && isComplete && !logoutTransitioning);
 
   useEffect(() => {
     void hydrateAuth();
@@ -45,15 +51,16 @@ function App() {
           !showOnboardingShell && "app-no-drag",
         )}
       >
-        {isComplete ? (
-          <ControlCenter />
-        ) : (
+        {showOnboardingShell ? (
           <OnboardingFlow
             currentStep={onboarding.currentStep}
             stepOrder={onboarding.stepOrder}
             markPermissionsDone={onboarding.markPermissionsDone}
+            markModelRouteDone={onboarding.markModelRouteDone}
             markSetupDone={onboarding.markSetupDone}
           />
+        ) : (
+          <ControlCenter />
         )}
       </div>
     </main>

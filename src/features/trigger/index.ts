@@ -2,7 +2,7 @@ export {
   pollTriggerEngine,
   recordTriggerReactionForScoring,
   runTriggerEngineOnce,
-} from "./triggerRepository";
+} from "./adapters/triggerRepository";
 export type {
   TriggerAction,
   TriggerCandidate,

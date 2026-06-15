@@ -1,5 +1,5 @@
 import type { PersonaId } from "../../../../domain/persona/types";
-import { cn } from "../../../../lib/cn";
+import { cn } from "../../../../lib/utils/cn";
 import { PersonaPresenceIcon } from "../../ui/PersonaPresenceIcon";
 
 type ChatAvatarProps = {

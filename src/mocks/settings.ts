@@ -1,5 +1,5 @@
 import type { GeneralSettings } from "../features/settings/types";
-import { initialSettings } from "../features/settings/settings";
+import { initialSettings } from "../features/settings";
 
 let browserSettings: GeneralSettings = { ...initialSettings };
 

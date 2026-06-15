@@ -1,4 +1,4 @@
-import { cn } from "../../../lib/cn";
+import { cn } from "../../../lib/utils/cn";
 import type { CompanionLocale } from "../../../i18n";
 import type { PersonaId } from "../../../domain/persona/types";
 import { PersonaPresenceIcon } from "../ui/PersonaPresenceIcon";

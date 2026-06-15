@@ -1,23 +1,31 @@
-export { AdvancedSection } from "./AdvancedSection";
-export { AppErrorBoundary } from "./AppErrorBoundary";
-export { Button } from "./Button";
-export { glassStyles, shellText } from "./glassStyles";
-export { MacSelect } from "./MacSelect";
-export { SettingsGroup, SettingsGroupContext, useSettingsGroup } from "./SettingsGroup";
-export { IosSwitch } from "./IosSwitch";
-export { MacInput } from "./MacInput";
-export { SegmentedControl } from "./SegmentedControl";
-export { SettingSelect } from "./SettingSelect";
-export { MacWindow } from "./MacWindow";
-export { PanelHeader } from "./PanelHeader";
-export { SidebarBrand } from "./SidebarBrand";
-export { ReportCard } from "./ReportCard";
-export { AppShellLayout, ResizableColumns } from "./ResizableColumns";
-export { SectionHeading } from "./SectionHeading";
-export { SettingRow } from "./SettingRow";
-export { Sidebar } from "./Sidebar";
-export { SidebarItem } from "./SidebarItem";
-export { StatusPill } from "./StatusPill";
-export { TimelineList } from "./TimelineList";
-export { WindowControls } from "./WindowControls";
-export { WindowDragStrip } from "./WindowDragStrip";
+export { AdvancedSection } from "./components/AdvancedSection";
+export { AppErrorBoundary } from "./components/AppErrorBoundary";
+export { Button } from "./components/Button";
+export { glassStyles, shellText } from "./lib/glassStyles";
+export { MacSelect } from "./components/MacSelect";
+export {
+  SettingsGroup,
+  SettingsGroupContext,
+  useSettingsGroup,
+} from "./components/SettingsGroup";
+export { IosSwitch } from "./components/IosSwitch";
+export { MacInput } from "./components/MacInput";
+export { SegmentedControl } from "./components/SegmentedControl";
+export { SettingSelect } from "./components/SettingSelect";
+export { MacWindow } from "./components/MacWindow";
+export { PanelHeader } from "./components/PanelHeader";
+export { SidebarBrand } from "./components/SidebarBrand";
+export { ReportCard } from "./components/ReportCard";
+export { AppShellLayout, ResizableColumns } from "./components/ResizableColumns";
+export { SectionHeading } from "./components/SectionHeading";
+export { SettingRow } from "./components/SettingRow";
+export { Sidebar } from "./components/Sidebar";
+export { SidebarItem } from "./components/SidebarItem";
+export { StatusPill } from "./components/StatusPill";
+export { TimelineList } from "./components/TimelineList";
+export { UserAvatar } from "./components/UserAvatar";
+export { WindowDragStrip } from "./components/WindowDragStrip";
+export { createWindowDragHandler, startWindowDrag } from "./lib/windowDrag";
+export { useShellTheme } from "./theme/useShellTheme";
+export { applyAccentColor } from "./theme/applyAccentColor";
+export { applyAppearance } from "./theme/applyAppearance";

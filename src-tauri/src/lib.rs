@@ -56,7 +56,8 @@ const TRAY_ID: &str = "amadeus_menu_bar";
 const TRAY_OPEN_AMADEUS_ID: &str = "open_amadeus";
 const TRAY_TOGGLE_COMPANION_ID: &str = "toggle_companion";
 const TRAY_QUIT_AMADEUS_ID: &str = "quit_amadeus";
-const DEV_AUTH_CALLBACK_URL: &str = "http://127.0.0.1:1421/auth/callback";
+const DEV_AUTH_CALLBACK_PORT: u16 = 17421;
+const DEV_AUTH_CALLBACK_URL: &str = "http://127.0.0.1:17421/auth/callback";
 const AUTH_CALLBACK_EVENT: &str = "amadeus-auth-callback";
 static DEV_AUTH_CALLBACK_SERVER_RUNNING: AtomicBool = AtomicBool::new(false);
 
@@ -111,7 +112,7 @@ fn start_dev_auth_callback_server(app: tauri::AppHandle) -> Result<String, Strin
         return Ok(DEV_AUTH_CALLBACK_URL.to_string());
     }
 
-    let listener = TcpListener::bind("127.0.0.1:1421").map_err(|error| {
+    let listener = TcpListener::bind(format!("127.0.0.1:{DEV_AUTH_CALLBACK_PORT}")).map_err(|error| {
         DEV_AUTH_CALLBACK_SERVER_RUNNING.store(false, Ordering::SeqCst);
         format!("dev auth callback bind failed: {error}")
     })?;
@@ -138,15 +139,17 @@ fn serve_dev_auth_callback(app: tauri::AppHandle, listener: TcpListener) -> std:
     let deadline = std::time::Instant::now() + Duration::from_secs(300);
 
     loop {
+        if std::time::Instant::now() >= deadline {
+            return Ok(());
+        }
+
         match listener.accept() {
             Ok((mut stream, _)) => {
-                handle_dev_auth_callback_stream(&app, &mut stream)?;
-                return Ok(());
-            }
-            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
-                if std::time::Instant::now() >= deadline {
+                if handle_dev_auth_callback_stream(&app, &mut stream)? {
                     return Ok(());
                 }
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
                 thread::sleep(Duration::from_millis(50));
             }
             Err(error) => return Err(error),
@@ -157,13 +160,13 @@ fn serve_dev_auth_callback(app: tauri::AppHandle, listener: TcpListener) -> std:
 fn handle_dev_auth_callback_stream(
     app: &tauri::AppHandle,
     stream: &mut TcpStream,
-) -> std::io::Result<()> {
+) -> std::io::Result<bool> {
     let mut buffer = [0_u8; 4096];
     let bytes_read = stream.read(&mut buffer)?;
     let request = String::from_utf8_lossy(&buffer[..bytes_read]);
     let Some(callback_url) = dev_auth_callback_url_from_request(&request) else {
         write_dev_auth_callback_response(stream, 400, "Invalid Amadeus auth callback")?;
-        return Ok(());
+        return Ok(false);
     };
 
     let payload = AuthCallbackPayload { url: callback_url };
@@ -173,14 +176,11 @@ fn handle_dev_auth_callback_stream(
             format!("dev auth callback event emit failed: {error}"),
         );
         write_dev_auth_callback_response(stream, 500, "Amadeus auth callback failed")?;
-        return Ok(());
+        return Ok(false);
     }
 
-    write_dev_auth_callback_response(
-        stream,
-        200,
-        "Amadeus login completed. You can close this tab.",
-    )
+    write_dev_auth_callback_response(stream, 200, "Amadeus login completed")?;
+    Ok(true)
 }
 
 fn dev_auth_callback_url_from_request(request: &str) -> Option<String> {
@@ -199,7 +199,148 @@ fn dev_auth_callback_url_from_request(request: &str) -> Option<String> {
         return None;
     }
 
-    Some(format!("http://127.0.0.1:1421{target}"))
+    Some(format!("http://127.0.0.1:{DEV_AUTH_CALLBACK_PORT}{target}"))
+}
+
+fn dev_auth_callback_success_html() -> String {
+    r#"<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Amadeus</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+      background: radial-gradient(ellipse 90% 55% at 50% -15%, rgba(96, 165, 250, 0.14), transparent 65%), #09090b;
+      color: #f4f4f5;
+    }
+    .card {
+      width: min(100%, 360px);
+      text-align: center;
+      padding: 32px 28px;
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.04);
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+    }
+    .eyebrow {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: rgba(147, 197, 253, 0.75);
+      margin-bottom: 16px;
+    }
+    .icon {
+      width: 52px;
+      height: 52px;
+      margin: 0 auto 18px;
+      border-radius: 50%;
+      border: 1px solid rgba(52, 211, 153, 0.35);
+      background: rgba(52, 211, 153, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .icon svg {
+      width: 26px;
+      height: 26px;
+      stroke: #34d399;
+    }
+    h1 {
+      font-size: 1.125rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+    p {
+      font-size: 0.875rem;
+      line-height: 1.55;
+      color: rgba(244, 244, 245, 0.62);
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <p class="eyebrow">AMADEUS</p>
+    <div class="icon" aria-hidden="true">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2">
+        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+      </svg>
+    </div>
+    <h1>로그인 완료</h1>
+    <p>Amadeus로 돌아가 계속 진행하세요.<br>이 탭은 닫아도 됩니다.</p>
+  </div>
+</body>
+</html>"#
+        .to_string()
+}
+
+fn dev_auth_callback_error_html(message: &str) -> String {
+    format!(
+        r#"<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Amadeus</title>
+  <style>
+    * {{ box-sizing: border-box; margin: 0; }}
+    body {{
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+      background: #09090b;
+      color: #f4f4f5;
+    }}
+    .card {{
+      width: min(100%, 360px);
+      text-align: center;
+      padding: 28px 24px;
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.04);
+    }}
+    h1 {{
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }}
+    p {{
+      font-size: 0.875rem;
+      line-height: 1.55;
+      color: rgba(244, 244, 245, 0.62);
+    }}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>로그인에 실패했어요</h1>
+    <p>{message}</p>
+  </div>
+</body>
+</html>"#
+    )
+}
+
+fn dev_auth_callback_html(status: u16, message: &str) -> String {
+    if status == 200 {
+        dev_auth_callback_success_html()
+    } else {
+        dev_auth_callback_error_html(message)
+    }
 }
 
 fn write_dev_auth_callback_response(
@@ -212,9 +353,7 @@ fn write_dev_auth_callback_response(
         400 => "Bad Request",
         _ => "Internal Server Error",
     };
-    let body = format!(
-        "<!doctype html><meta charset=\"utf-8\"><title>Amadeus</title><body>{message}</body>"
-    );
+    let body = dev_auth_callback_html(status, message);
     write!(
         stream,
         "HTTP/1.1 {status} {status_text}\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
@@ -623,17 +762,17 @@ mod tests {
 
     #[test]
     fn parses_dev_auth_callback_request() {
-        let request = "GET /auth/callback?code=oauth-code&state=state HTTP/1.1\r\nHost: 127.0.0.1:1421\r\n\r\n";
+        let request = "GET /auth/callback?code=oauth-code&state=state HTTP/1.1\r\nHost: 127.0.0.1:17421\r\n\r\n";
 
         assert_eq!(
             dev_auth_callback_url_from_request(request),
-            Some("http://127.0.0.1:1421/auth/callback?code=oauth-code&state=state".to_string())
+            Some("http://127.0.0.1:17421/auth/callback?code=oauth-code&state=state".to_string())
         );
     }
 
     #[test]
     fn rejects_dev_auth_callback_without_code() {
-        let request = "GET /auth/callback?state=state HTTP/1.1\r\nHost: 127.0.0.1:1421\r\n\r\n";
+        let request = "GET /auth/callback?state=state HTTP/1.1\r\nHost: 127.0.0.1:17421\r\n\r\n";
 
         assert_eq!(dev_auth_callback_url_from_request(request), None);
     }

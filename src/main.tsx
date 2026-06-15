@@ -3,9 +3,7 @@ import ReactDOM from "react-dom/client";
 import App from "./app";
 import { CompanionApp } from "./app/CompanionApp";
 import "./styles/global.css";
-import { AppErrorBoundary } from "./ui/AppErrorBoundary";
-import { applyAccentColor } from "./ui/theme/applyAccentColor";
-import { applyAppearance } from "./ui/theme/applyAppearance";
+import { AppErrorBoundary, applyAccentColor, applyAppearance } from "./ui";
 
 applyAppearance("system");
 applyAccentColor();

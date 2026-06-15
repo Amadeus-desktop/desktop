@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { cn } from "../../../lib/cn";
+import { cn } from "../../../lib/utils/cn";
 import { getPersonaAccent } from "../../../domain/persona/theme";
 import type { PersonaId, PresenceIconKind } from "../../../domain/persona/types";
 import { PRESENCE_ICON_BY_PERSONA } from "../../../domain/persona/types";

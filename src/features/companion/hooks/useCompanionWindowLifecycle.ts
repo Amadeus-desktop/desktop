@@ -1,7 +1,7 @@
-import { resyncTauriCompanionWindow } from "../window/useTauriCompanionWindow";
+import { resyncTauriCompanionWindow } from "./useTauriCompanionWindow";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { useEffect } from "react";
-import { isTauriRuntime } from "../../../lib/tauriRuntime";
+import { isTauriRuntime } from "../../../lib/tauri/runtime";
 
 export function useCompanionWindowLifecycle() {
   useEffect(() => {

@@ -9,13 +9,13 @@ export {
   setCompanionLocale,
   useI18n,
   setLocale,
-} from "./i18n";
+} from "../../i18n";
 export { companionStyles } from "./ui/styles";
 export {
   resyncTauriCompanionWindow,
   syncTauriWindowToElement,
   useTauriCompanionWindow,
-} from "./window/useTauriCompanionWindow";
+} from "./hooks/useTauriCompanionWindow";
 export { resolveCompanionReply } from "./lib/reply";
 export { generatePocketIntro } from "../../mocks/companion";
 export type {

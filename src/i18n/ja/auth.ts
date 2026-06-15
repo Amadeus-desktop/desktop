@@ -13,4 +13,15 @@ export const auth: AuthMessages = {
     logout: "ログアウト",
     loggingOut: "サインアウト中…",
   },
+  profile: {
+    eyebrow: "プロフィール",
+    title: "マイアカウント",
+    description: "Googleアカウントと、Amadeusが呼ぶ名前を管理します。",
+    displayNameLabel: "呼び名",
+    displayNameHint: "コンパニオンが話しかけるときの名前です。",
+    emailLabel: "メール",
+    openSettings: "一般設定",
+    modelRouteLabel: "応答方式",
+    modelRouteHint: "クラウド API かローカル LLM でコンパニオンが話します。",
+  },
 };

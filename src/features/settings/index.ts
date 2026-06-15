@@ -1,4 +1,6 @@
-export { SettingsPanel } from "./SettingsPanel";
+export { SettingsPanel } from "./components/SettingsPanel";
+export { ModelRoutePicker, toPrimaryModelRoute } from "./components/ModelRoutePicker";
+export type { PrimaryModelRoute } from "./components/ModelRoutePicker";
 export {
   applyAppSettings,
   ensureSettingsSync,
@@ -7,27 +9,27 @@ export {
   patchAppSettings,
   useAppSettings,
   useSettings,
-} from "./appSettingsStore";
+} from "./store/appSettingsStore";
 export {
   getLocaleOptions,
   getModelRouteOptions,
   getTalkFrequencyOptions,
   initialSettings,
-} from "./settings";
+} from "./lib/settings";
 export {
   broadcastSettingsChanged,
   listenForSettingsChanges,
   SETTINGS_CHANGED_EVENT,
-} from "./settingsBroadcast";
+} from "./lib/settingsBroadcast";
 export {
   loadGeneralSettings,
   loadLlamaSidecarStatus,
   saveGeneralSettings,
-} from "./settingsStore";
+} from "./adapters/settingsStore";
 export type {
   GeneralSettings,
   ModelRoute,
   TalkFrequency,
 } from "./types";
 export type { LocaleCode } from "../../i18n";
-export type { LlamaSidecarStatus } from "./settingsStore";
+export type { LlamaSidecarStatus } from "./adapters/settingsStore";

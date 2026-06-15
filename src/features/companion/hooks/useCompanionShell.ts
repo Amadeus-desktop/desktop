@@ -5,13 +5,13 @@ import { generatePocketIntro } from "../../../mocks/companion";
 import {
   patchAppSettings,
   useAppSettings,
-} from "../../settings/appSettingsStore";
+} from "../../settings";
 import {
   createUserReaction,
-} from "../../timeline/timelineRepository";
+} from "../../timeline";
 import {
   recordTriggerReactionForScoring,
-} from "../../trigger/triggerRepository";
+} from "../../trigger";
 import { resolveCompanionReply } from "../lib/reply";
 import { patchCompanionSession } from "../lib/companionSessionStore";
 import type { CompanionMessage, PersonaId } from "../types";

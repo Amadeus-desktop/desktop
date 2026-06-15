@@ -1,4 +1,4 @@
-export { generateChatReply, generateTestUtterance, loadLlmProviderHealth } from "./llmRepository";
+export { generateChatReply, generateTestUtterance, loadLlmProviderHealth } from "./adapters/llmRepository";
 export type {
   LlmChatRequest,
   LlmGeneration,

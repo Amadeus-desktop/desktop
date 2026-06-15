@@ -13,4 +13,15 @@ export const auth: AuthMessages = {
     logout: "로그아웃",
     loggingOut: "로그아웃 중…",
   },
+  profile: {
+    eyebrow: "프로필",
+    title: "내 계정",
+    description: "Google 계정 정보와 Amadeus에서 보여줄 이름을 관리해요.",
+    displayNameLabel: "불러줄 이름",
+    displayNameHint: "동반자가 말할 때 사용하는 이름이에요.",
+    emailLabel: "이메일",
+    openSettings: "일반 설정",
+    modelRouteLabel: "응답 방식",
+    modelRouteHint: "클라우드 API 또는 로컬 LLM으로 동반자가 말해요.",
+  },
 };

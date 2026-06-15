@@ -13,4 +13,15 @@ export const auth: AuthMessages = {
     logout: "Log out",
     loggingOut: "Signing out…",
   },
+  profile: {
+    eyebrow: "Profile",
+    title: "Your account",
+    description: "Manage your Google sign-in and how Amadeus addresses you.",
+    displayNameLabel: "Name to use",
+    displayNameHint: "Your companion uses this name when speaking to you.",
+    emailLabel: "Email",
+    openSettings: "General settings",
+    modelRouteLabel: "Response mode",
+    modelRouteHint: "Cloud API or local LLM for companion replies.",
+  },
 };

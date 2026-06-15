@@ -1,3 +1,9 @@
-export { OnboardingFlow } from "./OnboardingFlow";
-export { hydrateOnboardingProgress } from "./onboardingStore";
-export { useOnboarding } from "./useOnboarding";
+export { OnboardingFlow } from "./flow/OnboardingFlow";
+export {
+  hydrateOnboardingProgress,
+  markPermissionsDone,
+  markModelRouteDone,
+  markSetupDone,
+  resetOnboardingProgress,
+} from "./store/onboardingStore";
+export { useOnboarding } from "./hooks/useOnboarding";

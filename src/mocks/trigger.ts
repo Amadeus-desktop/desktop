@@ -1,6 +1,6 @@
 import { getPrivacyKeywords, getTalkFrequencyPolicy } from "../domain/settings";
 import { assessCurrentPrivacyContext } from "../features/context";
-import { getAppSettingsSnapshot } from "../features/settings/appSettingsStore";
+import { getAppSettingsSnapshot } from "../features/settings";
 import {
   createMockContextEvent,
   createMockUtteranceEvent,
