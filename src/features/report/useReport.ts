@@ -56,6 +56,7 @@ export function useReport() {
   );
 
   return {
+    events,
     reportMetrics,
     workTimeline,
     timelineState,

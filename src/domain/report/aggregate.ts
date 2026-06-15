@@ -58,6 +58,29 @@ export function countUtterancesToday(events: TimelineEvent[]): number {
   return events.filter((event) => event.kind === "utterance").length;
 }
 
+export function countReactionsToday(events: TimelineEvent[]): number {
+  return events.filter((event) => event.kind === "reaction").length;
+}
+
+const CHAT_OPEN_REACTIONS = new Set(["opened", "replied"]);
+
+export function countChatOpensToday(events: TimelineEvent[]): number {
+  return events.filter(
+    (event) =>
+      event.kind === "reaction" && CHAT_OPEN_REACTIONS.has(event.title),
+  ).length;
+}
+
+export function countReturnsToday(events: TimelineEvent[]): number {
+  return events.filter(
+    (event) =>
+      event.kind === "reaction" &&
+      !CHAT_OPEN_REACTIONS.has(event.title) &&
+      event.title !== "dismissed" &&
+      event.title !== "closed",
+  ).length;
+}
+
 export function countContextEventsToday(events: TimelineEvent[]): number {
   return events.filter((event) => event.kind === "context").length;
 }

@@ -128,6 +128,9 @@ Required:
 
 Capture/OCR은 3단 gate를 통과해야 한다.
 
+현재 Tauri command 기준의 세부 실행 흐름, TTL, 권한 UX는
+[screen-capture-ocr-runtime.md](./screen-capture-ocr-runtime.md)를 따른다.
+
 ```text
 PreCaptureGate
   -> PreOcrGate

@@ -45,6 +45,73 @@ fn stores_context_utterance_and_reaction_as_timeline_rows() {
 }
 
 #[test]
+fn clears_local_timeline_data() {
+    let mut repository = TimelineRepository::open_in_memory().expect("in-memory db opens");
+    repository.migrate().expect("migration succeeds");
+
+    let context = repository
+        .create_context_event(CreateContextEventInput {
+            app_name: "Preview".to_string(),
+            window_title: "Customer roadmap".to_string(),
+            event_type: "active_window_changed".to_string(),
+            metadata_json: "{}".to_string(),
+        })
+        .expect("context event is stored");
+    let utterance = repository
+        .create_utterance_event(CreateUtteranceEventInput {
+            trigger_type: "deep_pause".to_string(),
+            speakability_score: 70,
+            message: "잠깐 쉬어도 괜찮아.".to_string(),
+            provider: "template".to_string(),
+            context_event_id: Some(context.id),
+        })
+        .expect("utterance event is stored");
+    repository
+        .create_user_reaction(CreateUserReactionInput {
+            utterance_event_id: Some(utterance.id),
+            reaction_type: "dismissed".to_string(),
+        })
+        .expect("reaction is stored");
+    repository
+        .create_local_memory(CreateLocalMemoryInput {
+            persona_id: None,
+            memory_type: "work_context".to_string(),
+            content: "private summary".to_string(),
+            scope: "local_private".to_string(),
+            confidence: 80,
+            syncable: false,
+        })
+        .expect("local memory is stored");
+    repository
+        .enqueue_sync_payload(EnqueueSyncPayloadInput {
+            event_type: "memory.summary".to_string(),
+            payload_json: serde_json::to_string(&SyncPayloadEnvelope {
+                schema_version: 1,
+                event_type: "memory.summary".to_string(),
+                payload_class: "SafeSummary".to_string(),
+                safety_grade: "SafeWorkSummary".to_string(),
+                redaction_level: "SummaryRedacted".to_string(),
+                retention_policy: "Timeline".to_string(),
+                validator_version: "phase6.v1".to_string(),
+                payload: serde_json::json!({"summary": "worked on planning"}),
+            })
+            .expect("valid json"),
+            idempotency_key: "clear-test".to_string(),
+        })
+        .expect("sync payload is queued");
+
+    let deleted = repository
+        .clear_local_data()
+        .expect("local data is cleared");
+
+    assert!(deleted >= 5);
+    assert!(repository
+        .list_timeline_events(10)
+        .expect("timeline rows are listed")
+        .is_empty());
+}
+
+#[test]
 fn migration_prepares_phase_6_local_tables() {
     let mut repository = TimelineRepository::open_in_memory().expect("in-memory db opens");
     repository.migrate().expect("migration succeeds");

@@ -2,8 +2,8 @@ mod commands;
 mod core;
 
 pub use commands::{
-    create_context_event, create_local_memory, create_user_reaction, create_utterance_event,
-    enqueue_sync_payload, list_timeline_events,
+    clear_local_timeline_data, create_context_event, create_local_memory, create_user_reaction,
+    create_utterance_event, enqueue_sync_payload, list_timeline_events,
 };
 pub use core::{
     ContextEvent, CreateContextEventInput, CreateLocalMemoryInput, CreateUserReactionInput,

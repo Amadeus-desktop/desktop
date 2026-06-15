@@ -4,8 +4,8 @@ export const controlCenter: ControlCenterMessages = {
   tabs: {
     character: "캐릭터 선택",
     settings: "일반 설정",
-    perception: "화면 인지 가이드",
-    report: "작업 리포트",
+    perception: "함께하기",
+    report: "하루 돌아보기",
   },
   sections: {
     character: "Character",

@@ -193,6 +193,23 @@ impl TimelineRepository {
             .map_err(TimelineError::from)
     }
 
+    pub fn clear_local_data(&mut self) -> Result<usize, TimelineError> {
+        let transaction = self.connection.transaction()?;
+        let mut deleted = 0;
+        for table_name in [
+            "sync_queue",
+            "local_memories",
+            "work_sessions",
+            "user_reactions",
+            "utterance_events",
+            "context_events",
+        ] {
+            deleted += transaction.execute(&format!("DELETE FROM {table_name}"), [])?;
+        }
+        transaction.commit()?;
+        Ok(deleted)
+    }
+
     fn next_marker(&mut self, prefix: &str) -> Result<(String, i64), TimelineError> {
         self.sequence += 1;
         let now = current_time_ms()?;

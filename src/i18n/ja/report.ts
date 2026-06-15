@@ -1,27 +1,55 @@
 import type { ReportMessages } from "../modules/report";
 
 export const report: ReportMessages = {
-  eyebrow: "Daily Review",
-  title: "作業レポート",
-  description: "今日の集中時間と能動発話の履歴を一画面で確認します。",
+  eyebrow: "Daily Care",
+  title: "今日を振り返る",
+  description: "今日耐えた時間と、戻ってきた瞬間を一緒に確かめましょう。",
+  intro: {
+    prompt: "今日はよく頑張ったね。一緒に振り返ってみない？",
+  },
   sections: {
-    summary: "Summary",
-    timeline: "Timeline",
+    summary: "今日一緒にいた時間",
+    moments: "今日の瞬間",
+    closing: "締めのひとこと",
   },
   metrics: {
-    focusTime: "今日一緒に走った集中時間",
-    utterances: "companionからのさりげない励まし",
+    togetherTime: "一緒にいた時間",
+    nudges: "今日のNudgeNote",
+    chatOpens: "チャットにつながった回数",
+    returns: "戻ってきた瞬間",
+  },
+  emotionalKeywords: {
+    title: "今日の感情キーワード",
+    fallback: "静かに耐えた一日",
+    tags: {
+      steady: "落ち着き",
+      tired: "疲れ",
+      focused: "集中",
+      gentle: "やさしさ",
+      return: "戻ってきた",
+    },
+  },
+  closingNote: {
+    title: "companionから",
+    quiet:
+      "今日は静かに耐えた一日だったね。それでも一人じゃなかった — 私はそばにいたよ。",
+    gentle:
+      "今日もよく耐えたね。戻ってきてくれただけで、十分すごいよ。",
+    active:
+      "今日は忙しい一日だったね。それでも途中で話してくれてありがとう。",
   },
   timeline: {
-    loading: "タイムラインを読み込んでいます。",
-    empty: "保存されたタイムラインはまだありません。",
+    loading: "今日の瞬間を読み込んでいます。",
+    empty: "まだ一緒にした記録がありません。",
+    expand: "さらに{count}件表示",
+    collapse: "閉じる",
   },
   format: {
     hoursMinutes: "{hours}時間{minutes}分",
     hoursOnly: "{hours}時間",
     minutesOnly: "{minutes}分",
-    zeroDuration: "0分",
-    utteranceCount: "{count}回",
-    zeroUtterances: "0回",
+    zeroDuration: "まだ記録なし",
+    count: "{count}回",
+    zeroCount: "なし",
   },
 };

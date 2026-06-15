@@ -259,6 +259,9 @@ Provider가 모두 실패하면 능동 발화는 중단하고 캐릭터 존재�
 
 화면 인지 권한은 기능 사용 전에 설명한다.
 
+구체적인 화면 캡처/OCR 런타임 흐름과 권한 허용 UX는
+[Screen Capture And OCR Runtime](../architecture/screen-capture-ocr-runtime.md)을 기준으로 한다.
+
 - 어떤 정보를 보는지
 - 언제 화면 캡처가 발생하는지
 - 무엇을 저장하지 않는지

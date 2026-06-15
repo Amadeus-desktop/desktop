@@ -28,6 +28,10 @@ export type AppLocale = {
       model: string;
       language: string;
     };
+    advanced: {
+      toggle: string;
+      hint: string;
+    };
     locale: {
       label: string;
       subtitle: string;
@@ -98,19 +102,23 @@ export type AppLocale = {
       button: string;
       running: string;
     };
+    appearance: {
+      label: string;
+      subtitle: string;
+      options: Record<"dark" | "light" | "system", string>;
+    };
+    accentColor: {
+      label: string;
+      subtitle: string;
+      options: Record<
+        "rose" | "lavender" | "sky" | "mint" | "peach",
+        string
+      >;
+    };
     companionPersona: {
       label: string;
       subtitle: string;
-      icons: Record<
-        | "bubble"
-        | "letter"
-        | "star"
-        | "orb"
-        | "line"
-        | "face"
-        | "leaf",
-        string
-      >;
+      icons: Record<"bubble" | "letter" | "star" | "orb", string>;
     };
   };
   llm: {
@@ -136,8 +144,8 @@ export type AppLocale = {
     title: string;
     description: string;
     sections: {
-      capture: string;
-      liveContext: string;
+      basics: string;
+      details: string;
     };
     analysis: {
       label: string;
@@ -194,6 +202,10 @@ export type AppLocale = {
       analysisLoading: string;
       analysisError: string;
     };
+    advanced: {
+      toggle: string;
+      hint: string;
+    };
     contextLabels: {
       idleActive: string;
       idlePaused: string;
@@ -208,25 +220,50 @@ export type AppLocale = {
     eyebrow: string;
     title: string;
     description: string;
+    intro: {
+      prompt: string;
+    };
     sections: {
       summary: string;
-      timeline: string;
+      moments: string;
+      closing: string;
     };
     metrics: {
-      focusTime: string;
-      utterances: string;
+      togetherTime: string;
+      nudges: string;
+      chatOpens: string;
+      returns: string;
+    };
+    emotionalKeywords: {
+      title: string;
+      fallback: string;
+      tags: {
+        steady: string;
+        tired: string;
+        focused: string;
+        gentle: string;
+        return: string;
+      };
+    };
+    closingNote: {
+      title: string;
+      quiet: string;
+      gentle: string;
+      active: string;
     };
     timeline: {
       loading: string;
       empty: string;
+      expand: string;
+      collapse: string;
     };
     format: {
       hoursMinutes: string;
       hoursOnly: string;
       minutesOnly: string;
       zeroDuration: string;
-      utteranceCount: string;
-      zeroUtterances: string;
+      count: string;
+      zeroCount: string;
     };
   };
   companion: {
@@ -274,6 +311,21 @@ export type AppLocale = {
       timelineEmpty: string;
     };
   };
+  auth: {
+    onboarding: {
+      headline: string;
+      subheadline: string;
+      body: string;
+      googleButton: string;
+      footnote: string;
+    };
+    account: {
+      section: string;
+      signedInAs: string;
+      logout: string;
+      loggingOut: string;
+    };
+  };
   persona: {
     warm_friend: {
       name: string;
@@ -285,27 +337,12 @@ export type AppLocale = {
       shortLabel: string;
       description: string;
     };
-    fantasy_guardian: {
+    steady_ally: {
       name: string;
       shortLabel: string;
       description: string;
     };
-    quiet_companion: {
-      name: string;
-      shortLabel: string;
-      description: string;
-    };
-    minimal_user: {
-      name: string;
-      shortLabel: string;
-      description: string;
-    };
-    cute_character: {
-      name: string;
-      shortLabel: string;
-      description: string;
-    };
-    nature_healing: {
+    soft_care: {
       name: string;
       shortLabel: string;
       description: string;

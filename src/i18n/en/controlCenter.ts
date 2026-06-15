@@ -4,8 +4,8 @@ export const controlCenter: ControlCenterMessages = {
   tabs: {
     character: "Character",
     settings: "General",
-    perception: "Screen Context",
-    report: "Work Report",
+    perception: "Stay together",
+    report: "Daily reflection",
   },
   sections: {
     character: "Character",

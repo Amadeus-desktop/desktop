@@ -79,3 +79,11 @@ export async function listTimelineEvents(limit = 20): Promise<TimelineEvent[]> {
 
   return listMockTimelineEvents(limit);
 }
+
+export async function clearLocalTimelineData(): Promise<number> {
+  if (isTauriRuntime()) {
+    return invoke<number>("clear_local_timeline_data");
+  }
+
+  return 0;
+}

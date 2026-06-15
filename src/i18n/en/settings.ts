@@ -3,11 +3,15 @@ import type { SettingsMessages } from "../modules/settings";
 export const settings: SettingsMessages = {
   eyebrow: "Preferences",
   title: "General Settings",
-  description: "Configure proactive speech, model routing, and night-time care.",
+  description: "Set how your companion speaks, what to call you, and how often to reach out.",
   sections: {
-    conversation: "Conversation",
-    model: "Model",
+    conversation: "Together",
+    model: "Model · Connection",
     language: "Language",
+  },
+  advanced: {
+    toggle: "Advanced",
+    hint: "Local model, LLM routing, test utterance",
   },
   locale: {
     label: "Display language",
@@ -91,17 +95,34 @@ export const settings: SettingsMessages = {
     button: "Run test",
     running: "Generating…",
   },
+  appearance: {
+    label: "Theme",
+    subtitle: "App brightness — dark, light, or follow system",
+    options: {
+      dark: "Dark",
+      light: "Light",
+      system: "System",
+    },
+  },
+  accentColor: {
+    label: "Accent color",
+    subtitle: "Buttons, toggles, and highlight color",
+    options: {
+      rose: "Rose",
+      lavender: "Lavender",
+      sky: "Sky",
+      mint: "Mint",
+      peach: "Peach",
+    },
+  },
   companionPersona: {
     label: "Companion persona",
-    subtitle: "Choose tone and the bottom presence icon style.",
+    subtitle: "Tone and bottom presence icon",
     icons: {
-      bubble: "Speech bubble icon",
-      letter: "Letter / memo icon",
-      star: "Star / sparkle icon",
-      orb: "Orb / round icon",
-      line: "Simple line icon",
-      face: "Small face / mood icon",
-      leaf: "Leaf / water drop icon",
+      bubble: "Bubble",
+      letter: "Letter",
+      star: "Star",
+      orb: "Orb",
     },
   },
 };

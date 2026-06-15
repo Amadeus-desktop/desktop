@@ -2,7 +2,12 @@ export type ReportMetric = {
   id: string;
   label: string;
   value: string;
-  accent: string;
+  tone: "rose" | "lavender" | "peach" | "mint";
+};
+
+export type DailyCareInsight = {
+  keywords: string[];
+  closingNote: string;
 };
 
 export type WorkTimelineItem = {

@@ -5,9 +5,12 @@ export {
 } from "./constants";
 export {
   aggregateFocusTimeMs,
+  countChatOpensToday,
   countContextEventsToday,
+  countReactionsToday,
+  countReturnsToday,
   countUtterancesToday,
   filterEventsForToday,
   startOfLocalDayMs,
 } from "./aggregate";
-export { formatReportDuration, formatUtteranceCount } from "./format";
+export { formatReportCount, formatReportDuration, formatUtteranceCount } from "./format";

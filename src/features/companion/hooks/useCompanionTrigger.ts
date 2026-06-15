@@ -48,7 +48,10 @@ export function useCompanionTrigger({
     async function evaluateTrigger() {
       if (!canPresent) return;
 
-      const pollResult = await pollTriggerEngine(keywords);
+      const pollResult = await pollTriggerEngine(keywords).catch(() => null);
+      if (!pollResult) {
+        return;
+      }
       if (cancelled || !pollResult.didEvaluate || !pollResult.runResult) {
         return;
       }

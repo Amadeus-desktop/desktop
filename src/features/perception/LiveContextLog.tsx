@@ -22,16 +22,18 @@ export function LiveContextLog({
   loadingLabel,
 }: LiveContextLogProps) {
   return (
-    <div className="rounded-lg border border-white/6 bg-black/18 p-4">
+    <div className="overflow-hidden rounded-[18px] border border-[#333338] bg-[#222226] px-3.5 py-1">
       {loading && loadingLabel ? (
-        <p className="mb-3 text-[11px] text-white/35">{loadingLabel}</p>
+        <p className="border-b border-[#333338]/90 py-2.5 text-[10px] text-white/42">
+          {loadingLabel}
+        </p>
       ) : null}
       {rowKeys.map((key) => (
         <div
           key={key}
-          className="grid grid-cols-[92px_minmax(0,1fr)] gap-3 border-b border-white/6 py-2 first:pt-0 last:border-b-0 last:pb-0"
+          className="grid grid-cols-[88px_minmax(0,1fr)] gap-3 border-b border-[#333338]/90 py-2.5 last:border-b-0"
         >
-          <div className="text-[11px] text-white/35">{labels[key]}</div>
+          <div className="text-[10px] text-white/40">{labels[key]}</div>
           <div className="min-w-0 break-words text-[12px] leading-5 text-white/78">
             {liveContext[key]}
           </div>

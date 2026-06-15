@@ -13,6 +13,8 @@ use super::{
     OcrState, ScreenCaptureState,
 };
 
+const MAX_RECOGNIZE_IMAGE_BYTES: usize = 10 * 1024 * 1024;
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CommandError {
@@ -53,9 +55,20 @@ pub fn recognize_captured_image(
     capture: CaptureMetadata,
     now_ms: u128,
 ) -> Result<OcrObservation, CommandError> {
+    validate_recognize_image_payload(&image_bytes)?;
     state
         .recognize_captured_image(image_bytes, capture, now_ms)
         .map_err(CommandError::from)
+}
+
+fn validate_recognize_image_payload(image_bytes: &[u8]) -> Result<(), CommandError> {
+    if image_bytes.len() > MAX_RECOGNIZE_IMAGE_BYTES {
+        return Err(CommandError::from(OcrError::Denied(format!(
+            "captured image exceeds {} byte limit",
+            MAX_RECOGNIZE_IMAGE_BYTES
+        ))));
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -87,4 +100,18 @@ pub fn capture_primary_display_ocr(
     capture_state
         .capture_and_recognize(&ocr_state, gate_input, now_ms)
         .map_err(CommandError::from)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn recognize_image_payload_rejects_oversized_input() {
+        let image_bytes = vec![0_u8; MAX_RECOGNIZE_IMAGE_BYTES + 1];
+
+        let result = validate_recognize_image_payload(&image_bytes);
+
+        assert!(result.is_err());
+    }
 }

@@ -1,5 +1,6 @@
 use std::{
     io::Read,
+    net::TcpListener,
     process::{Child, Command, Stdio},
     thread,
     time::Duration,
@@ -10,6 +11,8 @@ use super::{LlamaSidecarConfig, LlamaSidecarError};
 pub(crate) fn spawn_and_wait_until_ready(
     config: &LlamaSidecarConfig,
 ) -> Result<Child, LlamaSidecarError> {
+    ensure_port_available(config)?;
+
     let mut spawned = Command::new(&config.binary_path)
         .args(config.args())
         .stdin(Stdio::null())
@@ -49,12 +52,48 @@ pub(crate) fn spawn_and_wait_until_ready(
     Err(LlamaSidecarError::Readiness(detail))
 }
 
+fn ensure_port_available(config: &LlamaSidecarConfig) -> Result<(), LlamaSidecarError> {
+    let address = format!("{}:{}", config.host, config.port);
+    TcpListener::bind(&address)
+        .map(|listener| drop(listener))
+        .map_err(|error| {
+            LlamaSidecarError::Readiness(format!(
+                "llama sidecar port {address} is unavailable before spawn: {error}"
+            ))
+        })
+}
+
 fn read_child_stderr(child: &mut Child) -> String {
     let mut buffer = String::new();
     if let Some(stderr) = child.stderr.as_mut() {
         let _ = stderr.read_to_string(&mut buffer);
     }
     buffer.trim().to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::net::TcpListener;
+
+    fn test_config(port: u16) -> LlamaSidecarConfig {
+        LlamaSidecarConfig {
+            binary_path: "/tmp/llama-server".to_string(),
+            model_path: "/tmp/model.gguf".to_string(),
+            host: "127.0.0.1".to_string(),
+            port,
+        }
+    }
+
+    #[test]
+    fn sidecar_spawn_rejects_preoccupied_port() {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("test port binds");
+        let port = listener.local_addr().expect("local addr").port();
+
+        let result = ensure_port_available(&test_config(port));
+
+        assert!(result.is_err());
+    }
 }
 
 fn drain_child_stderr(child: &mut Child) {

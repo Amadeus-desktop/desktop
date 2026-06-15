@@ -5,7 +5,7 @@ import {
   writeBrowserSettings,
 } from "../../mocks/settings";
 import { isTauriRuntime } from "../../lib/tauriRuntime";
-import { initialSettings } from "./settings";
+import { initialSettings, normalizeGeneralSettings } from "./settings";
 import type { GeneralSettings } from "./types";
 
 export type LlamaSidecarStatus = {
@@ -16,18 +16,18 @@ export type LlamaSidecarStatus = {
 
 export async function loadGeneralSettings(): Promise<GeneralSettings> {
   if (!isTauriRuntime()) {
-    return readBrowserSettings();
+    return normalizeGeneralSettings(readBrowserSettings());
   }
 
   const settings = await invoke<GeneralSettings>("get_app_settings");
-  return { ...initialSettings, ...settings };
+  return normalizeGeneralSettings({ ...initialSettings, ...settings });
 }
 
 export async function saveGeneralSettings(
   settings: GeneralSettings,
 ): Promise<GeneralSettings> {
   if (!isTauriRuntime()) {
-    return writeBrowserSettings(settings);
+    return writeBrowserSettings(normalizeGeneralSettings(settings));
   }
 
   return invoke<GeneralSettings>("update_app_settings", {

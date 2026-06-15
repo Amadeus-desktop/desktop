@@ -56,6 +56,11 @@ pub fn list_timeline_events(
     with_repository(&state, |repository| repository.list_timeline_events(limit))
 }
 
+#[tauri::command]
+pub fn clear_local_timeline_data(state: State<'_, TimelineState>) -> Result<usize, CommandError> {
+    with_repository(&state, |repository| repository.clear_local_data())
+}
+
 fn with_repository<T>(
     state: &State<'_, TimelineState>,
     operation: impl FnOnce(&mut super::TimelineRepository) -> Result<T, TimelineError>,

@@ -14,7 +14,7 @@ export function MacInput({ value, onChange, label, className }: MacInputProps) {
       onChange={(event) => onChange(event.currentTarget.value)}
       className={
         className ??
-        "w-[100px] rounded-md border border-white/12 bg-white/8 px-2.5 py-1.5 text-right text-xs text-white outline-none transition focus:border-[#007aff]"
+        "h-8 w-full min-w-0 max-w-[9.5rem] rounded-[10px] border border-[color:var(--shell-border-strong)] bg-[color:var(--shell-panel-strong)] px-2.5 text-right text-[11px] text-[color:var(--shell-ink)] outline-none transition focus:border-[color:rgb(var(--accent-rgb)/0.45)] focus:ring-2 focus:ring-[color:rgb(var(--accent-rgb)/0.12)]"
       }
     />
   );

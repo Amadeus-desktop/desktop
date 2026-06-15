@@ -2,14 +2,16 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     constants::{
+        ACCENT_LAVENDER, ACCENT_MINT, ACCENT_PEACH, ACCENT_ROSE, ACCENT_SKY, APPEARANCE_DARK,
+        APPEARANCE_LIGHT, APPEARANCE_SYSTEM, DEFAULT_ACCENT_COLOR, DEFAULT_APPEARANCE,
         DEFAULT_COMPANION_PERSONA_ID, DEFAULT_LLAMA_SERVER_HOST, DEFAULT_LLAMA_SERVER_PORT,
         DEFAULT_LOCALE, DEFAULT_NICKNAME, DEFAULT_TALK_FREQUENCY, LOCALE_EN, LOCALE_JA, LOCALE_KO,
-        LOCALHOST_IPV4, LOCALHOST_NAME, PERSONA_CUTE_CHARACTER, PERSONA_FANTASY_GUARDIAN,
-        PERSONA_LOVING_PARTNER, PERSONA_MINIMAL_USER, PERSONA_NATURE_HEALING,
-        PERSONA_QUIET_COMPANION, PERSONA_WARM_FRIEND,
+        LOCALHOST_IPV4, LOCALHOST_NAME, PERSONA_LOVING_PARTNER, PERSONA_SOFT_CARE,
+        PERSONA_STEADY_ALLY, PERSONA_WARM_FRIEND,
     },
     SettingsError,
 };
+
 use crate::shared::constants::{
     MODEL_ROUTE_API_FIRST, MODEL_ROUTE_LOCAL_FIRST, MODEL_ROUTE_TEMPLATE,
 };
@@ -18,6 +20,8 @@ use crate::shared::constants::{
 #[serde(default, rename_all = "camelCase")]
 pub struct AppSettings {
     pub locale: String,
+    pub appearance: String,
+    pub accent_color: String,
     pub companion_persona_id: String,
     pub talk_frequency: String,
     pub model_route: String,
@@ -38,6 +42,8 @@ impl Default for AppSettings {
     fn default() -> Self {
         Self {
             locale: DEFAULT_LOCALE.to_string(),
+            appearance: DEFAULT_APPEARANCE.to_string(),
+            accent_color: DEFAULT_ACCENT_COLOR.to_string(),
             companion_persona_id: DEFAULT_COMPANION_PERSONA_ID.to_string(),
             talk_frequency: DEFAULT_TALK_FREQUENCY.to_string(),
             model_route: MODEL_ROUTE_API_FIRST.to_string(),
@@ -57,6 +63,21 @@ impl Default for AppSettings {
 }
 
 impl AppSettings {
+    pub fn normalize_legacy_values(&mut self) -> bool {
+        let normalized_persona = match self.companion_persona_id.as_str() {
+            "fantasy_guardian" => Some(PERSONA_STEADY_ALLY),
+            "quiet_companion" | "cute_character" | "nature_healing" => Some(PERSONA_SOFT_CARE),
+            "minimal_user" => Some(PERSONA_WARM_FRIEND),
+            _ => None,
+        };
+        if let Some(persona_id) = normalized_persona {
+            self.companion_persona_id = persona_id.to_string();
+            true
+        } else {
+            false
+        }
+    }
+
     pub fn validate(&self) -> Result<(), SettingsError> {
         match self.locale.as_str() {
             LOCALE_KO | LOCALE_EN | LOCALE_JA => {}
@@ -67,13 +88,22 @@ impl AppSettings {
         match self.companion_persona_id.as_str() {
             PERSONA_WARM_FRIEND
             | PERSONA_LOVING_PARTNER
-            | PERSONA_FANTASY_GUARDIAN
-            | PERSONA_QUIET_COMPANION
-            | PERSONA_MINIMAL_USER
-            | PERSONA_CUTE_CHARACTER
-            | PERSONA_NATURE_HEALING => {}
+            | PERSONA_STEADY_ALLY
+            | PERSONA_SOFT_CARE => {}
             other => Err(SettingsError::Validation(format!(
                 "unsupported companion persona '{other}'"
+            )))?,
+        }
+        match self.appearance.as_str() {
+            APPEARANCE_DARK | APPEARANCE_LIGHT | APPEARANCE_SYSTEM => {}
+            other => Err(SettingsError::Validation(format!(
+                "unsupported appearance '{other}'"
+            )))?,
+        }
+        match self.accent_color.as_str() {
+            ACCENT_ROSE | ACCENT_LAVENDER | ACCENT_SKY | ACCENT_MINT | ACCENT_PEACH => {}
+            other => Err(SettingsError::Validation(format!(
+                "unsupported accent color '{other}'"
             )))?,
         }
         match self.model_route.as_str() {

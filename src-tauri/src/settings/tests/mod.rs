@@ -91,6 +91,36 @@ fn settings_store_migrates_legacy_general_wrapper() {
 }
 
 #[test]
+fn settings_store_migrates_legacy_persona_id() {
+    let path = temp_settings_path();
+    let settings = AppSettings {
+        companion_persona_id: "nature_healing".to_string(),
+        ..AppSettings::default()
+    };
+    fs::write(
+        &path,
+        serde_json::to_string_pretty(&settings).expect("settings json"),
+    )
+    .expect("settings file written");
+    let store = SettingsStore::new(path.clone());
+
+    let loaded = store.load().expect("legacy persona settings load");
+    let migrated: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&path).expect("settings file"))
+            .expect("migrated json");
+
+    assert_eq!(loaded.companion_persona_id, "soft_care");
+    assert_eq!(
+        migrated
+            .get("companionPersonaId")
+            .and_then(|value| value.as_str()),
+        Some("soft_care")
+    );
+
+    let _ = fs::remove_file(path);
+}
+
+#[test]
 fn builds_llama_endpoint_from_settings_host_and_port() {
     assert_eq!(llama_endpoint("127.0.0.1", 8080), "http://127.0.0.1:8080");
 }
@@ -139,4 +169,21 @@ fn settings_store_rejects_non_localhost_host_on_load() {
 
     assert!(result.is_err());
     let _ = fs::remove_file(path);
+}
+
+#[test]
+fn settings_store_recovers_from_corrupt_json_with_backup() {
+    let path = temp_settings_path();
+    fs::write(&path, "{").expect("corrupt settings file written");
+    let backup_path = path.with_extension("json.invalid");
+    let store = SettingsStore::new(path.clone());
+
+    let settings = store.load().expect("corrupt settings recovers");
+
+    assert_eq!(settings, AppSettings::default());
+    assert!(!path.exists());
+    assert_eq!(fs::read_to_string(&backup_path).expect("backup file"), "{");
+
+    let _ = fs::remove_file(path);
+    let _ = fs::remove_file(backup_path);
 }

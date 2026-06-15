@@ -35,9 +35,9 @@ async function readLogicalWindowSize(
   };
 }
 
-export function useControlCenterWindow() {
+export function useControlCenterWindow(enabled = true) {
   useEffect(() => {
-    if (!isTauriRuntime()) return;
+    if (!enabled || !isTauriRuntime()) return;
 
     const webviewWindow = getCurrentWebviewWindow();
     if (webviewWindow.label !== "main") return;
@@ -81,5 +81,5 @@ export function useControlCenterWindow() {
       }
       unlisten?.();
     };
-  }, []);
+  }, [enabled]);
 }

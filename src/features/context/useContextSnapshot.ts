@@ -48,7 +48,7 @@ export function useContextSnapshot(): ContextSnapshotState {
     [settings.customPrivacyKeywords, settings.privacyFilterEnabled],
   );
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (isCurrent: () => boolean = () => true) => {
     if (!settings.analysisEnabled) {
       return;
     }
@@ -59,6 +59,8 @@ export function useContextSnapshot(): ContextSnapshotState {
 
     try {
       const context = await assessCurrentPrivacyContext(keywords);
+      if (!isCurrent() || !settings.analysisEnabled) return;
+
       const shouldPersist = hasSignificantContextChange(
         previousSnapshotRef.current,
         context.snapshot,
@@ -67,6 +69,7 @@ export function useContextSnapshot(): ContextSnapshotState {
       if (shouldPersist) {
         previousSnapshotRef.current = context.snapshot;
         await capturePrivacyCheckedContextEvent(keywords);
+        if (!isCurrent() || !settings.analysisEnabled) return;
       }
 
       setState({
@@ -80,6 +83,7 @@ export function useContextSnapshot(): ContextSnapshotState {
         status: "ready",
       });
     } catch {
+      if (!isCurrent() || !settings.analysisEnabled) return;
       setState((current) => ({
         ...current,
         status: "error",
@@ -99,22 +103,26 @@ export function useContextSnapshot(): ContextSnapshotState {
       return;
     }
 
-    void refresh();
+    let cancelled = false;
+    const isCurrent = () => !cancelled;
+
+    void refresh(isCurrent);
 
     const intervalId = window.setInterval(() => {
       if (document.hidden) return;
-      void refresh();
+      void refresh(isCurrent);
     }, CONTEXT_POLL_INTERVAL_MS);
 
     function handleVisibilityChange() {
       if (!document.hidden) {
-        void refresh();
+        void refresh(isCurrent);
       }
     }
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
+      cancelled = true;
       window.clearInterval(intervalId);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };

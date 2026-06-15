@@ -1,27 +1,55 @@
 import type { ReportMessages } from "../modules/report";
 
 export const report: ReportMessages = {
-  eyebrow: "Daily Review",
-  title: "Work report",
-  description: "Today's focus time and proactive speech history in one view.",
+  eyebrow: "Daily Care",
+  title: "Today's reflection",
+  description: "Look back at the time you held on and the moments you came back.",
+  intro: {
+    prompt: "You worked hard today. Want to look back together?",
+  },
   sections: {
-    summary: "Summary",
-    timeline: "Timeline",
+    summary: "Time together today",
+    moments: "Today's moments",
+    closing: "A closing note",
   },
   metrics: {
-    focusTime: "Focus time together today",
-    utterances: "Gentle nudges from your companion",
+    togetherTime: "Time together",
+    nudges: "Today's nudges",
+    chatOpens: "Times you opened chat",
+    returns: "Moments you came back",
+  },
+  emotionalKeywords: {
+    title: "Today's mood words",
+    fallback: "A quiet day you held through",
+    tags: {
+      steady: "Steady",
+      tired: "Tired",
+      focused: "Focused",
+      gentle: "Gentle",
+      return: "Came back",
+    },
+  },
+  closingNote: {
+    title: "From your companion",
+    quiet:
+      "It was a quiet day — but you weren't alone. I was right here with you.",
+    gentle:
+      "You held on well today. Coming back each time was already enough.",
+    active:
+      "It was a busy day. Thanks for pausing to talk with me along the way.",
   },
   timeline: {
-    loading: "Loading timeline…",
-    empty: "No timeline entries yet.",
+    loading: "Loading today's moments…",
+    empty: "No shared moments yet today.",
+    expand: "Show {count} more",
+    collapse: "Show less",
   },
   format: {
     hoursMinutes: "{hours}h {minutes}m",
     hoursOnly: "{hours}h",
     minutesOnly: "{minutes}m",
-    zeroDuration: "0m",
-    utteranceCount: "{count}",
-    zeroUtterances: "0",
+    zeroDuration: "No record yet",
+    count: "{count}",
+    zeroCount: "None",
   },
 };

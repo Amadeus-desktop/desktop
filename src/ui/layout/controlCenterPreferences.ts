@@ -15,6 +15,13 @@ export const controlCenterWindowPolicy = {
   minHeight: 480,
 } as const;
 
+export const onboardingWindowPolicy = {
+  width: 420,
+  height: 720,
+  minWidth: 380,
+  minHeight: 600,
+} as const;
+
 export function readControlCenterWindowSize():
   | ControlCenterWindowSize
   | null {

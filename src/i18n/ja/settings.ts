@@ -3,11 +3,15 @@ import type { SettingsMessages } from "../modules/settings";
 export const settings: SettingsMessages = {
   eyebrow: "Preferences",
   title: "一般設定",
-  description: "能動的な声かけ、モデルルーティング、夜間配慮を設定します。",
+  description: "companionとの日常 — 口調、呼び名、声かけの頻度を整えます。",
   sections: {
-    conversation: "Conversation",
-    model: "Model",
-    language: "Language",
+    conversation: "一緒に",
+    model: "モデル · 接続",
+    language: "言語",
+  },
+  advanced: {
+    toggle: "詳細設定",
+    hint: "ローカルモデル、LLMルーティング、テスト発話",
   },
   locale: {
     label: "表示言語",
@@ -91,17 +95,34 @@ export const settings: SettingsMessages = {
     button: "テスト実行",
     running: "生成中…",
   },
+  appearance: {
+    label: "テーマ",
+    subtitle: "アプリの明るさ — ダーク、ライト、システム連動",
+    options: {
+      dark: "ダーク",
+      light: "ライト",
+      system: "システム",
+    },
+  },
+  accentColor: {
+    label: "強調色",
+    subtitle: "ボタン、トグル、ポイントカラー",
+    options: {
+      rose: "ローズ",
+      lavender: "ラベンダー",
+      sky: "スカイ",
+      mint: "ミント",
+      peach: "ピーチ",
+    },
+  },
   companionPersona: {
     label: "companionペルソナ",
-    subtitle: "口調と下部presenceアイコンスタイルを選びます。",
+    subtitle: "口調と下部presenceアイコン",
     icons: {
-      bubble: "吹き出しアイコン",
-      letter: "手紙/メモアイコン",
-      star: "星/きらめきアイコン",
-      orb: "オーブ/ラウンドアイコン",
-      line: "シンプルラインアイコン",
-      face: "小さな顔/感情アイコン",
-      leaf: "葉/水滴アイコン",
+      bubble: "吹き出し",
+      letter: "手紙",
+      star: "星",
+      orb: "オーブ",
     },
   },
 };

@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test:i18n": "npx --yes tsx scripts/check-i18n-parity.ts",
+    "test": "vitest run",
+    "test:i18n": "pnpm exec tsx scripts/check-i18n-parity.ts",
     "tauri": "tauri dev",
     "tauri:cli": "tauri",
     "tauri:build": "tauri build",
@@ -35,7 +36,9 @@
     "drizzle-kit": "^0.31.10",
     "esbuild": "^0.28.1",
     "tailwindcss": "^4.3.1",
+    "tsx": "4.22.4",
     "typescript": "~6.0.3",
-    "vite": "^8.0.16"
+    "vite": "^8.0.16",
+    "vitest": "4.0.15"
   }
 }

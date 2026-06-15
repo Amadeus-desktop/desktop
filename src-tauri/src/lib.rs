@@ -25,19 +25,55 @@ use privacy::{
 };
 use settings::{get_app_settings, llama_endpoint, update_app_settings, SettingsState};
 use shared::constants::{APP_DATABASE_FILE_NAME, APP_NAME, APP_SETTINGS_FILE_NAME};
-use tauri::{Manager, WindowEvent};
+use tauri::{
+    image::Image,
+    menu::{Menu, MenuItem, PredefinedMenuItem},
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    Manager, WindowEvent,
+};
 use timeline::{
-    create_context_event, create_local_memory, create_user_reaction, create_utterance_event,
-    enqueue_sync_payload, list_timeline_events, TimelineRepository, TimelineState,
+    clear_local_timeline_data, create_context_event, create_local_memory, create_user_reaction,
+    create_utterance_event, enqueue_sync_payload, list_timeline_events, TimelineRepository,
+    TimelineState,
 };
 use trigger::{
     poll_trigger_engine, record_trigger_reaction_for_scoring, run_trigger_engine_once,
     TriggerEngineState,
 };
 
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {name}! You've been greeted from {APP_NAME}!")
+const TRAY_ID: &str = "amadeus_menu_bar";
+const TRAY_OPEN_AMADEUS_ID: &str = "open_amadeus";
+const TRAY_TOGGLE_COMPANION_ID: &str = "toggle_companion";
+const TRAY_QUIT_AMADEUS_ID: &str = "quit_amadeus";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ResidentWindowCloseAction {
+    Hide,
+    AllowClose,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TrayMenuAction {
+    OpenAmadeus,
+    ToggleCompanion,
+    QuitAmadeus,
+    Ignore,
+}
+
+fn resident_window_close_action(label: &str) -> ResidentWindowCloseAction {
+    match label {
+        "main" | "companion" => ResidentWindowCloseAction::Hide,
+        _ => ResidentWindowCloseAction::AllowClose,
+    }
+}
+
+fn tray_menu_action(menu_id: &str) -> TrayMenuAction {
+    match menu_id {
+        TRAY_OPEN_AMADEUS_ID => TrayMenuAction::OpenAmadeus,
+        TRAY_TOGGLE_COMPANION_ID => TrayMenuAction::ToggleCompanion,
+        TRAY_QUIT_AMADEUS_ID => TrayMenuAction::QuitAmadeus,
+        _ => TrayMenuAction::Ignore,
+    }
 }
 
 #[tauri::command]
@@ -134,6 +170,143 @@ fn watch_companion_window_layout(app: &tauri::AppHandle, window: &tauri::Webview
     });
 }
 
+fn watch_resident_window_close(window: &tauri::WebviewWindow) {
+    let window = window.clone();
+    window.clone().on_window_event(move |event| {
+        if let WindowEvent::CloseRequested { api, .. } = event {
+            if resident_window_close_action(window.label()) == ResidentWindowCloseAction::Hide {
+                api.prevent_close();
+                if let Err(error) = window.hide() {
+                    eprintln!("watch_resident_window_close: hide failed: {error}");
+                }
+            }
+        }
+    });
+}
+
+fn show_main_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        if let Err(error) = window.show() {
+            eprintln!("show_main_window: show failed: {error}");
+        }
+        if let Err(error) = window.set_focus() {
+            eprintln!("show_main_window: set_focus failed: {error}");
+        }
+    }
+}
+
+fn toggle_companion_window(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("companion") {
+        match window.is_visible() {
+            Ok(true) => {
+                if let Err(error) = window.hide() {
+                    eprintln!("toggle_companion_window: hide failed: {error}");
+                }
+            }
+            Ok(false) => {
+                if let Err(error) = window.show() {
+                    eprintln!("toggle_companion_window: show failed: {error}");
+                }
+                position_companion_window(&window);
+            }
+            Err(error) => eprintln!("toggle_companion_window: is_visible failed: {error}"),
+        }
+    }
+}
+
+fn handle_tray_menu_action(app: &tauri::AppHandle, action: TrayMenuAction) {
+    match action {
+        TrayMenuAction::OpenAmadeus => show_main_window(app),
+        TrayMenuAction::ToggleCompanion => toggle_companion_window(app),
+        TrayMenuAction::QuitAmadeus => app.exit(0),
+        TrayMenuAction::Ignore => {}
+    }
+}
+
+fn menu_bar_template_icon() -> Image<'static> {
+    const SIZE: u32 = 18;
+    const MASK: [&str; SIZE as usize] = [
+        "000000000000000000",
+        "000000011000000000",
+        "000000111100000000",
+        "000001111110000000",
+        "000011111111000000",
+        "000111100111100000",
+        "001111000011110000",
+        "001110000001110000",
+        "001100111100110000",
+        "001101111110110000",
+        "001101100110110000",
+        "001100000000110000",
+        "000110011001100000",
+        "000011111111000000",
+        "000001111110000000",
+        "000000111100000000",
+        "000000011000000000",
+        "000000000000000000",
+    ];
+    let mut rgba = Vec::with_capacity((SIZE * SIZE * 4) as usize);
+    for row in MASK {
+        for pixel in row.as_bytes() {
+            if *pixel == b'1' {
+                rgba.extend_from_slice(&[255, 255, 255, 255]);
+            } else {
+                rgba.extend_from_slice(&[255, 255, 255, 0]);
+            }
+        }
+    }
+    Image::new_owned(rgba, SIZE, SIZE)
+}
+
+fn setup_menu_bar(app: &tauri::App) -> tauri::Result<()> {
+    let open = MenuItem::with_id(
+        app,
+        TRAY_OPEN_AMADEUS_ID,
+        "Open Amadeus",
+        true,
+        None::<&str>,
+    )?;
+    let toggle = MenuItem::with_id(
+        app,
+        TRAY_TOGGLE_COMPANION_ID,
+        "Show/Hide Companion",
+        true,
+        None::<&str>,
+    )?;
+    let separator = PredefinedMenuItem::separator(app)?;
+    let quit = MenuItem::with_id(
+        app,
+        TRAY_QUIT_AMADEUS_ID,
+        "Quit Amadeus",
+        true,
+        None::<&str>,
+    )?;
+    let menu = Menu::with_items(app, &[&open, &toggle, &separator, &quit])?;
+    let tray = TrayIconBuilder::with_id(TRAY_ID)
+        .tooltip(APP_NAME)
+        .icon(menu_bar_template_icon())
+        .icon_as_template(true)
+        .menu(&menu)
+        .show_menu_on_left_click(false)
+        .on_menu_event(|app, event| {
+            handle_tray_menu_action(app, tray_menu_action(event.id().as_ref()));
+        })
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = event
+            {
+                show_main_window(tray.app_handle());
+            }
+        });
+
+    let tray = tray.build(app)?;
+    app.manage(tray);
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -167,32 +340,38 @@ pub fn run() {
             app.manage(sidecar_state);
             app.manage(OcrState::platform_default());
             app.manage(ScreenCaptureState::platform_default());
+            setup_menu_bar(app)?;
 
             // Make windows transparent + popup-style on macOS
             #[cfg(target_os = "macos")]
             {
                 if let Some(win) = app.get_webview_window("main") {
                     configure_macos_main_window(&win);
+                    watch_resident_window_close(&win);
                 }
                 if let Some(win) = app.get_webview_window("companion") {
                     configure_macos_companion_window(&win);
                     position_companion_window(&win);
                     watch_companion_window_layout(app.handle(), &win);
+                    watch_resident_window_close(&win);
                 }
             }
 
             #[cfg(not(target_os = "macos"))]
             {
+                if let Some(win) = app.get_webview_window("main") {
+                    watch_resident_window_close(&win);
+                }
                 if let Some(win) = app.get_webview_window("companion") {
                     position_companion_window(&win);
                     watch_companion_window_layout(app.handle(), &win);
+                    watch_resident_window_close(&win);
                 }
             }
 
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            greet,
             sync_companion_window_position,
             get_current_context_snapshot,
             get_screen_capture_permission_status,
@@ -204,6 +383,7 @@ pub fn run() {
             create_local_memory,
             enqueue_sync_payload,
             list_timeline_events,
+            clear_local_timeline_data,
             run_trigger_engine_once,
             poll_trigger_engine,
             record_trigger_reaction_for_scoring,
@@ -219,4 +399,46 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn resident_windows_hide_instead_of_closing() {
+        assert_eq!(
+            resident_window_close_action("main"),
+            ResidentWindowCloseAction::Hide
+        );
+        assert_eq!(
+            resident_window_close_action("companion"),
+            ResidentWindowCloseAction::Hide
+        );
+    }
+
+    #[test]
+    fn unknown_windows_may_close_normally() {
+        assert_eq!(
+            resident_window_close_action("settings"),
+            ResidentWindowCloseAction::AllowClose
+        );
+    }
+
+    #[test]
+    fn tray_menu_ids_map_to_resident_app_actions() {
+        assert_eq!(
+            tray_menu_action("open_amadeus"),
+            TrayMenuAction::OpenAmadeus
+        );
+        assert_eq!(
+            tray_menu_action("toggle_companion"),
+            TrayMenuAction::ToggleCompanion
+        );
+        assert_eq!(
+            tray_menu_action("quit_amadeus"),
+            TrayMenuAction::QuitAmadeus
+        );
+        assert_eq!(tray_menu_action("unknown"), TrayMenuAction::Ignore);
+    }
 }

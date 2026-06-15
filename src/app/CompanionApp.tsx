@@ -1,11 +1,11 @@
 import { CompanionShell } from "../features/companion";
-import { useCompanionTheme } from "../features/companion/hooks/useCompanionTheme";
 import { useCompanionWindowLifecycle } from "../features/companion/hooks/useCompanionWindowLifecycle";
 import { ensureSettingsSync } from "../features/settings/appSettingsStore";
+import { useShellTheme } from "../ui/theme/useShellTheme";
 import { useEffect } from "react";
 
 export function CompanionApp() {
-  useCompanionTheme();
+  useShellTheme();
   useCompanionWindowLifecycle();
 
   useEffect(() => {

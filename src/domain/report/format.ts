@@ -25,13 +25,21 @@ export function formatReportDuration(
   return labels.minutesOnly.replace("{minutes}", String(minutes));
 }
 
-export function formatUtteranceCount(
+export function formatReportCount(
   count: number,
   labels: AppLocale["report"]["format"],
 ): string {
   if (count <= 0) {
-    return labels.zeroUtterances;
+    return labels.zeroCount;
   }
 
-  return labels.utteranceCount.replace("{count}", String(count));
+  return labels.count.replace("{count}", String(count));
+}
+
+/** @deprecated use formatReportCount */
+export function formatUtteranceCount(
+  count: number,
+  labels: AppLocale["report"]["format"],
+): string {
+  return formatReportCount(count, labels);
 }

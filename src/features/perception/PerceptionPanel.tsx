@@ -1,4 +1,12 @@
-import { IosSwitch, MacInput, PanelHeader, SectionHeading, SettingRow, StatusPill } from "../../ui";
+import {
+  AdvancedSection,
+  IosSwitch,
+  MacInput,
+  PanelHeader,
+  SectionHeading,
+  SettingRow,
+  SettingsGroup,
+} from "../../ui";
 import {
   formatPrivacyKeywordsInput,
   parsePrivacyKeywordsInput,
@@ -6,7 +14,7 @@ import {
 import { useI18n } from "../../i18n";
 import { useSettings } from "../settings/useSettings";
 import { LiveContextLog } from "./LiveContextLog";
-import { PrivacyFilterCard } from "./PrivacyFilterCard";
+import { PerceptionStatusBar } from "./PerceptionStatusBar";
 import { usePerceptionStatus } from "./usePerceptionStatus";
 
 export function PerceptionPanel() {
@@ -39,6 +47,15 @@ export function PerceptionPanel() {
             ? t.perception.status.analysisWaiting
             : t.perception.status.analysisPaused;
 
+  const statusTone =
+    contextStatus === "error"
+      ? "error"
+      : privacyAssessment?.isSensitive
+        ? "blocked"
+        : analysisEnabled
+          ? "active"
+          : "paused";
+
   return (
     <section className="tab-panel-enter">
       <PanelHeader
@@ -47,82 +64,79 @@ export function PerceptionPanel() {
         description={t.perception.description}
       />
 
-      <SectionHeading>{t.perception.sections.capture}</SectionHeading>
-      <SettingRow
-        title={t.perception.analysis.label}
-        subtitle={t.perception.analysis.subtitle}
-      >
-        <IosSwitch
-          checked={analysisEnabled}
-          onChange={setAnalysisEnabled}
-          label={t.perception.analysis.switchLabel}
-        />
-      </SettingRow>
-      <SettingRow
-        title={t.perception.proactiveTrigger.label}
-        subtitle={t.perception.proactiveTrigger.subtitle}
-      >
-        <IosSwitch
-          checked={proactiveTriggerEnabled}
-          onChange={setProactiveTriggerEnabled}
-          label={t.perception.proactiveTrigger.switchLabel}
-        />
-      </SettingRow>
-      <SettingRow
-        title={t.perception.privacyFilter.label}
-        subtitle={t.perception.privacyFilter.subtitle}
-      >
-        <IosSwitch
-          checked={privacyFilterEnabled}
-          onChange={setPrivacyFilterEnabled}
-          label={t.perception.privacyFilter.switchLabel}
-        />
-      </SettingRow>
-      {privacyFilterEnabled ? (
+      <SectionHeading>{t.perception.sections.basics}</SectionHeading>
+      <SettingsGroup>
         <SettingRow
-          title={t.perception.privacyKeywords.label}
-          subtitle={t.perception.privacyKeywords.subtitle}
+          variant="primary"
+          title={t.perception.analysis.label}
+          subtitle={t.perception.analysis.subtitle}
         >
-          <MacInput
-            value={formatPrivacyKeywordsInput(customPrivacyKeywords)}
-            onChange={(value) =>
-              setCustomPrivacyKeywords(parsePrivacyKeywordsInput(value))
-            }
-            label={t.perception.privacyKeywords.inputLabel}
-            className="min-w-[160px] max-w-[220px] rounded-md border border-white/12 bg-white/8 px-2 py-1 text-left text-[11px] text-white outline-none transition focus:border-[#007aff]"
+          <IosSwitch
+            checked={analysisEnabled}
+            onChange={setAnalysisEnabled}
+            label={t.perception.analysis.switchLabel}
           />
         </SettingRow>
-      ) : null}
+        <SettingRow
+          title={t.perception.proactiveTrigger.label}
+          subtitle={t.perception.proactiveTrigger.subtitle}
+        >
+          <IosSwitch
+            checked={proactiveTriggerEnabled}
+            onChange={setProactiveTriggerEnabled}
+            label={t.perception.proactiveTrigger.switchLabel}
+          />
+        </SettingRow>
+        <SettingRow
+          title={t.perception.privacyFilter.label}
+          subtitle={t.perception.privacyFilter.subtitle}
+        >
+          <IosSwitch
+            checked={privacyFilterEnabled}
+            onChange={setPrivacyFilterEnabled}
+            label={t.perception.privacyFilter.switchLabel}
+          />
+        </SettingRow>
+        {privacyFilterEnabled ? (
+          <SettingRow
+            variant="nested"
+            layout="stack"
+            title={t.perception.privacyKeywords.label}
+            subtitle={t.perception.privacyKeywords.subtitle}
+          >
+            <MacInput
+              value={formatPrivacyKeywordsInput(customPrivacyKeywords)}
+              onChange={(value) =>
+                setCustomPrivacyKeywords(parsePrivacyKeywordsInput(value))
+              }
+              label={t.perception.privacyKeywords.inputLabel}
+              className="w-full rounded-[14px] border border-[#48484f] bg-[#2c2c30] px-3 py-2 text-left text-[12px] text-white outline-none transition focus:border-[color:rgb(var(--accent-rgb)/0.45)]"
+            />
+          </SettingRow>
+        ) : null}
+      </SettingsGroup>
 
-      <SectionHeading>{t.perception.sections.liveContext}</SectionHeading>
-      <LiveContextLog
-        liveContext={liveContext}
-        labels={t.perception.liveContext}
-        loading={contextStatus === "loading" && analysisEnabled}
-        loadingLabel={t.perception.status.analysisLoading}
+      <PerceptionStatusBar
+        statusLabel={statusLabel}
+        tone={statusTone}
+        enabled={privacyFilterEnabled}
+        assessment={privacyAssessment}
+        permissionStatus={screenCapturePermission}
+        labels={t.perception.privacyCard}
       />
 
-      <div className="mt-3 grid grid-cols-[minmax(0,1fr)_180px] gap-3 max-sm:grid-cols-1">
-        <PrivacyFilterCard
-          enabled={privacyFilterEnabled}
-          assessment={privacyAssessment}
-          permissionStatus={screenCapturePermission}
-          labels={t.perception.privacyCard}
+      <AdvancedSection
+        title={t.perception.advanced.toggle}
+        hint={t.perception.advanced.hint}
+      >
+        <SectionHeading>{t.perception.sections.details}</SectionHeading>
+        <LiveContextLog
+          liveContext={liveContext}
+          labels={t.perception.liveContext}
+          loading={contextStatus === "loading" && analysisEnabled}
+          loadingLabel={t.perception.status.analysisLoading}
         />
-        <StatusPill
-          tone={
-            contextStatus === "error"
-              ? "blue"
-              : privacyAssessment?.isSensitive
-                ? "blue"
-                : analysisEnabled
-                  ? "green"
-                  : "blue"
-          }
-        >
-          {statusLabel}
-        </StatusPill>
-      </div>
+      </AdvancedSection>
     </section>
   );
 }

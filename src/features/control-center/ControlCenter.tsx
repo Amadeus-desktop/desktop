@@ -53,7 +53,9 @@ export function ControlCenter() {
           </Sidebar>
         }
       >
-        <div className="flex h-full min-h-0 flex-col overflow-y-auto px-6 py-5 max-sm:px-4 max-sm:py-4">
+        <div
+          className="scrollbar-hide h-full min-h-0 flex-col overflow-y-auto px-6 py-5 max-sm:px-4 max-sm:py-4"
+        >
           <div className="app-no-drag min-h-0 shrink-0">
             {renderPanel(activeTab)}
           </div>

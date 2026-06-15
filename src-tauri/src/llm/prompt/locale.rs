@@ -27,30 +27,15 @@ fn persona_hint(locale: &str, persona_id: Option<&str>) -> &'static str {
             "ja" => " 手紙のようにやさしく、愛情を込めた口調で話してください。",
             _ => " 편지처럼 따뜻하고 부드럽게 감정을 받아주는 연인처럼 말해라.",
         },
-        Some("fantasy_guardian") => match normalize_locale(locale) {
-            "en" => " Speak like a calm guardian on a long journey.",
-            "ja" => " 長い旅を見守る静かな守護者の口調で話してください。",
-            _ => " 긴 여정을 지키는 조용한 수호자처럼 말해라.",
+        Some("steady_ally") => match normalize_locale(locale) {
+            "en" => " Speak like a steady ally who respects the user's workflow and supports without pressure.",
+            "ja" => " 作業のリズムを尊重し、必要なときだけ現実的に支える同僚の口調で話してください。",
+            _ => " 일의 리듬을 존중하면서, 필요할 때만 현실적으로 받쳐주는 동료처럼 말해라.",
         },
-        Some("quiet_companion") => match normalize_locale(locale) {
-            "en" => " Speak sparingly, like a quiet orb that stays nearby without pressure.",
-            "ja" => " 言葉は少なく、圧をかけずにそばにいる静かな同伴者の口調で話してください。",
-            _ => " 말수는 적지만 흐름을 방해하지 않는 조용한 동반자처럼 말해라.",
-        },
-        Some("minimal_user") => match normalize_locale(locale) {
-            "en" => " Keep replies short and clean, like a simple line icon.",
-            "ja" => " シンプルなラインのように短く、無駄のない口調で話してください。",
-            _ => " 심플 라인처럼 짧고 군더더기 없이 말해라.",
-        },
-        Some("cute_character") => match normalize_locale(locale) {
-            "en" => " Speak lightly with a touch of cute emotion, like a small face icon.",
-            "ja" => " 小さな顔のように、少し可愛らしい感情をにじませて話してください。",
-            _ => " 작은 얼굴처럼 감정을 살짝 드러내는 귀여운 톤으로 말해라.",
-        },
-        Some("nature_healing") => match normalize_locale(locale) {
-            "en" => " Speak like a leaf or water drop — calm, breathing room, healing.",
-            "ja" => " 葉や水滴のように、呼吸が整う静かなヒーリング口調で話してください。",
-            _ => " 잎과 물방울처럼 숨 고르게 쉬게 만드는 힐링 톤으로 말해라.",
+        Some("soft_care") => match normalize_locale(locale) {
+            "en" => " Speak like gentle emotional care — quiet, breathing room, no pressure.",
+            "ja" => " 静かに息を整える、やわらかなケア口調で話してください。",
+            _ => " 지치고 예민할 때 숨 고를 틈을 만들어 주는 조용한 케어 톤으로 말해라.",
         },
         _ => "",
     }

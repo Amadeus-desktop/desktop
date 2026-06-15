@@ -784,6 +784,9 @@ source_kind: Process | Capture | Ocr | Llm
 
 ## 18. 구현 순서
 
+현재 Tauri 앱에 구현된 화면 캡처/OCR command와 권한 UX 기준은
+[screen-capture-ocr-runtime.md](./screen-capture-ocr-runtime.md)에 둔다.
+
 1. LLM input을 `LlmInputEnvelope`로 제한하고 raw window title 전달을 제거한다.
 2. `ProcessHistoryWindow`와 `PolicyScores` 타입을 추가한다.
 3. 예외 상황 단위 테스트를 process-only로 먼저 구현한다.

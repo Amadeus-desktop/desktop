@@ -1,10 +1,20 @@
 import { useSyncExternalStore } from "react";
 import { setLocale, type LocaleCode } from "../../i18n";
+import { applyAccentColor } from "../../ui/theme/applyAccentColor";
+import { applyAppearance } from "../../ui/theme/applyAppearance";
 import {
+  DEFAULT_ACCENT_COLOR,
+  DEFAULT_APPEARANCE,
+  type AccentColorId,
+  type AppearanceMode,
+} from "../../ui/tokens/appearance";
+import {
+  getAppearanceOptions,
   getLocaleOptions,
   getModelRouteOptions,
   getTalkFrequencyOptions,
   initialSettings,
+  normalizeGeneralSettings,
 } from "./settings";
 import {
   broadcastSettingsChanged,
@@ -24,11 +34,13 @@ let snapshot: AppSettingsSnapshot = {
   hydrated: false,
   revision: 0,
 };
+let confirmedSettings: GeneralSettings = initialSettings;
 
 const listeners = new Set<() => void>();
 let hydratePromise: Promise<GeneralSettings> | null = null;
 let persistTimer: number | null = null;
 let persistSequence = 0;
+let pendingHydrationPatch: Partial<GeneralSettings> | null = null;
 
 function notify() {
   listeners.forEach((listener) => listener());
@@ -47,12 +59,15 @@ function replaceSnapshot(
   settings: GeneralSettings,
   options: { hydrated?: boolean; bumpRevision?: boolean } = {},
 ) {
+  const normalized = normalizeGeneralSettings(settings);
   snapshot = {
-    settings,
+    settings: normalized,
     hydrated: options.hydrated ?? snapshot.hydrated,
     revision: options.bumpRevision ? snapshot.revision + 1 : snapshot.revision,
   };
-  setLocale(settings.locale);
+  setLocale(normalized.locale);
+  applyAppearance(normalized.appearance ?? DEFAULT_APPEARANCE);
+  applyAccentColor(normalized.accentColor ?? DEFAULT_ACCENT_COLOR);
   notify();
 }
 
@@ -69,10 +84,13 @@ export function applyAppSettings(
     return;
   }
 
-  schedulePersist(settings);
+  schedulePersist(snapshot.settings);
 }
 
 export function patchAppSettings(patch: Partial<GeneralSettings>) {
+  if (!snapshot.hydrated) {
+    pendingHydrationPatch = { ...pendingHydrationPatch, ...patch };
+  }
   applyAppSettings({ ...snapshot.settings, ...patch });
 }
 
@@ -87,12 +105,13 @@ function schedulePersist(settings: GeneralSettings) {
     void saveGeneralSettings(settings)
       .then(async (savedSettings) => {
         if (sequence !== persistSequence) return;
+        confirmedSettings = savedSettings;
         replaceSnapshot(savedSettings, { bumpRevision: true });
         await broadcastSettingsChanged(savedSettings);
       })
       .catch(() => {
         if (sequence !== persistSequence) return;
-        replaceSnapshot(settings, { bumpRevision: true });
+        replaceSnapshot(confirmedSettings, { bumpRevision: true });
       });
   }, 250);
 }
@@ -105,12 +124,18 @@ export async function hydrateAppSettings(): Promise<GeneralSettings> {
   if (!hydratePromise) {
     hydratePromise = loadGeneralSettings()
       .then((loadedSettings) => {
-        applyAppSettings(loadedSettings, {
+        const pendingPatch = pendingHydrationPatch;
+        pendingHydrationPatch = null;
+        const nextSettings = pendingPatch
+          ? normalizeGeneralSettings({ ...loadedSettings, ...pendingPatch })
+          : loadedSettings;
+        confirmedSettings = loadedSettings;
+        applyAppSettings(nextSettings, {
           hydrated: true,
-          persist: false,
+          persist: !!pendingPatch,
           bumpRevision: true,
         });
-        return loadedSettings;
+        return snapshot.settings;
       })
       .finally(() => {
         hydratePromise = null;
@@ -151,6 +176,10 @@ export function useSettings() {
     ...settings,
     settingsRevision: revision,
     setLocale: (value: LocaleCode) => patchAppSettings({ locale: value }),
+    setAppearance: (value: AppearanceMode) =>
+      patchAppSettings({ appearance: value }),
+    setAccentColor: (value: AccentColorId) =>
+      patchAppSettings({ accentColor: value }),
     setCompanionPersonaId: (value: GeneralSettings["companionPersonaId"]) =>
       patchAppSettings({ companionPersonaId: value }),
     setTalkFrequency: (value: TalkFrequency) =>
@@ -180,5 +209,6 @@ export function useSettings() {
     talkFrequencyOptions: getTalkFrequencyOptions,
     modelRouteOptions: getModelRouteOptions,
     localeOptions: getLocaleOptions,
+    appearanceOptions: getAppearanceOptions,
   };
 }

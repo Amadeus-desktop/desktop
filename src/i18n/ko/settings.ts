@@ -3,11 +3,15 @@ import type { SettingsMessages } from "../modules/settings";
 export const settings: SettingsMessages = {
   eyebrow: "Preferences",
   title: "일반 설정",
-  description: "능동 발화, 모델 라우팅, 야간 배려 같은 기본 동작을 정합니다.",
+  description: "말투, 호칭, 말 걸기 빈도처럼 companion과의 일상을 정해요.",
   sections: {
-    conversation: "Conversation",
-    model: "Model",
-    language: "Language",
+    conversation: "함께하기",
+    model: "모델 · 연결",
+    language: "언어",
+  },
+  advanced: {
+    toggle: "고급 설정",
+    hint: "로컬 모델, LLM 라우팅, 테스트 발화",
   },
   locale: {
     label: "표시 언어",
@@ -91,17 +95,34 @@ export const settings: SettingsMessages = {
     button: "테스트 실행",
     running: "생성 중…",
   },
+  appearance: {
+    label: "테마",
+    subtitle: "앱 밝기 — 다크, 라이트, 시스템 설정 따름",
+    options: {
+      dark: "다크",
+      light: "라이트",
+      system: "시스템",
+    },
+  },
+  accentColor: {
+    label: "강조 색상",
+    subtitle: "버튼, 토글, 포인트 컬러",
+    options: {
+      rose: "로즈",
+      lavender: "라벤더",
+      sky: "스카이",
+      mint: "민트",
+      peach: "피치",
+    },
+  },
   companionPersona: {
     label: "companion 페르소나",
-    subtitle: "말투와 하단 presence 아이콘 스타일을 고릅니다.",
+    subtitle: "말투와 하단 presence 아이콘",
     icons: {
-      bubble: "말풍선 아이콘",
-      letter: "편지/메모 아이콘",
-      star: "별/반짝임 아이콘",
-      orb: "오브/라운드 아이콘",
-      line: "심플 라인 아이콘",
-      face: "작은 얼굴/감정 아이콘",
-      leaf: "잎/물방울 아이콘",
+      bubble: "말풍선",
+      letter: "편지",
+      star: "별",
+      orb: "오브",
     },
   },
 };

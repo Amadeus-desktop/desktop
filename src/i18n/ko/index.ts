@@ -8,6 +8,7 @@ import { perception } from "./perception";
 import { report } from "./report";
 import { companion } from "./companion";
 import { persona } from "./persona";
+import { auth } from "./auth";
 
 export const locale: AppLocale = {
   common,
@@ -19,4 +20,5 @@ export const locale: AppLocale = {
   report,
   companion,
   persona,
+  auth,
 };

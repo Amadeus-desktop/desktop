@@ -1,17 +1,30 @@
-/** Solid macOS-style surfaces — no backdrop-blur or fake glass alpha. */
+/** Solid macOS-style surfaces — token-driven for dark/light appearance. */
 export const glassStyles = {
-  shell: "border border-[#3a3a40] bg-[#1c1c1e]",
-  panel: "border border-[#3a3a40] bg-[#252528]",
-  panelStrong: "border border-[#48484f] bg-[#2c2c30]",
-  row: "border border-[#333338] bg-[#222226] transition hover:border-[#48484f] hover:bg-[#2a2a2e]",
+  shell:
+    "border border-[color:var(--shell-border)] bg-[color:var(--shell-bg)]",
+  panel:
+    "border border-[color:var(--shell-border)] bg-[color:var(--shell-panel)]",
+  panelStrong:
+    "border border-[color:var(--shell-border-strong)] bg-[color:var(--shell-panel-strong)]",
+  row:
+    "border border-[color:var(--shell-border-subtle)] bg-[color:var(--shell-row)] transition hover:border-[color:var(--shell-border-strong)] hover:bg-[color:var(--shell-row-hover)]",
   rowSelected:
-    "border-[#0a84ff] bg-[#1a2a40] shadow-[inset_0_0_0_1px_rgba(10,132,255,0.25)]",
-  chip: "border border-[#48484f] bg-[#2c2c30]",
-  bubble: "border border-[#3a3a40] bg-[#2a2a2e]",
-  sidebar: "border-r border-[#2e2e32] bg-[#161618]",
+    "border-[color:rgb(var(--accent-rgb)/0.45)] bg-[color:rgb(var(--accent-rgb)/0.08)] shadow-[inset_0_0_0_1px_rgb(var(--accent-rgb)/0.22)]",
+  chip:
+    "border border-[color:var(--shell-border-strong)] bg-[color:var(--shell-panel-strong)]",
+  bubble:
+    "border border-[color:var(--shell-border)] bg-[color:var(--shell-row-hover)]",
+  sidebar:
+    "border-r border-[color:var(--shell-sidebar-border)] bg-[color:var(--shell-sidebar)]",
   radiusWindow: "rounded-[28px]",
   radiusPanel: "rounded-[22px]",
   radiusCard: "rounded-[18px]",
   radiusBubble: "rounded-[16px]",
   radiusChip: "rounded-full",
+} as const;
+
+export const shellText = {
+  primary: "text-[color:var(--shell-ink)]",
+  muted: "text-[color:var(--shell-ink-muted)]",
+  faint: "text-[color:var(--shell-ink-faint)]",
 } as const;

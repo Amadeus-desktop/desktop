@@ -6,4 +6,5 @@ export type { CharacterMessages } from "./character";
 export type { PerceptionMessages } from "./perception";
 export type { ReportMessages } from "./report";
 export type { CompanionMessages } from "./companion";
+export type { AuthMessages } from "./auth";
 export type { PersonaMessages } from "./persona";

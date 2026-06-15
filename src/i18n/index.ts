@@ -80,5 +80,6 @@ export type {
   PersonaMessages,
   ReportMessages,
   SettingsMessages,
+  AuthMessages,
 } from "./modules";
 export { assertLocaleKeyParity, getLocaleKeyPaths } from "./parity";

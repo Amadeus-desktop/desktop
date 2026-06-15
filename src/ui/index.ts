@@ -1,7 +1,12 @@
-export { glassStyles } from "./glassStyles";
+export { AdvancedSection } from "./AdvancedSection";
+export { Button } from "./Button";
+export { glassStyles, shellText } from "./glassStyles";
+export { MacSelect } from "./MacSelect";
+export { SettingsGroup, SettingsGroupContext, useSettingsGroup } from "./SettingsGroup";
 export { IosSwitch } from "./IosSwitch";
 export { MacInput } from "./MacInput";
-export { MacSelect } from "./MacSelect";
+export { SegmentedControl } from "./SegmentedControl";
+export { SettingSelect } from "./SettingSelect";
 export { MacWindow } from "./MacWindow";
 export { PanelHeader } from "./PanelHeader";
 export { SidebarBrand } from "./SidebarBrand";

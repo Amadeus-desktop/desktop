@@ -61,6 +61,7 @@ policy-and-security.md
 | [policy-and-security.md](./policy-and-security.md) | RLS, secret, privacy, provider input security |
 | [local-ai-ocr-llm.md](./local-ai-ocr-llm.md) | OCR, Local LLM, provider routing, prompt boundary |
 | [local-perception-spa.md](./local-perception-spa.md) | Desktop perception SPA, score, capture/OCR gate |
+| [screen-capture-ocr-runtime.md](./screen-capture-ocr-runtime.md) | 현재 Tauri 화면 캡처/OCR command, gate, 권한 UX |
 
 ---
 

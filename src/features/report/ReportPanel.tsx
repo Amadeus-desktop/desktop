@@ -1,12 +1,16 @@
 import { PanelHeader, SectionHeading } from "../../ui";
 import { useI18n } from "../../i18n";
-import { FocusSummaryGrid } from "./FocusSummaryGrid";
+import { CareSummaryGrid } from "./CareSummaryGrid";
+import { DailyCareClosing } from "./DailyCareClosing";
+import { DailyCareHero } from "./DailyCareHero";
+import { buildDailyCareInsight } from "./report";
 import { WorkTimeline } from "./WorkTimeline";
 import { useReport } from "./useReport";
 
 export function ReportPanel() {
   const t = useI18n();
-  const { reportMetrics, workTimeline, timelineState } = useReport();
+  const { events, reportMetrics, workTimeline, timelineState } = useReport();
+  const insight = buildDailyCareInsight(events, t);
 
   return (
     <section className="tab-panel-enter">
@@ -16,14 +20,24 @@ export function ReportPanel() {
         description={t.report.description}
       />
 
-      <SectionHeading>{t.report.sections.summary}</SectionHeading>
-      <FocusSummaryGrid metrics={reportMetrics} />
+      <DailyCareHero prompt={t.report.intro.prompt} />
 
-      <SectionHeading>{t.report.sections.timeline}</SectionHeading>
+      <SectionHeading>{t.report.sections.summary}</SectionHeading>
+      <CareSummaryGrid metrics={reportMetrics} />
+
+      <SectionHeading>{t.report.sections.moments}</SectionHeading>
       <WorkTimeline
         items={workTimeline}
         loading={timelineState === "loading"}
         labels={t.report.timeline}
+      />
+
+      <SectionHeading>{t.report.sections.closing}</SectionHeading>
+      <DailyCareClosing
+        title={t.report.closingNote.title}
+        keywordsTitle={t.report.emotionalKeywords.title}
+        keywords={insight.keywords}
+        closingNote={insight.closingNote}
       />
     </section>
   );

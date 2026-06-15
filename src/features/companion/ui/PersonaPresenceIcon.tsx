@@ -1,38 +1,34 @@
+import type { CSSProperties } from "react";
 import { cn } from "../../../lib/cn";
 import { getPersonaAccent } from "../../../domain/persona/theme";
 import type { PersonaId, PresenceIconKind } from "../../../domain/persona/types";
 import { PRESENCE_ICON_BY_PERSONA } from "../../../domain/persona/types";
+import {
+  PRESENCE_GLYPH_ICON,
+  PRESENCE_ICON_TILE,
+  type PresenceIconSize,
+} from "../../../ui/tokens/avatarSizes";
 
 type PersonaPresenceIconProps = {
   personaId?: PersonaId;
   kind?: PresenceIconKind;
-  size?: "sm" | "md" | "lg" | "fab";
+  size?: PresenceIconSize;
+  shape?: "circle" | "square";
   variant?: "filled" | "outline";
   showFill?: boolean;
   className?: string;
+  style?: CSSProperties;
 };
-
-const sizeClass = {
-  sm: "size-8",
-  md: "size-10",
-  lg: "size-11",
-  fab: "size-full",
-} as const;
-
-const iconClass = {
-  sm: "size-3.5",
-  md: "size-4.5",
-  lg: "size-5",
-  fab: "size-[1.125rem]",
-} as const;
 
 export function PersonaPresenceIcon({
   personaId,
   kind,
   size = "sm",
+  shape = "circle",
   variant = "filled",
   showFill = true,
   className,
+  style,
 }: PersonaPresenceIconProps) {
   const resolvedKind =
     kind ?? (personaId ? PRESENCE_ICON_BY_PERSONA[personaId] : "bubble");
@@ -42,19 +38,19 @@ export function PersonaPresenceIcon({
   return (
     <span
       className={cn(
-        "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full text-white",
-        size !== "fab" && sizeClass[size],
+        "relative inline-flex shrink-0 items-center justify-center overflow-hidden text-white",
+        shape === "square" ? "rounded-[12px]" : "rounded-full",
+        size !== "fab" && PRESENCE_ICON_TILE[size],
         isOutline
           ? "border-2 bg-transparent shadow-none"
           : "border border-[#48484f] bg-[#2c2c30] shadow-none",
         !isOutline && accent?.ring,
         className,
       )}
-      style={
-        isOutline && accent
-          ? { borderColor: `rgb(${accent.glow})` }
-          : undefined
-      }
+      style={{
+        ...(isOutline && accent ? { borderColor: `rgb(${accent.glow})` } : undefined),
+        ...style,
+      }}
       aria-hidden="true"
     >
       {accent && showFill && !isOutline ? (
@@ -66,7 +62,7 @@ export function PersonaPresenceIcon({
         />
       ) : null}
       <span className="relative z-10 flex items-center justify-center">
-        <PresenceGlyph kind={resolvedKind} className={iconClass[size]} />
+        <PresenceGlyph kind={resolvedKind} className={PRESENCE_GLYPH_ICON[size]} />
       </span>
     </span>
   );

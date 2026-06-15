@@ -2,8 +2,9 @@ import { getPersonaList } from "../../domain/persona/registry";
 import { getPersonaAccent } from "../../domain/persona/theme";
 import type { PersonaId } from "../../domain/persona/types";
 import { useI18n } from "../../i18n";
+import { cn } from "../../lib/cn";
+import { SettingRow, shellText } from "../../ui";
 import { PersonaPresenceIcon } from "../companion/ui/PersonaPresenceIcon";
-import { glassStyles } from "../../ui/glassStyles";
 import { useSettings } from "./useSettings";
 
 export function CompanionPersonaPicker() {
@@ -12,61 +13,80 @@ export function CompanionPersonaPicker() {
   const personas = getPersonaList(t);
 
   return (
-    <div className="space-y-2">
-      <div>
-        <p className="text-sm font-medium text-white">{t.settings.companionPersona.label}</p>
-        <p className="mt-1 text-[12px] leading-5 text-white/45">
-          {t.settings.companionPersona.subtitle}
-        </p>
+    <SettingRow
+      variant="primary"
+      layout="stack"
+      title={t.settings.companionPersona.label}
+      subtitle={t.settings.companionPersona.subtitle}
+    >
+      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+        {personas.map((persona) => (
+          <PersonaOptionCard
+            key={persona.id}
+            persona={persona}
+            selected={persona.id === companionPersonaId}
+            onSelect={() => setCompanionPersonaId(persona.id as PersonaId)}
+          />
+        ))}
       </div>
-      <div className="grid gap-2">
-        {personas.map((persona) => {
-          const selected = persona.id === companionPersonaId;
-          const accent = getPersonaAccent(persona.id);
+    </SettingRow>
+  );
+}
 
-          return (
-            <button
-              key={persona.id}
-              type="button"
-              onClick={() => setCompanionPersonaId(persona.id as PersonaId)}
-              className={`flex w-full items-start gap-3 px-3.5 py-3 text-left transition ${glassStyles.radiusCard} ${
-                selected
-                  ? `${glassStyles.rowSelected} ${glassStyles.panelStrong}`
-                  : `${glassStyles.row} hover:bg-[#2a2a2e]`
-              }`}
-              style={
-                selected
-                  ? {
-                      boxShadow: `0 10px 28px rgb(${accent.glow} / 0.16), inset 0 0 0 1px rgb(${accent.glow} / 0.18)`,
-                    }
-                  : undefined
-              }
-            >
-              <PersonaPresenceIcon personaId={persona.id} size="md" />
-              <span className="min-w-0 flex-1">
-                <span className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-white">
-                    {persona.shortLabel}
-                  </span>
-                  {selected ? (
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${accent.text} bg-white/8`}
-                    >
-                      ON
-                    </span>
-                  ) : null}
-                </span>
-                <span className="mt-1 block text-[12px] leading-5 text-white/55">
-                  {persona.description}
-                </span>
-                <span className="mt-1.5 block text-[11px] text-white/35">
-                  {t.settings.companionPersona.icons[persona.icon]}
-                </span>
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
+type PersonaOptionCardProps = {
+  persona: ReturnType<typeof getPersonaList>[number];
+  selected: boolean;
+  onSelect: () => void;
+};
+
+function PersonaOptionCard({ persona, selected, onSelect }: PersonaOptionCardProps) {
+  const accent = getPersonaAccent(persona.id);
+
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={onSelect}
+      className={cn(
+        "flex min-h-[5.5rem] flex-col items-center justify-center gap-2 rounded-[14px] border px-2 py-2.5 text-center transition",
+        selected
+          ? "border-[color:rgb(var(--accent-rgb)/0.42)] bg-[color:rgb(var(--accent-rgb)/0.08)]"
+          : "border-[color:var(--shell-border-subtle)] bg-[color:var(--shell-panel-strong)] hover:border-[color:var(--shell-border-strong)] hover:bg-[color:var(--shell-row-hover)]",
+      )}
+      style={
+        selected
+          ? { boxShadow: `inset 0 0 0 1px rgb(${accent.glow} / 0.12)` }
+          : undefined
+      }
+    >
+      <PersonaPresenceIcon
+        personaId={persona.id}
+        size="sm"
+        shape="square"
+        variant={selected ? "filled" : "outline"}
+        className={cn(
+          "rounded-[11px]",
+          selected && "ring-2 ring-[color:rgb(var(--accent-rgb)/0.4)]",
+        )}
+        style={
+          selected
+            ? { boxShadow: `0 4px 14px rgb(${accent.glow} / 0.16)` }
+            : undefined
+        }
+      />
+      <span className="min-w-0 space-y-0.5">
+        <span
+          className={cn(
+            "block truncate text-[11px] font-semibold leading-4",
+            selected ? "text-[color:var(--accent-soft)]" : shellText.primary,
+          )}
+        >
+          {persona.shortLabel}
+        </span>
+        <span className={cn("block truncate text-[9px] leading-[14px]", shellText.faint)}>
+          {persona.name}
+        </span>
+      </span>
+    </button>
   );
 }

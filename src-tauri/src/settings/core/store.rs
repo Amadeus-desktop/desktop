@@ -1,5 +1,8 @@
 use serde::Deserialize;
-use std::{fs, path::PathBuf};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use super::{AppSettings, SettingsError};
 
@@ -24,16 +27,30 @@ impl SettingsStore {
         }
 
         let raw = fs::read_to_string(&self.path)?;
-        let value: serde_json::Value = serde_json::from_str(&raw)?;
+        let value: serde_json::Value = match serde_json::from_str(&raw) {
+            Ok(value) => value,
+            Err(error) => {
+                self.quarantine_invalid_settings()?;
+                if error.is_eof() || error.is_syntax() {
+                    return Ok(AppSettings::default());
+                }
+                return Err(SettingsError::Json(error));
+            }
+        };
         if value.get("general").is_some() {
-            let wrapper: LegacySettingsWrapper = serde_json::from_value(value)?;
-            wrapper.general.validate()?;
-            self.save(&wrapper.general)?;
-            return Ok(wrapper.general);
+            let mut settings = serde_json::from_value::<LegacySettingsWrapper>(value)?.general;
+            settings.normalize_legacy_values();
+            settings.validate()?;
+            self.save(&settings)?;
+            return Ok(settings);
         }
 
-        let settings: AppSettings = serde_json::from_value(value)?;
+        let mut settings: AppSettings = serde_json::from_value(value)?;
+        let migrated = settings.normalize_legacy_values();
         settings.validate()?;
+        if migrated {
+            self.save(&settings)?;
+        }
         Ok(settings)
     }
 
@@ -42,7 +59,27 @@ impl SettingsStore {
             fs::create_dir_all(parent)?;
         }
         let raw = serde_json::to_string_pretty(settings)?;
-        fs::write(&self.path, raw)?;
+        let temp_path = temporary_settings_path(&self.path);
+        fs::write(&temp_path, raw)?;
+        fs::rename(temp_path, &self.path)?;
         Ok(())
     }
+
+    fn quarantine_invalid_settings(&self) -> Result<(), SettingsError> {
+        let backup_path = self.path.with_extension("json.invalid");
+        if backup_path.exists() {
+            fs::remove_file(&backup_path)?;
+        }
+        fs::rename(&self.path, backup_path)?;
+        Ok(())
+    }
+}
+
+fn temporary_settings_path(path: &Path) -> PathBuf {
+    let mut file_name = path
+        .file_name()
+        .map(|value| value.to_os_string())
+        .unwrap_or_else(|| "settings".into());
+    file_name.push(".tmp");
+    path.with_file_name(file_name)
 }

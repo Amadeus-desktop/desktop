@@ -1,7 +1,6 @@
 export { CompanionShell } from "./shell/CompanionShell";
 export { CompanionViewport } from "./shell/CompanionViewport";
 export { useCompanionShell } from "./hooks/useCompanionShell";
-export { useCompanionTheme } from "./hooks/useCompanionTheme";
 export { useCompanionDevTools } from "./hooks/useCompanionDevTools";
 export { useCompanionTrigger } from "./hooks/useCompanionTrigger";
 export { useCompanionTimeline } from "./hooks/useCompanionTimeline";
