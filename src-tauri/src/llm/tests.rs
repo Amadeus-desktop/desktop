@@ -1,5 +1,6 @@
 use super::*;
 use crate::llm::contract::LlmChatMessage;
+use crate::ocr::redacted_observation_from_adapter_text;
 
 fn policy_envelope() -> LlmInputEnvelope {
     LlmInputEnvelope {
@@ -177,6 +178,25 @@ fn rejects_empty_llama_completion_content() {
 }
 
 #[test]
+fn extracts_llama_chat_completion_content() {
+    let body = r#"{"choices":[{"message":{"content":"괜찮아. 천천히 하자."}}]}"#;
+
+    let response: LlamaChatCompletionResponse = serde_json::from_str(body).expect("valid json");
+    let content = normalize_llama_chat_content(response).expect("content is parsed");
+
+    assert_eq!(content, "괜찮아. 천천히 하자.");
+}
+
+#[test]
+fn rejects_empty_llama_chat_completion_content() {
+    let body = r#"{"choices":[{"message":{"content":"   "}}]}"#;
+
+    let response: LlamaChatCompletionResponse = serde_json::from_str(body).expect("valid json");
+
+    assert!(normalize_llama_chat_content(response).is_err());
+}
+
+#[test]
 fn builds_llama_completion_url() {
     assert_eq!(
         llama_completion_url("http://127.0.0.1:8080").expect("valid endpoint"),
@@ -188,6 +208,40 @@ fn builds_llama_completion_url() {
     );
     assert!(llama_completion_url("https://127.0.0.1:8080").is_err());
     assert!(llama_completion_url("http://127.0.0.1:8080/api").is_err());
+}
+
+#[test]
+fn builds_llama_chat_completions_url() {
+    assert_eq!(
+        llama_chat_completions_url("http://127.0.0.1:8080").expect("valid endpoint"),
+        "http://127.0.0.1:8080/v1/chat/completions"
+    );
+    assert_eq!(
+        llama_chat_completions_url("http://127.0.0.1:8080/").expect("valid endpoint"),
+        "http://127.0.0.1:8080/v1/chat/completions"
+    );
+    assert!(llama_chat_completions_url("https://127.0.0.1:8080").is_err());
+    assert!(llama_chat_completions_url("http://127.0.0.1:8080/api").is_err());
+}
+
+#[test]
+fn ocr_observation_attaches_only_redacted_summary_to_local_envelope() {
+    let observation = redacted_observation_from_adapter_text(
+        "planning token=abc123 /Users/user/private.pdf",
+        0.91,
+    );
+
+    let envelope = policy_envelope().with_redacted_ocr_summary(Some(
+        observation.text_summary_redacted.clone(),
+    ));
+    let serialized = serde_json::to_string(&envelope).expect("envelope serializes");
+
+    assert_eq!(
+        envelope.redacted_ocr_summary.as_deref(),
+        Some("[redacted-sensitive-ocr]")
+    );
+    assert!(!serialized.contains("token=abc123"));
+    assert!(!serialized.contains("/Users/user/private.pdf"));
 }
 
 #[test]

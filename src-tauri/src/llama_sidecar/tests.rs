@@ -1,26 +1,33 @@
 use super::*;
 use std::{
+    collections::HashSet,
     fs,
     net::TcpListener,
     os::unix::fs::PermissionsExt,
+    sync::atomic::{AtomicU64, Ordering},
     time::{SystemTime, UNIX_EPOCH},
 };
 
-fn temp_file(name: &str) -> String {
-    let nonce = SystemTime::now()
+static TEMP_PATH_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+fn temp_nonce() -> String {
+    let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("clock is valid")
         .as_nanos();
+    let counter = TEMP_PATH_COUNTER.fetch_add(1, Ordering::Relaxed);
+    format!("{nanos}-{counter}")
+}
+
+fn temp_file(name: &str) -> String {
+    let nonce = temp_nonce();
     let path = std::env::temp_dir().join(format!("amadeus-{name}-{nonce}"));
     fs::write(&path, b"test").expect("temp file is written");
     path.to_string_lossy().to_string()
 }
 
 fn temp_dir(name: &str) -> PathBuf {
-    let nonce = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("clock is valid")
-        .as_nanos();
+    let nonce = temp_nonce();
     let path = std::env::temp_dir().join(format!("amadeus-{name}-{nonce}"));
     fs::create_dir_all(&path).expect("temp dir is created");
     path
@@ -38,6 +45,17 @@ fn executable_script(dir: &Path, name: &str, body: &str) -> String {
 fn unused_local_port() -> u16 {
     let listener = TcpListener::bind("127.0.0.1:0").expect("ephemeral port binds");
     listener.local_addr().expect("local addr").port()
+}
+
+#[test]
+fn temp_dirs_are_unique_under_fast_creation() {
+    let mut paths = HashSet::new();
+
+    for _ in 0..128 {
+        let path = temp_dir("sidecars");
+        assert!(paths.insert(path.clone()));
+        let _ = fs::remove_dir_all(path);
+    }
 }
 
 #[test]

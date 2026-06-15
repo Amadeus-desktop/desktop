@@ -1,3 +1,4 @@
+import type { AppLocale } from "../../i18n";
 import type {
   PrivacyAssessment,
   ScreenCapturePermissionStatus,
@@ -7,12 +8,14 @@ type PrivacyFilterCardProps = {
   enabled: boolean;
   assessment: PrivacyAssessment | null;
   permissionStatus: ScreenCapturePermissionStatus | null;
+  labels: AppLocale["perception"]["privacyCard"];
 };
 
 export function PrivacyFilterCard({
   enabled,
   assessment,
   permissionStatus,
+  labels,
 }: PrivacyFilterCardProps) {
   const sensitive = assessment?.isSensitive ?? false;
 
@@ -20,9 +23,9 @@ export function PrivacyFilterCard({
     <article className="rounded-lg border border-white/6 bg-white/[0.03] p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-white">개인정보 필터</h3>
+          <h3 className="text-sm font-semibold text-white">{labels.title}</h3>
           <p className="mt-1 text-[11px] leading-4 text-white/42">
-            계정, 비밀번호, 주민번호 패턴은 컨텍스트에서 제외합니다.
+            {labels.description}
           </p>
         </div>
         <span
@@ -34,20 +37,24 @@ export function PrivacyFilterCard({
               : "bg-white/8 text-white/45"
           }`}
         >
-          {sensitive ? "차단" : enabled ? "활성" : "비활성"}
+          {sensitive ? labels.blocked : enabled ? labels.active : labels.inactive}
         </span>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] leading-4 text-white/42 max-sm:grid-cols-1">
         <div>
-          화면 권한:{" "}
+          {labels.screenPermission}:{" "}
           <span className={permissionStatus?.granted ? "text-[#8ddb8c]" : ""}>
-            {permissionStatus?.granted ? "허용됨" : "확인 필요"}
+            {permissionStatus?.granted
+              ? labels.permissionGranted
+              : labels.permissionNeeded}
           </span>
         </div>
         <div>
-          민감 상태:{" "}
+          {labels.sensitiveState}:{" "}
           <span className={sensitive ? "text-[#ff9f9a]" : "text-[#8ddb8c]"}>
-            {sensitive ? reasonLabel(assessment?.reason) : "통과"}
+            {sensitive
+              ? reasonLabel(assessment?.reason, labels)
+              : labels.passed}
           </span>
         </div>
       </div>
@@ -55,17 +62,9 @@ export function PrivacyFilterCard({
   );
 }
 
-function reasonLabel(reason: PrivacyAssessment["reason"] | undefined) {
-  const labelByReason: Record<NonNullable<PrivacyAssessment["reason"]>, string> =
-    {
-      password_manager: "비밀번호",
-      finance: "금융",
-      messaging: "메신저",
-      email: "이메일",
-      government: "정부/인증",
-      authentication: "인증",
-      custom_keyword: "사용자 키워드",
-    };
-
-  return reason ? labelByReason[reason] : "민감";
+function reasonLabel(
+  reason: PrivacyAssessment["reason"] | undefined,
+  labels: AppLocale["perception"]["privacyCard"],
+) {
+  return reason ? labels.reasons[reason] : labels.blocked;
 }

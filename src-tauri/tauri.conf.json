@@ -14,12 +14,27 @@
     "macOSPrivateApi": true,
     "windows": [
       {
+        "label": "main",
         "title": "Amadeus",
         "width": 800,
         "height": 600,
         "decorations": false,
         "transparent": true,
         "shadow": false
+      },
+      {
+        "label": "companion",
+        "title": "Amadeus Companion",
+        "url": "index.html?view=companion",
+        "width": 40,
+        "height": 40,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "alwaysOnTop": true,
+        "resizable": false,
+        "skipTaskbar": true,
+        "visible": true
       }
     ],
     "security": {

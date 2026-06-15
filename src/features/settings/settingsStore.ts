@@ -13,10 +13,11 @@ export type LlamaSidecarStatus = {
 
 export async function loadGeneralSettings(): Promise<GeneralSettings> {
   if (!isTauriRuntime()) {
-    return browserSettings;
+    return { ...initialSettings, ...browserSettings };
   }
 
-  return invoke<GeneralSettings>("get_app_settings");
+  const settings = await invoke<GeneralSettings>("get_app_settings");
+  return { ...initialSettings, ...settings };
 }
 
 export async function saveGeneralSettings(

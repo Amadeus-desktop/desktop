@@ -228,4 +228,52 @@ mod tests {
         assert!(value.get("text").is_none());
         assert!(value.get("textSummaryRedacted").is_some());
     }
+
+    #[test]
+    fn ocr_state_reports_central_adapter_status() {
+        let state = OcrState::new(Box::new(DisabledOcrAdapter::new("test-disabled")));
+
+        let status = state.status();
+
+        assert_eq!(status.provider, "disabled");
+        assert!(!status.available);
+        assert_eq!(status.detail, "test-disabled");
+    }
+
+    #[test]
+    fn ocr_state_routes_bytes_through_adapter_without_raw_text_escape() {
+        let state = OcrState::new(Box::new(FakeOcrAdapter));
+
+        let observation = state
+            .recognize_image_bytes(vec![1, 2, 3])
+            .expect("fake adapter returns observation");
+        let serialized = serde_json::to_string(&observation).expect("observation serializes");
+
+        assert_eq!(observation.text_summary_redacted, "[redacted-sensitive-ocr]");
+        assert!(!serialized.contains("token=abc123"));
+        assert!(!serialized.contains("/Users/user/private.pdf"));
+    }
+
+    struct FakeOcrAdapter;
+
+    impl OcrAdapter for FakeOcrAdapter {
+        fn id(&self) -> &'static str {
+            "fake"
+        }
+
+        fn status(&self) -> OcrProviderStatus {
+            OcrProviderStatus {
+                provider: self.id().to_string(),
+                available: true,
+                detail: "fake adapter".to_string(),
+            }
+        }
+
+        fn recognize_image_bytes(&self, _image_bytes: Vec<u8>) -> Result<OcrObservation, OcrError> {
+            Ok(redacted_observation_from_adapter_text(
+                "token=abc123 /Users/user/private.pdf",
+                0.9,
+            ))
+        }
+    }
 }

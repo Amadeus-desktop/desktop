@@ -1,15 +1,17 @@
-import { useEffect, useState } from "react";
-import { reportMetrics, workTimeline } from "./report";
+import { useEffect, useMemo, useState } from "react";
+import { getLocale, LOCALE_TAGS, useI18n } from "../../i18n";
+import { getReportMetrics } from "./report";
 import type { WorkTimelineItem } from "./types";
 import { ensureTimelineSeed } from "../timeline/timelineRepository";
 import type { TimelineEvent, TimelineEventKind } from "../timeline/types";
 
 export function useReport() {
-  const [timelineItems, setTimelineItems] =
-    useState<WorkTimelineItem[]>(workTimeline);
+  const t = useI18n();
+  const [timelineItems, setTimelineItems] = useState<WorkTimelineItem[]>([]);
   const [timelineState, setTimelineState] = useState<"loading" | "ready">(
     "loading",
   );
+  const reportMetrics = useMemo(() => getReportMetrics(t), [t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -18,14 +20,14 @@ export function useReport() {
       const events = await ensureTimelineSeed();
 
       if (!cancelled) {
-        setTimelineItems(events.map(toWorkTimelineItem));
+        setTimelineItems(events.map((event) => toWorkTimelineItem(event)));
         setTimelineState("ready");
       }
     }
 
     void loadTimeline().catch(() => {
       if (!cancelled) {
-        setTimelineItems(workTimeline);
+        setTimelineItems([]);
         setTimelineState("ready");
       }
     });
@@ -33,7 +35,7 @@ export function useReport() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t]);
 
   return {
     reportMetrics,
@@ -52,7 +54,7 @@ function toWorkTimelineItem(event: TimelineEvent): WorkTimelineItem {
 }
 
 function formatTimelineTime(occurredAt: number) {
-  return new Intl.DateTimeFormat("ko-KR", {
+  return new Intl.DateTimeFormat(LOCALE_TAGS[getLocale()], {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(occurredAt));

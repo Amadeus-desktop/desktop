@@ -1,6 +1,14 @@
 use super::LlmError;
 
 pub(super) fn llama_completion_url(endpoint: &str) -> Result<String, LlmError> {
+    llama_endpoint_url(endpoint, "/completion")
+}
+
+pub(super) fn llama_chat_completions_url(endpoint: &str) -> Result<String, LlmError> {
+    llama_endpoint_url(endpoint, "/v1/chat/completions")
+}
+
+fn llama_endpoint_url(endpoint: &str, path: &str) -> Result<String, LlmError> {
     let endpoint = endpoint.trim_end_matches('/');
     if !endpoint.starts_with("http://") {
         return Err(LlmError::InvalidEndpoint(
@@ -19,7 +27,7 @@ pub(super) fn llama_completion_url(endpoint: &str) -> Result<String, LlmError> {
         ));
     }
 
-    Ok(format!("{endpoint}/completion"))
+    Ok(format!("{endpoint}{path}"))
 }
 
 pub(super) fn normalize_llama_content(content: String) -> Result<String, LlmError> {

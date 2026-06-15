@@ -1,5 +1,10 @@
 export { SettingsPanel } from "./SettingsPanel";
-export { initialSettings, modelRouteOptions, talkFrequencyOptions } from "./settings";
+export {
+  getLocaleOptions,
+  getModelRouteOptions,
+  getTalkFrequencyOptions,
+  initialSettings,
+} from "./settings";
 export {
   loadGeneralSettings,
   loadLlamaSidecarStatus,
@@ -11,4 +16,5 @@ export type {
   ModelRoute,
   TalkFrequency,
 } from "./types";
+export type { LocaleCode } from "../../i18n";
 export type { LlamaSidecarStatus } from "./settingsStore";

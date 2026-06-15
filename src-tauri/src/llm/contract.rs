@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use super::redaction::sanitize_prompt_field;
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LlmInputEnvelope {
     pub provider_grade: ProviderInputGrade,
@@ -34,6 +34,11 @@ pub struct PolicyScoreSummary {
 }
 
 impl LlmInputEnvelope {
+    pub fn with_redacted_ocr_summary(mut self, summary: Option<String>) -> Self {
+        self.redacted_ocr_summary = summary;
+        self
+    }
+
     pub fn for_provider(&self, provider_grade: ProviderInputGrade) -> Self {
         let mut envelope = self.clone();
         envelope.provider_grade = provider_grade;

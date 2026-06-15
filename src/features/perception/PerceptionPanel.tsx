@@ -1,9 +1,11 @@
 import { IosSwitch, SectionHeading, SettingRow, StatusPill } from "../../ui";
+import { useI18n } from "../../i18n";
 import { LiveContextLog } from "./LiveContextLog";
 import { PrivacyFilterCard } from "./PrivacyFilterCard";
 import { usePerceptionStatus } from "./usePerceptionStatus";
 
 export function PerceptionPanel() {
+  const t = useI18n();
   const {
     analysisEnabled,
     setAnalysisEnabled,
@@ -19,53 +21,63 @@ export function PerceptionPanel() {
   return (
     <section className="tab-panel-enter">
       <header>
-        <p className="text-xs font-medium text-[#64b5f6]">Context Guardrail</p>
+        <p className="text-xs font-medium text-[#64b5f6]">{t.perception.eyebrow}</p>
         <h1 className="mt-1 text-2xl font-semibold leading-tight text-white">
-          화면 인지 가이드
+          {t.perception.title}
         </h1>
         <p className="mt-2 text-[13px] leading-5 text-white/45">
-          화면 캡처, 앱 로그, idle 신호를 합쳐 발화 여부를 판단합니다.
+          {t.perception.description}
         </p>
       </header>
 
-      <SectionHeading>Capture</SectionHeading>
-      <SettingRow title="화면 분석" subtitle="현재 창과 문맥 변화만 짧게 요약">
+      <SectionHeading>{t.perception.sections.capture}</SectionHeading>
+      <SettingRow
+        title={t.perception.analysis.label}
+        subtitle={t.perception.analysis.subtitle}
+      >
         <IosSwitch
           checked={analysisEnabled}
           onChange={setAnalysisEnabled}
-          label="화면 분석"
+          label={t.perception.analysis.switchLabel}
         />
       </SettingRow>
-      <SettingRow title="능동 발화 큐" subtitle="장기 정체와 딴짓 신호를 발화 후보로 기록">
+      <SettingRow
+        title={t.perception.proactiveTrigger.label}
+        subtitle={t.perception.proactiveTrigger.subtitle}
+      >
         <IosSwitch
           checked={proactiveTriggerEnabled}
           onChange={setProactiveTriggerEnabled}
-          label="능동 발화 큐"
+          label={t.perception.proactiveTrigger.switchLabel}
         />
       </SettingRow>
-      <SettingRow title="민감정보 필터" subtitle="분석 전 단계에서 로컬 마스킹 수행">
+      <SettingRow
+        title={t.perception.privacyFilter.label}
+        subtitle={t.perception.privacyFilter.subtitle}
+      >
         <IosSwitch
           checked={privacyFilterEnabled}
           onChange={setPrivacyFilterEnabled}
-          label="민감정보 필터"
+          label={t.perception.privacyFilter.switchLabel}
         />
       </SettingRow>
 
-      <SectionHeading>Live Context</SectionHeading>
-      <LiveContextLog liveContext={liveContext} />
+      <SectionHeading>{t.perception.sections.liveContext}</SectionHeading>
+      <LiveContextLog liveContext={liveContext} labels={t.perception.liveContext} />
 
       <div className="mt-3 grid grid-cols-[minmax(0,1fr)_180px] gap-3 max-sm:grid-cols-1">
         <PrivacyFilterCard
           enabled={privacyFilterEnabled}
           assessment={privacyAssessment}
           permissionStatus={screenCapturePermission}
+          labels={t.perception.privacyCard}
         />
         <StatusPill tone={privacyAssessment?.isSensitive ? "blue" : analysisEnabled ? "green" : "blue"}>
           {privacyAssessment?.isSensitive
-            ? "민감 컨텍스트 차단"
+            ? t.perception.status.sensitiveBlocked
             : analysisEnabled
-              ? "분석 대기 중"
-              : "분석 일시 중지"}
+              ? t.perception.status.analysisWaiting
+              : t.perception.status.analysisPaused}
         </StatusPill>
       </div>
     </section>

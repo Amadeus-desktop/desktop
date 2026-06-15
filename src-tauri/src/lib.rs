@@ -34,6 +34,41 @@ fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
+#[tauri::command]
+fn sync_companion_window_position(app: tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("companion") {
+        position_companion_window(&window);
+    }
+}
+
+/// Position the companion overlay at the bottom-right of the primary monitor work area.
+fn position_companion_window(window: &tauri::WebviewWindow) {
+    use tauri::PhysicalPosition;
+
+    const MARGIN: i32 = 12;
+
+    let Ok(Some(monitor)) = window.current_monitor() else {
+        eprintln!("position_companion_window: current_monitor() unavailable");
+        return;
+    };
+
+    let work_area = monitor.work_area();
+    let window_size = window.outer_size().unwrap_or(work_area.size);
+
+    let x = work_area.position.x
+        + work_area.size.width as i32
+        - window_size.width as i32
+        - MARGIN;   
+    let y = work_area.position.y
+        + work_area.size.height as i32
+        - window_size.height as i32
+        - MARGIN;
+
+    if let Err(error) = window.set_position(PhysicalPosition::new(x, y)) {
+        eprintln!("position_companion_window: set_position failed: {error}");
+    }
+}
+
 /// Make the window visible on every macOS Space.
 ///
 /// Transparency and shadow are handled declaratively in `tauri.conf.json`
@@ -88,11 +123,22 @@ pub fn run() {
             app.manage(llm_state);
             app.manage(sidecar_state);
 
-            // Make the window transparent + popup-style on macOS
+            // Make windows transparent + popup-style on macOS
             #[cfg(target_os = "macos")]
             {
                 if let Some(win) = app.get_webview_window("main") {
                     configure_macos_window(&win);
+                }
+                if let Some(win) = app.get_webview_window("companion") {
+                    configure_macos_window(&win);
+                    position_companion_window(&win);
+                }
+            }
+
+            #[cfg(not(target_os = "macos"))]
+            {
+                if let Some(win) = app.get_webview_window("companion") {
+                    position_companion_window(&win);
                 }
             }
 
@@ -100,6 +146,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             greet,
+            sync_companion_window_position,
             get_current_context_snapshot,
             get_screen_capture_permission_status,
             assess_current_privacy_context,

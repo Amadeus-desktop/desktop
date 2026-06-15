@@ -1,6 +1,8 @@
+import type { AppLocale } from "../../i18n";
 import type { GeneralSettings, ModelRoute, TalkFrequency } from "./types";
 
 export const initialSettings: GeneralSettings = {
+  locale: "ko",
   talkFrequency: "balanced",
   modelRoute: "api-first",
   localFallbackEnabled: true,
@@ -12,20 +14,20 @@ export const initialSettings: GeneralSettings = {
   llamaServerPort: 8080,
 };
 
-export const talkFrequencyOptions: Array<{
-  label: string;
-  value: TalkFrequency;
-}> = [
-  { label: "조용하고 묵묵하게", value: "quiet" },
-  { label: "적당히 은은하게", value: "balanced" },
-  { label: "기운 넘치고 적극적이게", value: "active" },
-];
+export function getTalkFrequencyOptions(locale: AppLocale) {
+  return (Object.entries(locale.settings.talkFrequency.options) as Array<
+    [TalkFrequency, string]
+  >).map(([value, label]) => ({ value, label }));
+}
 
-export const modelRouteOptions: Array<{
-  label: string;
-  value: ModelRoute;
-}> = [
-  { label: "API 우선", value: "api-first" },
-  { label: "로컬 우선", value: "local-first" },
-  { label: "템플릿", value: "template" },
-];
+export function getModelRouteOptions(locale: AppLocale) {
+  return (Object.entries(locale.settings.modelRoute.options) as Array<
+    [ModelRoute, string]
+  >).map(([value, label]) => ({ value, label }));
+}
+
+export function getLocaleOptions(locale: AppLocale) {
+  return (Object.entries(locale.settings.locale.options) as Array<
+    [GeneralSettings["locale"], string]
+  >).map(([value, label]) => ({ value, label }));
+}

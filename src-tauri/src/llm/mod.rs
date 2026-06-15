@@ -6,10 +6,11 @@ mod redaction;
 
 pub use commands::{generate_chat_reply, generate_test_utterance, get_llm_provider_health};
 pub use contract::{
-    LlmChatEnvelope, LlmChatRequest, LlmGeneration, LlmInputEnvelope, LlmProviderHealth,
+    LlmChatEnvelope, LlmChatMessage, LlmChatRequest, LlmGeneration, LlmInputEnvelope,
+    LlmProviderHealth,
     PolicyScoreSummary, ProviderInputGrade,
 };
-use llama_http::{llama_completion_url, normalize_llama_content};
+use llama_http::{llama_chat_completions_url, llama_completion_url, normalize_llama_content};
 use prompt::{local_chat_prompt, local_utterance_prompt};
 
 use serde::{Deserialize, Serialize};
@@ -182,6 +183,32 @@ struct LlamaCompletionResponse {
     content: String,
 }
 
+#[derive(Debug, Deserialize)]
+struct LlamaChatCompletionResponse {
+    choices: Vec<LlamaChatChoice>,
+}
+
+#[derive(Debug, Deserialize)]
+struct LlamaChatChoice {
+    message: LlamaChatMessageContent,
+}
+
+#[derive(Debug, Deserialize)]
+struct LlamaChatMessageContent {
+    content: String,
+}
+
+fn normalize_llama_chat_content(response: LlamaChatCompletionResponse) -> Result<String, LlmError> {
+    let content = response
+        .choices
+        .into_iter()
+        .next()
+        .map(|choice| choice.message.content)
+        .ok_or_else(|| LlmError::Protocol("llama chat response had no choices".to_string()))?;
+
+    normalize_llama_content(content)
+}
+
 impl LocalLlamaProvider {
     pub fn new(endpoint: impl Into<String>) -> Self {
         Self {
@@ -224,6 +251,22 @@ impl LocalLlamaProvider {
 
         normalize_llama_content(response.content)
     }
+
+    fn complete_chat(&self, messages: Vec<LlmChatMessage>) -> Result<String, LlmError> {
+        self.require_model_file()?;
+        let url = llama_chat_completions_url(&self.endpoint)?;
+        let response = ureq::post(&url)
+            .timeout(LLAMA_TIMEOUT)
+            .send_json(json!({
+                "messages": messages,
+                "max_tokens": 80,
+                "temperature": 0.7,
+                "stream": false,
+            }))?
+            .into_json::<LlamaChatCompletionResponse>()?;
+
+        normalize_llama_chat_content(response)
+    }
 }
 
 impl LlmProvider for LocalLlamaProvider {
@@ -262,8 +305,24 @@ impl LlmProvider for LocalLlamaProvider {
     fn generate_utterance(&self, request: &LlmInputEnvelope) -> Result<LlmGeneration, LlmError> {
         let request = request.for_provider(ProviderInputGrade::LocalRedacted);
         let prompt = local_utterance_prompt(&request);
+        let messages = vec![
+            LlmChatMessage {
+                role: "system".to_string(),
+                content: "너는 사용자의 작업 흐름을 방해하지 않는 조용한 로컬 companion이다."
+                    .to_string(),
+            },
+            LlmChatMessage {
+                role: "user".to_string(),
+                content: prompt.clone(),
+            },
+        ];
+        let message = match self.complete_chat(messages) {
+            Ok(message) => message,
+            Err(_) => self.complete(prompt)?,
+        };
+
         Ok(LlmGeneration {
-            message: self.complete(prompt)?,
+            message,
             provider: self.id().to_string(),
         })
     }
@@ -271,9 +330,18 @@ impl LlmProvider for LocalLlamaProvider {
     fn generate_chat_reply(&self, request: &LlmChatEnvelope) -> Result<LlmGeneration, LlmError> {
         let request = request.for_provider(ProviderInputGrade::LocalRedacted);
         let prompt = local_chat_prompt(&request);
+        let mut messages = vec![LlmChatMessage {
+            role: "system".to_string(),
+            content: "너는 사용자의 말을 짧고 부드럽게 받아주는 로컬 companion이다.".to_string(),
+        }];
+        messages.extend(request.messages.clone());
+        let message = match self.complete_chat(messages) {
+            Ok(message) => message,
+            Err(_) => self.complete(prompt)?,
+        };
 
         Ok(LlmGeneration {
-            message: self.complete(prompt)?,
+            message,
             provider: self.id().to_string(),
         })
     }

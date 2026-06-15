@@ -78,6 +78,7 @@ pub(super) fn llm_request_for_trigger(
         }),
         fallback_message: candidate.message.clone(),
     }
+    .with_redacted_ocr_summary(None)
 }
 
 pub(super) fn select_candidate(snapshot: &MacosContextSnapshot) -> Option<TriggerCandidate> {

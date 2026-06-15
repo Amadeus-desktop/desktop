@@ -1,6 +1,4 @@
-import { CompanionShell } from "../features/companion";
 import { ControlCenter } from "../features/control-center";
-import "./App.css";
 
 function App() {
   return (
@@ -11,7 +9,6 @@ function App() {
       <div className="relative z-10">
         <ControlCenter />
       </div>
-      <CompanionShell />
     </main>
   );
 }

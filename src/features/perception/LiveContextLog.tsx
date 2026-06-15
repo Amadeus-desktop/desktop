@@ -1,30 +1,29 @@
+import type { AppLocale } from "../../i18n";
 import type { LiveContextStatus } from "./types";
 
 type LiveContextLogProps = {
   liveContext: LiveContextStatus;
+  labels: AppLocale["perception"]["liveContext"];
 };
 
-const rows: Array<{
-  label: string;
-  key: keyof LiveContextStatus;
-}> = [
-  { label: "현재 앱", key: "activeApp" },
-  { label: "창 제목", key: "windowTitle" },
-  { label: "상태 동기화", key: "stateSync" },
-  { label: "앱 분류", key: "category" },
-];
+const rowKeys = [
+  "activeApp",
+  "windowTitle",
+  "stateSync",
+  "category",
+] as const satisfies ReadonlyArray<keyof LiveContextStatus>;
 
-export function LiveContextLog({ liveContext }: LiveContextLogProps) {
+export function LiveContextLog({ liveContext, labels }: LiveContextLogProps) {
   return (
     <div className="rounded-lg border border-white/6 bg-black/18 p-4">
-      {rows.map((row) => (
+      {rowKeys.map((key) => (
         <div
-          key={row.key}
+          key={key}
           className="grid grid-cols-[92px_minmax(0,1fr)] gap-3 border-b border-white/6 py-2 first:pt-0 last:border-b-0 last:pb-0"
         >
-          <div className="text-[11px] text-white/35">{row.label}</div>
+          <div className="text-[11px] text-white/35">{labels[key]}</div>
           <div className="min-w-0 break-words text-[12px] leading-5 text-white/78">
-            {liveContext[row.key]}
+            {liveContext[key]}
           </div>
         </div>
       ))}

@@ -1,9 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { initialSettings } from "./settings";
+import { setLocale, type LocaleCode } from "../../i18n";
+import {
+  getLocaleOptions,
+  getModelRouteOptions,
+  getTalkFrequencyOptions,
+  initialSettings,
+} from "./settings";
 import { loadGeneralSettings, saveGeneralSettings } from "./settingsStore";
 import type { ModelRoute, TalkFrequency } from "./types";
 
 export function useSettings() {
+  const [locale, setLocaleSetting] = useState(initialSettings.locale);
   const [talkFrequency, setTalkFrequency] = useState(
     initialSettings.talkFrequency,
   );
@@ -32,6 +39,7 @@ export function useSettings() {
   const saveSequence = useRef(0);
   const settings = useMemo(
     () => ({
+      locale,
       talkFrequency,
       modelRoute,
       localFallbackEnabled,
@@ -43,6 +51,7 @@ export function useSettings() {
       llamaServerPort,
     }),
     [
+      locale,
       talkFrequency,
       modelRoute,
       localFallbackEnabled,
@@ -62,6 +71,8 @@ export function useSettings() {
       .then((storedSettings) => {
         if (cancelled) return;
 
+        setLocaleSetting(storedSettings.locale);
+        setLocale(storedSettings.locale);
         setTalkFrequency(storedSettings.talkFrequency);
         setModelRoute(storedSettings.modelRoute);
         setLocalFallbackEnabled(storedSettings.localFallbackEnabled);
@@ -92,6 +103,8 @@ export function useSettings() {
       void saveGeneralSettings(settings).then((savedSettings) => {
         if (sequence !== saveSequence.current) return;
 
+        setLocaleSetting(savedSettings.locale);
+        setLocale(savedSettings.locale);
         setTalkFrequency(savedSettings.talkFrequency);
         setModelRoute(savedSettings.modelRoute);
         setLocalFallbackEnabled(savedSettings.localFallbackEnabled);
@@ -109,6 +122,11 @@ export function useSettings() {
   }, [hydrated, settings]);
 
   return {
+    locale,
+    setLocale: (value: LocaleCode) => {
+      setLocaleSetting(value);
+      setLocale(value);
+    },
     talkFrequency,
     setTalkFrequency: (value: TalkFrequency) => setTalkFrequency(value),
     modelRoute,
@@ -128,5 +146,8 @@ export function useSettings() {
     llamaServerPort,
     setLlamaServerPort,
     settingsRevision,
+    talkFrequencyOptions: getTalkFrequencyOptions,
+    modelRouteOptions: getModelRouteOptions,
+    localeOptions: getLocaleOptions,
   };
 }

@@ -39,6 +39,7 @@ impl From<serde_json::Error> for SettingsError {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct AppSettings {
+    pub locale: String,
     pub talk_frequency: String,
     pub model_route: String,
     pub local_fallback_enabled: bool,
@@ -53,6 +54,7 @@ pub struct AppSettings {
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
+            locale: "ko".to_string(),
             talk_frequency: "balanced".to_string(),
             model_route: "api-first".to_string(),
             local_fallback_enabled: true,
@@ -68,6 +70,13 @@ impl Default for AppSettings {
 
 impl AppSettings {
     pub fn validate(&self) -> Result<(), SettingsError> {
+        match self.locale.as_str() {
+            "ko" | "en" | "ja" => {}
+            other => Err(SettingsError::Validation(format!(
+                "unsupported locale '{other}'"
+            )))?,
+        }
+
         match self.model_route.as_str() {
             "api-first" | "local-first" | "template" => {}
             other => Err(SettingsError::Validation(format!(
@@ -247,6 +256,7 @@ mod tests {
     fn default_settings_include_local_model_path() {
         let settings = AppSettings::default();
 
+        assert_eq!(settings.locale, "ko");
         assert_eq!(settings.model_route, "api-first");
         assert_eq!(settings.local_model_path, None);
         assert_eq!(settings.llama_server_binary_path, None);

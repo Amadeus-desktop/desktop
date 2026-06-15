@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
+import { useI18n } from "../../i18n";
 import { IosSwitch, MacInput, MacSelect, SectionHeading, SettingRow } from "../../ui";
-import { modelRouteOptions, talkFrequencyOptions } from "./settings";
 import { loadLlamaSidecarStatus, type LlamaSidecarStatus } from "./settingsStore";
 import { useSettings } from "./useSettings";
 
 export function SettingsPanel() {
+  const t = useI18n();
   const {
+    locale,
+    setLocale,
     talkFrequency,
     setTalkFrequency,
     modelRoute,
@@ -25,11 +28,14 @@ export function SettingsPanel() {
     llamaServerPort,
     setLlamaServerPort,
     settingsRevision,
+    talkFrequencyOptions,
+    modelRouteOptions,
+    localeOptions,
   } = useSettings();
   const [sidecarStatus, setSidecarStatus] = useState<LlamaSidecarStatus>({
     configured: false,
     running: false,
-    detail: "확인 중",
+    detail: t.settings.sidecarStatus.checking,
   });
 
   useEffect(() => {
@@ -51,77 +57,121 @@ export function SettingsPanel() {
     localModelPath,
     modelRoute,
     settingsRevision,
+    t.settings.sidecarStatus.checking,
   ]);
+
+  const sidecarLabel = sidecarStatus.running
+    ? t.settings.sidecarStatus.running
+    : sidecarStatus.configured
+      ? t.settings.sidecarStatus.configured
+      : t.settings.sidecarStatus.unconfigured;
 
   return (
     <section className="tab-panel-enter">
       <header>
-        <p className="text-xs font-medium text-[#64b5f6]">Preferences</p>
+        <p className="text-xs font-medium text-[#64b5f6]">{t.settings.eyebrow}</p>
         <h1 className="mt-1 text-2xl font-semibold leading-tight text-white">
-          일반 설정
+          {t.settings.title}
         </h1>
         <p className="mt-2 text-[13px] leading-5 text-white/45">
-          능동 발화, 모델 라우팅, 야간 배려 같은 기본 동작을 정합니다.
+          {t.settings.description}
         </p>
       </header>
 
-      <SectionHeading>Conversation</SectionHeading>
-      <SettingRow title="말 걸기 빈도" subtitle="업무 흐름을 방해하지 않는 기본 강도">
+      <SectionHeading>{t.settings.sections.language}</SectionHeading>
+      <SettingRow
+        title={t.settings.locale.label}
+        subtitle={t.settings.locale.subtitle}
+      >
         <MacSelect
-          value={talkFrequency}
-          options={talkFrequencyOptions}
-          onChange={setTalkFrequency}
-        />
-      </SettingRow>
-      <SettingRow title="호칭" subtitle="말풍선과 채팅에서 사용할 이름">
-        <MacInput value={nickname} onChange={setNickname} label="호칭" />
-      </SettingRow>
-      <SettingRow title="야간 배려" subtitle="늦은 시간에는 짧고 낮은 톤으로 반응">
-        <IosSwitch
-          checked={nightCareEnabled}
-          onChange={setNightCareEnabled}
-          label="야간 배려"
+          value={locale}
+          options={localeOptions(t)}
+          onChange={setLocale}
         />
       </SettingRow>
 
-      <SectionHeading>Model</SectionHeading>
-      <SettingRow title="LLM 라우팅" subtitle="기본 응답 경로와 로컬 실행 우선순위">
+      <SectionHeading>{t.settings.sections.conversation}</SectionHeading>
+      <SettingRow
+        title={t.settings.talkFrequency.label}
+        subtitle={t.settings.talkFrequency.subtitle}
+      >
         <MacSelect
-          value={modelRoute}
-          options={modelRouteOptions}
-          onChange={setModelRoute}
-        />
-      </SettingRow>
-      <SettingRow title="로컬 대체" subtitle="API 연결 실패 시 llama.cpp 경로로 전환">
-        <IosSwitch
-          checked={localFallbackEnabled}
-          onChange={setLocalFallbackEnabled}
-          label="로컬 LLM 대체"
-        />
-      </SettingRow>
-      <SettingRow title="GGUF 모델 경로" subtitle="llama.cpp가 로드할 로컬 모델 파일">
-        <MacInput
-          value={localModelPath ?? ""}
-          onChange={(value) => setLocalModelPath(value.trim() || null)}
-          label="모델 경로"
+          value={talkFrequency}
+          options={talkFrequencyOptions(t)}
+          onChange={setTalkFrequency}
         />
       </SettingRow>
       <SettingRow
-        title="llama-server 경로"
-        subtitle="앱 데이터 sidecars 폴더 안의 실행 파일"
+        title={t.settings.nickname.label}
+        subtitle={t.settings.nickname.subtitle}
+      >
+        <MacInput
+          value={nickname}
+          onChange={setNickname}
+          label={t.settings.nickname.inputLabel}
+        />
+      </SettingRow>
+      <SettingRow
+        title={t.settings.nightCare.label}
+        subtitle={t.settings.nightCare.subtitle}
+      >
+        <IosSwitch
+          checked={nightCareEnabled}
+          onChange={setNightCareEnabled}
+          label={t.settings.nightCare.switchLabel}
+        />
+      </SettingRow>
+
+      <SectionHeading>{t.settings.sections.model}</SectionHeading>
+      <SettingRow
+        title={t.settings.modelRoute.label}
+        subtitle={t.settings.modelRoute.subtitle}
+      >
+        <MacSelect
+          value={modelRoute}
+          options={modelRouteOptions(t)}
+          onChange={setModelRoute}
+        />
+      </SettingRow>
+      <SettingRow
+        title={t.settings.localFallback.label}
+        subtitle={t.settings.localFallback.subtitle}
+      >
+        <IosSwitch
+          checked={localFallbackEnabled}
+          onChange={setLocalFallbackEnabled}
+          label={t.settings.localFallback.switchLabel}
+        />
+      </SettingRow>
+      <SettingRow
+        title={t.settings.localModelPath.label}
+        subtitle={t.settings.localModelPath.subtitle}
+      >
+        <MacInput
+          value={localModelPath ?? ""}
+          onChange={(value) => setLocalModelPath(value.trim() || null)}
+          label={t.settings.localModelPath.inputLabel}
+        />
+      </SettingRow>
+      <SettingRow
+        title={t.settings.llamaBinaryPath.label}
+        subtitle={t.settings.llamaBinaryPath.subtitle}
       >
         <MacInput
           value={llamaServerBinaryPath ?? ""}
           onChange={(value) => setLlamaServerBinaryPath(value.trim() || null)}
-          label="바이너리 경로"
+          label={t.settings.llamaBinaryPath.inputLabel}
         />
       </SettingRow>
-      <SettingRow title="llama.cpp 서버" subtitle="로컬 sidecar 접속 주소">
+      <SettingRow
+        title={t.settings.llamaServer.label}
+        subtitle={t.settings.llamaServer.subtitle}
+      >
         <div className="grid min-w-[260px] grid-cols-[1fr_84px] gap-2">
           <MacInput
             value={llamaServerHost}
             onChange={setLlamaServerHost}
-            label="호스트"
+            label={t.settings.llamaServer.hostLabel}
           />
           <MacInput
             value={String(llamaServerPort)}
@@ -131,17 +181,16 @@ export function SettingsPanel() {
                 setLlamaServerPort(port);
               }
             }}
-            label="포트"
+            label={t.settings.llamaServer.portLabel}
           />
         </div>
       </SettingRow>
-      <SettingRow title="로컬 서버 상태" subtitle={sidecarStatus.detail}>
+      <SettingRow
+        title={t.settings.sidecarStatus.label}
+        subtitle={sidecarStatus.detail}
+      >
         <span className="rounded-full border border-white/10 bg-white/8 px-3 py-1 text-xs font-medium text-white/70">
-          {sidecarStatus.running
-            ? "실행 중"
-            : sidecarStatus.configured
-              ? "준비됨"
-              : "미설정"}
+          {sidecarLabel}
         </span>
       </SettingRow>
     </section>

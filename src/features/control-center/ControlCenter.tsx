@@ -1,9 +1,10 @@
 import { MacWindow, Sidebar, SidebarItem } from "../../ui";
+import { useI18n } from "../../i18n";
 import { CharacterPanel } from "../character";
 import { PerceptionPanel } from "../perception";
 import { ReportPanel } from "../report";
 import { SettingsPanel } from "../settings";
-import { controlCenterTabs } from "./tabs";
+import { getControlCenterTabs } from "./tabs";
 import type { ControlCenterTab } from "./tabs";
 import { useControlCenter } from "./useControlCenter";
 
@@ -23,20 +24,22 @@ function renderPanel(activeTab: ControlCenterTab) {
 }
 
 export function ControlCenter() {
+  const t = useI18n();
   const { activeTab, selectTab } = useControlCenter();
+  const tabs = getControlCenterTabs(t);
 
   return (
     <MacWindow>
       <Sidebar>
         <div data-tauri-drag-region className="min-w-0 px-3 py-3 max-sm:hidden">
           <div className="truncate text-[13px] font-semibold text-white">
-            Amadeus
+            {t.common.appName}
           </div>
           <div className="mt-0.5 truncate text-[11px] text-white/35">
-            Active Companion
+            {t.common.activeCompanion}
           </div>
         </div>
-        {controlCenterTabs.map((tab) => (
+        {tabs.map((tab) => (
           <SidebarItem
             key={tab.id}
             label={tab.label}
