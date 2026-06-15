@@ -1,5 +1,6 @@
 import { useCompanionDevTools } from "../hooks/useCompanionDevTools";
 import { useCompanionShell } from "../hooks/useCompanionShell";
+import { useAuth } from "../../auth";
 import { DailyCareNotePreview } from "../daily-care/DailyCareNotePreview";
 import { PocketChat } from "../chat/PocketChat";
 import { FloatingMessageIcon } from "../presence/FloatingMessageIcon";
@@ -8,11 +9,12 @@ import { CompanionViewport } from "./CompanionViewport";
 
 export function CompanionShell() {
   const devToolsOpen = useCompanionDevTools();
-  const shell = useCompanionShell();
+  const { isAuthenticated } = useAuth();
+  const shell = useCompanionShell({ companionEnabled: isAuthenticated });
 
   return (
     <CompanionViewport>
-      {shell.mode === "nudge" ? (
+      {isAuthenticated && shell.mode === "nudge" ? (
         <NudgeNote
           personaId={shell.selectedPersonaId}
           personaName={shell.selectedPersona.name}
@@ -24,7 +26,7 @@ export function CompanionShell() {
         />
       ) : null}
 
-      {shell.mode === "pocket" || shell.mode === "deep" ? (
+      {isAuthenticated && (shell.mode === "pocket" || shell.mode === "deep") ? (
         <PocketChat
           mode={shell.mode}
           persona={shell.selectedPersona}
@@ -44,7 +46,7 @@ export function CompanionShell() {
         />
       ) : null}
 
-      {shell.mode === "daily_care" ? (
+      {isAuthenticated && shell.mode === "daily_care" ? (
         <DailyCareNotePreview
           timelineEvents={shell.timelineEvents}
           devToolsOpen={devToolsOpen}
@@ -53,7 +55,7 @@ export function CompanionShell() {
         />
       ) : null}
 
-      {shell.showPresence ? (
+      {isAuthenticated && shell.showPresence ? (
         <FloatingMessageIcon
           mode={shell.mode}
           personaId={shell.selectedPersonaId}

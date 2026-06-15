@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { cn } from "../lib/cn";
 import { ControlCenter } from "../features/control-center";
 import { useControlCenterWindow } from "../features/control-center/hooks/useControlCenterWindow";
 import {
@@ -29,7 +30,10 @@ function App() {
   return (
     <main
       data-tauri-drag-region
-      className="relative flex h-dvh w-dvw overflow-hidden bg-transparent p-3 text-white max-sm:p-2.5"
+      className={cn(
+        "relative flex h-dvh w-dvw overflow-hidden bg-transparent text-white",
+        isAuthenticated ? "p-3 max-sm:p-2.5" : "p-1.5",
+      )}
     >
       <div className="app-no-drag relative z-10 h-full min-h-0 w-full">
         {!hydrated ? null : isAuthenticated ? (

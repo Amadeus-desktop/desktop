@@ -151,9 +151,22 @@ body,
   animation: window-appear 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-.tab-panel-enter {
-  animation: tab-panel-enter 180ms ease-out;
+@keyframes onboarding-enter {
+  from {
+    transform: translateY(8px) scale(0.98);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
 }
+
+.onboarding-enter {
+  animation: onboarding-enter 360ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
 
 .ios-switch {
   position: relative;

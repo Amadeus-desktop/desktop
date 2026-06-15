@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useI18n } from "../../i18n";
-import { useAuth } from "../auth";
 import {
   AdvancedSection,
   Button,
@@ -55,8 +54,6 @@ export function SettingsPanel() {
     modelRouteOptions,
     localeOptions,
   } = useSettings();
-  const { user, signOut } = useAuth();
-  const [loggingOut, setLoggingOut] = useState(false);
   const [sidecarStatus, setSidecarStatus] = useState<LlamaSidecarStatus>({
     configured: false,
     running: false,
@@ -120,16 +117,6 @@ export function SettingsPanel() {
     }
   }
 
-  async function handleLogout() {
-    if (loggingOut) return;
-    setLoggingOut(true);
-    try {
-      signOut();
-    } finally {
-      setLoggingOut(false);
-    }
-  }
-
   return (
     <section className="tab-panel-enter">
       <PanelHeader
@@ -187,26 +174,6 @@ export function SettingsPanel() {
             onChange={setNightCareEnabled}
             label={t.settings.nightCare.switchLabel}
           />
-        </SettingRow>
-      </SettingsGroup>
-
-      <SectionHeading>{t.auth.account.section}</SectionHeading>
-      <SettingsGroup>
-        <SettingRow
-          title={user?.name ?? t.common.appName}
-          subtitle={
-            user
-              ? `${t.auth.account.signedInAs} · ${user.email}`
-              : t.auth.account.signedInAs
-          }
-        >
-          <Button
-            variant="ghost"
-            disabled={loggingOut}
-            onClick={() => void handleLogout()}
-          >
-            {loggingOut ? t.auth.account.loggingOut : t.auth.account.logout}
-          </Button>
         </SettingRow>
       </SettingsGroup>
 

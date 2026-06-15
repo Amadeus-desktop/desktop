@@ -18,7 +18,7 @@
         "title": "Amadeus",
         "width": 840,
         "height": 560,
-        "minWidth": 680,
+        "minWidth": 320,
         "minHeight": 480,
         "resizable": true,
         "decorations": false,

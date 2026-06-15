@@ -16,9 +16,9 @@ export const controlCenterWindowPolicy = {
 } as const;
 
 export const onboardingWindowPolicy = {
-  width: 420,
+  width: 340,
   height: 720,
-  minWidth: 380,
+  minWidth: 320,
   minHeight: 600,
 } as const;
 

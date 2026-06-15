@@ -5,6 +5,7 @@ import { CharacterPanel } from "../character";
 import { PerceptionPanel } from "../perception";
 import { ReportPanel } from "../report";
 import { SettingsPanel } from "../settings";
+import { SidebarLogoutButton } from "./SidebarLogoutButton";
 import { getControlCenterTabs } from "./tabs";
 import type { ControlCenterTab } from "./tabs";
 import { useControlCenter } from "./useControlCenter";
@@ -40,6 +41,7 @@ export function ControlCenter() {
                 subtitle={t.common.activeCompanion}
               />
             }
+            footer={<SidebarLogoutButton />}
           >
             {tabs.map((tab) => (
               <SidebarItem

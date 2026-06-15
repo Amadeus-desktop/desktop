@@ -1,4 +1,5 @@
 import type { AuthSnapshot, AuthUser } from "./types";
+import { animateMainWindowToControlCenter, animateMainWindowToOnboarding } from "./mainWindowLayout";
 
 const AUTH_STORAGE_KEY = "amadeus:auth-session";
 
@@ -25,11 +26,28 @@ export function getAuthSnapshot() {
 
 function readStoredUser(): AuthUser | null {
   if (typeof window === "undefined") return null;
+  return parseStoredUser(localStorage.getItem(AUTH_STORAGE_KEY));
+}
+
+function writeStoredUser(user: AuthUser | null) {
+  if (typeof window === "undefined") return;
+
+  if (user) {
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+  } else {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+  }
+}
+
+function replaceSnapshot(user: AuthUser | null, hydrated = snapshot.hydrated) {
+  snapshot = { user, hydrated };
+  notify();
+}
+
+function parseStoredUser(raw: string | null): AuthUser | null {
+  if (!raw) return null;
 
   try {
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
-    if (!raw) return null;
-
     const parsed = JSON.parse(raw) as AuthUser;
     if (
       typeof parsed.id !== "string" ||
@@ -46,19 +64,11 @@ function readStoredUser(): AuthUser | null {
   }
 }
 
-function writeStoredUser(user: AuthUser | null) {
-  if (typeof window === "undefined") return;
-
-  if (user) {
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
-  } else {
-    localStorage.removeItem(AUTH_STORAGE_KEY);
-  }
-}
-
-function replaceSnapshot(user: AuthUser | null, hydrated = snapshot.hydrated) {
-  snapshot = { user, hydrated };
-  notify();
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (event) => {
+    if (event.key !== AUTH_STORAGE_KEY) return;
+    replaceSnapshot(parseStoredUser(event.newValue), true);
+  });
 }
 
 export function hydrateAuth() {
@@ -97,10 +107,25 @@ export async function signInWithGoogleMock(): Promise<AuthUser> {
 
   writeStoredUser(user);
   replaceSnapshot(user, true);
+  try {
+    await animateMainWindowToControlCenter();
+  } catch (error) {
+    console.error("[auth] login window transition failed", error);
+  }
   return user;
 }
 
 export function signOut() {
   writeStoredUser(null);
   replaceSnapshot(null, true);
+}
+
+export async function signOutWithTransition() {
+  try {
+    await animateMainWindowToOnboarding();
+  } catch (error) {
+    console.error("[auth] logout window transition failed", error);
+  } finally {
+    signOut();
+  }
 }

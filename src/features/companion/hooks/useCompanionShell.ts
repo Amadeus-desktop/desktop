@@ -26,7 +26,13 @@ import type {
 import { useCompanionTimeline } from "./useCompanionTimeline";
 import { useCompanionTrigger } from "./useCompanionTrigger";
 
-export function useCompanionShell() {
+type UseCompanionShellOptions = {
+  companionEnabled?: boolean;
+};
+
+export function useCompanionShell({
+  companionEnabled = true,
+}: UseCompanionShellOptions = {}) {
   const locale = useI18n();
   const { settings } = useAppSettings();
   const t = locale.companion;
@@ -95,13 +101,20 @@ export function useCompanionShell() {
   );
 
   useCompanionTrigger({
-    enabled: settings.proactiveTriggerEnabled,
+    enabled: companionEnabled && settings.proactiveTriggerEnabled,
     settings,
     canPresent: canPresentTrigger,
     onTrigger: ({ message, utteranceEventId }) => {
       void presentNudge(message, utteranceEventId);
     },
   });
+
+  useEffect(() => {
+    if (companionEnabled) return;
+    if (mode === "nudge" || mode === "new_note") {
+      void transitionMode("quiet");
+    }
+  }, [companionEnabled, mode, transitionMode]);
 
   useEffect(() => {
     if (initialSession.initialized) return;

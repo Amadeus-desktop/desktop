@@ -4,6 +4,7 @@ import {
   hydrateAuth,
   signInWithGoogleMock,
   signOut,
+  signOutWithTransition,
   subscribeToAuth,
 } from "./authStore";
 
@@ -21,5 +22,6 @@ export function useAuth() {
     hydrate: hydrateAuth,
     signInWithGoogle: signInWithGoogleMock,
     signOut,
+    signOutWithTransition,
   };
 }
