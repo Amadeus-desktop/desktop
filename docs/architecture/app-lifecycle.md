@@ -212,6 +212,7 @@ type MainWindowLayoutRequest = {
   mode: "onboarding" | "control-center";
   reason:
     | "initial-hydration"
+    | "login-complete"
     | "auth-callback"
     | "onboarding-complete"
     | "logout"
@@ -220,6 +221,15 @@ type MainWindowLayoutRequest = {
   priority: number;
 };
 ```
+
+현재 구현 상태:
+
+- L1b: `src-tauri/src/app_lifecycle/auth_callback.rs`가 dev loopback callback, pending replay, protocol argv validation을 소유한다.
+- L1b: `src-tauri/src/app_lifecycle/startup.rs`가 startup phase duration log를 소유한다.
+- L1b: `src-tauri/src/app_lifecycle/windows.rs`가 main drag command와 companion position sync command wrapper를 소유한다.
+- L2: `src/features/lifecycle/mainWindowLifecycle.ts`가 main window layout request의 단일 coordinator다.
+- L2: `authStore`, `useAuthWindow`, `OnboardingFlow`는 직접 layout mode helper를 호출하지 않고 `requestMainWindowLayout()`에 `reason`, `priority`, `animated`를 담아 요청한다.
+- L2a: native resize animation 제거/대체와 `useControlCenterWindow`까지의 완전 흡수는 다음 phase로 남긴다.
 
 ---
 

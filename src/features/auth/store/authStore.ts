@@ -7,10 +7,7 @@ import {
   hydrateOnboardingProgress,
   resetOnboardingProgress,
 } from "../../onboarding";
-import {
-  requestAnimatedMainWindowLayoutMode,
-  requestMainWindowLayoutMode,
-} from "../lib/mainWindowLayout";
+import { requestMainWindowLayout } from "../../lifecycle";
 import {
   AMADEUS_AUTH_CALLBACK_EVENT,
   consumePendingAuthCallback,
@@ -181,7 +178,12 @@ export async function signInWithGoogleAuth(): Promise<AuthUser | null> {
   applyAuthenticatedUser(user);
   if (getOnboardingSnapshot().progress.setupDone) {
     try {
-      await requestAnimatedMainWindowLayoutMode("control-center");
+      await requestMainWindowLayout({
+        mode: "control-center",
+        reason: "login-complete",
+        animated: true,
+        priority: 30,
+      });
     } catch (error) {
       logger.error("auth", "login window transition failed", { error });
     }
@@ -255,7 +257,12 @@ async function consumeAuthDeepLinks(urls: string[]) {
         hasUser: true,
       });
       if (getOnboardingSnapshot().progress.setupDone) {
-        await requestAnimatedMainWindowLayoutMode("control-center");
+        await requestMainWindowLayout({
+          mode: "control-center",
+          reason: "auth-callback",
+          animated: true,
+          priority: 30,
+        });
       }
       return;
     } catch (error) {
@@ -305,11 +312,20 @@ export async function signOutWithTransition() {
 
   try {
     try {
-      await requestAnimatedMainWindowLayoutMode("onboarding");
+      await requestMainWindowLayout({
+        mode: "onboarding",
+        reason: "logout",
+        animated: true,
+        priority: 40,
+      });
     } catch (error) {
       logger.error("auth", "logout window transition failed", { error });
       try {
-        await requestMainWindowLayoutMode("onboarding");
+        await requestMainWindowLayout({
+          mode: "onboarding",
+          reason: "logout",
+          priority: 40,
+        });
       } catch (fallbackError) {
         logger.error("auth", "logout window layout fallback failed", {
           error: fallbackError,

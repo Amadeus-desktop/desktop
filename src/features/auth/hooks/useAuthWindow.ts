@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { isTauriRuntime } from "../../../lib/tauri/runtime";
-import { requestMainWindowLayoutMode } from "../lib/mainWindowLayout";
+import { requestMainWindowLayout } from "../../lifecycle";
 
 export function useAuthWindow(
   showOnboardingShell: boolean,
@@ -29,14 +29,20 @@ export function useAuthWindow(
     previousShowOnboardingShell.current = showOnboardingShell;
 
     if (skipWasActive && showOnboardingShell) {
-      void requestMainWindowLayoutMode("onboarding");
+      void requestMainWindowLayout({
+        mode: "onboarding",
+        reason: "logout",
+        priority: 20,
+      });
       return;
     }
 
     if (previous === null) {
-      void requestMainWindowLayoutMode(
-        showOnboardingShell ? "onboarding" : "control-center",
-      );
+      void requestMainWindowLayout({
+        mode: showOnboardingShell ? "onboarding" : "control-center",
+        reason: "initial-hydration",
+        priority: 10,
+      });
       return;
     }
 
@@ -46,9 +52,11 @@ export function useAuthWindow(
     }
 
     if (previous !== showOnboardingShell) {
-      void requestMainWindowLayoutMode(
-        showOnboardingShell ? "onboarding" : "control-center",
-      );
+      void requestMainWindowLayout({
+        mode: showOnboardingShell ? "onboarding" : "control-center",
+        reason: "initial-hydration",
+        priority: 10,
+      });
     }
   }, [hydrated, showOnboardingShell, skipInstantLayout]);
 }

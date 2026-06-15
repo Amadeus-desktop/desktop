@@ -1,4 +1,5 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+mod app_lifecycle;
 mod llama_sidecar;
 mod llm;
 mod macos_context;
@@ -12,6 +13,14 @@ mod shared;
 mod timeline;
 mod trigger;
 
+use app_lifecycle::{
+    auth_callback::{
+        auth_callback_url_from_argv, consume_pending_auth_callback, route_auth_callback,
+        start_dev_auth_callback_server,
+    },
+    startup::StartupPhaseTimer,
+    windows::{start_main_window_drag_command, sync_companion_window_position},
+};
 use llama_sidecar::{get_llama_sidecar_status, LlamaSidecarState};
 use llm::{
     generate_chat_reply, generate_test_utterance, get_llm_provider_health, LlmService, LlmState,
@@ -20,7 +29,6 @@ use macos_context::{get_current_context_snapshot, ContextBridgeState};
 use macos_window::{
     configure_macos_companion_window, configure_macos_main_window, position_companion_window,
     restore_companion_window_on_active_space, schedule_macos_webview_layer_refresh,
-    start_main_window_drag, sync_companion_window_position_only,
     watch_macos_companion_space_changes, CompanionWindowVisibility,
 };
 use observability::{error as log_error, info as log_info, init as init_logger, LogArea};
@@ -36,21 +44,11 @@ use settings::{get_app_settings, llama_endpoint, update_app_settings, SettingsSt
 use shared::constants::{
     APP_DATABASE_FILE_NAME, APP_LOG_FILE_NAME, APP_NAME, APP_SETTINGS_FILE_NAME,
 };
-use std::{
-    io::{Read, Write},
-    net::{TcpListener, TcpStream},
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Mutex,
-    },
-    thread,
-    time::{Duration, Instant},
-};
 use tauri::{
     image::Image,
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Emitter, Manager, WindowEvent,
+    Manager, WindowEvent,
 };
 use timeline::{
     clear_local_timeline_data, create_context_event, create_local_memory, create_user_reaction,
@@ -66,42 +64,6 @@ const TRAY_ID: &str = "amadeus_menu_bar";
 const TRAY_OPEN_AMADEUS_ID: &str = "open_amadeus";
 const TRAY_TOGGLE_COMPANION_ID: &str = "toggle_companion";
 const TRAY_QUIT_AMADEUS_ID: &str = "quit_amadeus";
-const DEV_AUTH_CALLBACK_PORT: u16 = 17421;
-const DEV_AUTH_CALLBACK_URL: &str = "http://127.0.0.1:17421/auth/callback";
-const AUTH_CALLBACK_EVENT: &str = "amadeus-auth-callback";
-static DEV_AUTH_CALLBACK_SERVER_RUNNING: AtomicBool = AtomicBool::new(false);
-static PENDING_AUTH_CALLBACK_URL: Mutex<Option<String>> = Mutex::new(None);
-
-struct StartupPhaseTimer {
-    name: &'static str,
-    started_at: Instant,
-}
-
-impl StartupPhaseTimer {
-    fn start(name: &'static str) -> Self {
-        Self {
-            name,
-            started_at: Instant::now(),
-        }
-    }
-
-    fn finish(self) {
-        log_info(
-            LogArea::Startup,
-            format!(
-                "startup phase completed: phase={} duration_ms={}",
-                self.name,
-                self.started_at.elapsed().as_millis()
-            ),
-        );
-    }
-}
-
-#[derive(Debug, Clone, serde::Serialize)]
-struct AuthCallbackPayload {
-    url: String,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ResidentWindowCloseAction {
     Hide,
@@ -132,46 +94,6 @@ fn tray_menu_action(menu_id: &str) -> TrayMenuAction {
     }
 }
 
-fn store_pending_auth_callback(url: impl Into<String>) {
-    if let Ok(mut pending) = PENDING_AUTH_CALLBACK_URL.lock() {
-        *pending = Some(url.into());
-    }
-}
-
-fn take_pending_auth_callback() -> Option<String> {
-    PENDING_AUTH_CALLBACK_URL
-        .lock()
-        .ok()
-        .and_then(|mut pending| pending.take())
-}
-
-fn route_auth_callback(app: &tauri::AppHandle, url: String) {
-    store_pending_auth_callback(url.clone());
-    let payload = AuthCallbackPayload { url };
-    if let Err(error) = app.emit(AUTH_CALLBACK_EVENT, payload) {
-        log_error(
-            LogArea::Auth,
-            format!("auth callback event emit failed; pending replay retained: {error}"),
-        );
-    }
-}
-
-#[tauri::command]
-fn consume_pending_auth_callback() -> Option<AuthCallbackPayload> {
-    take_pending_auth_callback().map(|url| AuthCallbackPayload { url })
-}
-
-#[tauri::command]
-fn sync_companion_window_position(app: tauri::AppHandle) {
-    sync_companion_window_position_only(&app);
-}
-
-#[tauri::command]
-fn start_main_window_drag_command(app: tauri::AppHandle) -> Result<(), String> {
-    log_info(LogArea::Window, "main window native drag requested");
-    start_main_window_drag(&app)
-}
-
 #[tauri::command]
 fn record_frontend_log(level: String, area: String, message: String, context: Option<String>) {
     let area = frontend_log_area(&area);
@@ -200,440 +122,6 @@ fn frontend_log_area(area: &str) -> LogArea {
         "window" => LogArea::Window,
         _ => LogArea::Ui,
     }
-}
-
-#[tauri::command]
-fn start_dev_auth_callback_server(app: tauri::AppHandle) -> Result<String, String> {
-    if DEV_AUTH_CALLBACK_SERVER_RUNNING
-        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
-        .is_err()
-    {
-        log_info(
-            LogArea::Auth,
-            "dev auth callback server already running; reusing loopback redirect",
-        );
-        return Ok(DEV_AUTH_CALLBACK_URL.to_string());
-    }
-
-    let bind_timer = StartupPhaseTimer::start("dev_auth_callback_bind");
-    let listener =
-        TcpListener::bind(format!("127.0.0.1:{DEV_AUTH_CALLBACK_PORT}")).map_err(|error| {
-            DEV_AUTH_CALLBACK_SERVER_RUNNING.store(false, Ordering::SeqCst);
-            format!("dev auth callback bind failed: {error}")
-        })?;
-    listener.set_nonblocking(false).map_err(|error| {
-        DEV_AUTH_CALLBACK_SERVER_RUNNING.store(false, Ordering::SeqCst);
-        format!("dev auth callback configure failed: {error}")
-    })?;
-    bind_timer.finish();
-    log_info(
-        LogArea::Auth,
-        format!("dev auth callback server listening: url={DEV_AUTH_CALLBACK_URL}"),
-    );
-
-    thread::spawn(move || {
-        if let Err(error) = serve_dev_auth_callback(app, listener) {
-            log_error(
-                LogArea::Auth,
-                format!("dev auth callback server failed: {error}"),
-            );
-        }
-        DEV_AUTH_CALLBACK_SERVER_RUNNING.store(false, Ordering::SeqCst);
-    });
-
-    Ok(DEV_AUTH_CALLBACK_URL.to_string())
-}
-
-fn serve_dev_auth_callback(app: tauri::AppHandle, listener: TcpListener) -> std::io::Result<()> {
-    listener.set_nonblocking(true)?;
-    let deadline = std::time::Instant::now() + Duration::from_secs(300);
-
-    loop {
-        if std::time::Instant::now() >= deadline {
-            return Ok(());
-        }
-
-        match listener.accept() {
-            Ok((mut stream, _)) => {
-                if handle_dev_auth_callback_stream(&app, &mut stream)? {
-                    return Ok(());
-                }
-            }
-            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
-                thread::sleep(Duration::from_millis(50));
-            }
-            Err(error) => return Err(error),
-        }
-    }
-}
-
-fn handle_dev_auth_callback_stream(
-    app: &tauri::AppHandle,
-    stream: &mut TcpStream,
-) -> std::io::Result<bool> {
-    let mut buffer = [0_u8; 4096];
-    let bytes_read = stream.read(&mut buffer)?;
-    let request = String::from_utf8_lossy(&buffer[..bytes_read]);
-
-    match classify_dev_auth_callback_request(&request) {
-        DevAuthCallbackRequest::Favicon => {
-            write_dev_auth_callback_empty(stream)?;
-            Ok(false)
-        }
-        DevAuthCallbackRequest::Waiting => {
-            write_dev_auth_callback_response(stream, 200, "Amadeus auth callback ready")?;
-            Ok(false)
-        }
-        DevAuthCallbackRequest::NotFound => {
-            write_dev_auth_callback_response(stream, 404, "Amadeus auth callback not found")?;
-            Ok(false)
-        }
-        DevAuthCallbackRequest::Invalid => {
-            write_dev_auth_callback_response(stream, 400, "Invalid Amadeus auth callback")?;
-            Ok(false)
-        }
-        DevAuthCallbackRequest::Callback(callback_url) => {
-            route_auth_callback(app, callback_url);
-            log_info(LogArea::Auth, "dev auth callback emitted to frontend");
-            write_dev_auth_callback_response(stream, 200, "Amadeus login completed")?;
-            Ok(true)
-        }
-    }
-}
-
-enum DevAuthCallbackRequest {
-    Callback(String),
-    Waiting,
-    Favicon,
-    NotFound,
-    Invalid,
-}
-
-fn classify_dev_auth_callback_request(request: &str) -> DevAuthCallbackRequest {
-    let request_line = request.lines().next().unwrap_or("");
-    if request_line.contains("/favicon.ico") {
-        return DevAuthCallbackRequest::Favicon;
-    }
-
-    let mut parts = request_line.split_whitespace();
-    let method = parts.next().unwrap_or("");
-    let target = parts.next().unwrap_or("");
-    if method != "GET" {
-        return DevAuthCallbackRequest::Invalid;
-    }
-
-    let path = target.split('?').next().unwrap_or("").trim_end_matches('/');
-    if path != "/auth/callback" {
-        return DevAuthCallbackRequest::NotFound;
-    }
-
-    let query = target.split_once('?').map(|(_, query)| query).unwrap_or("");
-    if query.is_empty() {
-        return DevAuthCallbackRequest::Waiting;
-    }
-
-    if !query
-        .split('&')
-        .any(|part| part.starts_with("code=") && part.len() > "code=".len())
-    {
-        return DevAuthCallbackRequest::Invalid;
-    }
-
-    DevAuthCallbackRequest::Callback(format!("http://127.0.0.1:{DEV_AUTH_CALLBACK_PORT}{target}"))
-}
-
-#[cfg(test)]
-fn dev_auth_callback_url_from_request(request: &str) -> Option<String> {
-    match classify_dev_auth_callback_request(request) {
-        DevAuthCallbackRequest::Callback(url) => Some(url),
-        _ => None,
-    }
-}
-
-fn auth_callback_url_from_argv<I, S>(args: I) -> Option<String>
-where
-    I: IntoIterator<Item = S>,
-    S: AsRef<str>,
-{
-    args.into_iter()
-        .map(|arg| {
-            arg.as_ref()
-                .trim_matches('"')
-                .trim_matches('\'')
-                .to_string()
-        })
-        .find(|arg| is_supported_app_auth_callback_url(arg))
-}
-
-fn is_supported_app_auth_callback_url(url: &str) -> bool {
-    let Some(query_start) = url.find('?') else {
-        return false;
-    };
-    if &url[..query_start] != "amadeus://auth/callback" {
-        return false;
-    }
-    url[query_start + 1..]
-        .split('&')
-        .any(|part| part.starts_with("code=") && part.len() > "code=".len())
-}
-
-fn dev_auth_callback_success_html() -> String {
-    r#"<!doctype html>
-<html lang="ko">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="dark">
-  <title>Amadeus</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; }
-    body {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
-      background: radial-gradient(ellipse 90% 55% at 50% -15%, rgba(96, 165, 250, 0.14), transparent 65%), #09090b;
-      color: #f4f4f5;
-    }
-    .card {
-      width: min(100%, 360px);
-      text-align: center;
-      padding: 32px 28px;
-      border-radius: 24px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      background: rgba(255, 255, 255, 0.04);
-      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
-    }
-    .eyebrow {
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-      color: rgba(147, 197, 253, 0.75);
-      margin-bottom: 16px;
-    }
-    .icon {
-      width: 52px;
-      height: 52px;
-      margin: 0 auto 18px;
-      border-radius: 50%;
-      border: 1px solid rgba(52, 211, 153, 0.35);
-      background: rgba(52, 211, 153, 0.12);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .icon svg {
-      width: 26px;
-      height: 26px;
-      stroke: #34d399;
-    }
-    h1 {
-      font-size: 1.125rem;
-      font-weight: 600;
-      letter-spacing: -0.02em;
-      margin-bottom: 8px;
-    }
-    p {
-      font-size: 0.875rem;
-      line-height: 1.55;
-      color: rgba(244, 244, 245, 0.62);
-    }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <p class="eyebrow">AMADEUS</p>
-    <div class="icon" aria-hidden="true">
-      <svg fill="none" viewBox="0 0 24 24" stroke-width="2">
-        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-      </svg>
-    </div>
-    <h1>로그인 완료</h1>
-    <p>Amadeus로 돌아가 계속 진행하세요.<br>이 탭은 닫아도 됩니다.</p>
-  </div>
-</body>
-</html>"#
-        .to_string()
-}
-
-fn dev_auth_callback_error_html(message: &str) -> String {
-    format!(
-        r#"<!doctype html>
-<html lang="ko">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="dark">
-  <title>Amadeus</title>
-  <style>
-    * {{ box-sizing: border-box; margin: 0; }}
-    body {{
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
-      background: #09090b;
-      color: #f4f4f5;
-    }}
-    .card {{
-      width: min(100%, 360px);
-      text-align: center;
-      padding: 28px 24px;
-      border-radius: 24px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      background: rgba(255, 255, 255, 0.04);
-    }}
-    h1 {{
-      font-size: 1rem;
-      font-weight: 600;
-      margin-bottom: 8px;
-    }}
-    p {{
-      font-size: 0.875rem;
-      line-height: 1.55;
-      color: rgba(244, 244, 245, 0.62);
-    }}
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h1>로그인에 실패했어요</h1>
-    <p>{message}</p>
-  </div>
-</body>
-</html>"#
-    )
-}
-
-fn dev_auth_callback_waiting_html() -> String {
-    r#"<!doctype html>
-<html lang="ko">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="dark">
-  <title>Amadeus</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; }
-    body {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
-      background: #09090b;
-      color: #f4f4f5;
-    }
-    .card {
-      width: min(100%, 360px);
-      text-align: center;
-      padding: 28px 24px;
-      border-radius: 24px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      background: rgba(255, 255, 255, 0.04);
-    }
-    h1 { font-size: 1rem; font-weight: 600; margin-bottom: 8px; }
-    p { font-size: 0.875rem; line-height: 1.55; color: rgba(244, 244, 245, 0.62); }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h1>로그인 대기 중</h1>
-    <p>Amadeus에서 Google 로그인을 시작하면 이 페이지로 돌아와요.</p>
-  </div>
-</body>
-</html>"#
-        .to_string()
-}
-
-fn dev_auth_callback_not_found_html() -> String {
-    format!(
-        r#"<!doctype html>
-<html lang="ko">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="dark">
-  <title>Amadeus</title>
-  <style>
-    * {{ box-sizing: border-box; margin: 0; }}
-    body {{
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
-      background: #09090b;
-      color: #f4f4f5;
-    }}
-    .card {{
-      width: min(100%, 360px);
-      text-align: center;
-      padding: 28px 24px;
-      border-radius: 24px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      background: rgba(255, 255, 255, 0.04);
-    }}
-    h1 {{ font-size: 1rem; font-weight: 600; margin-bottom: 8px; }}
-    p {{ font-size: 0.875rem; line-height: 1.55; color: rgba(244, 244, 245, 0.62); }}
-    code {{ font-size: 0.75rem; color: rgba(147, 197, 253, 0.9); }}
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h1>페이지를 찾을 수 없어요</h1>
-    <p>Supabase redirect URL은 <code>{DEV_AUTH_CALLBACK_URL}</code> 로 설정해 주세요. Vite 포트(1420/1421)는 사용하지 않아요.</p>
-  </div>
-</body>
-</html>"#
-    )
-}
-
-fn dev_auth_callback_html(status: u16, message: &str) -> String {
-    if status == 200 && message == "Amadeus auth callback ready" {
-        return dev_auth_callback_waiting_html();
-    }
-    if status == 200 {
-        return dev_auth_callback_success_html();
-    }
-    if status == 404 {
-        return dev_auth_callback_not_found_html();
-    }
-    dev_auth_callback_error_html(message)
-}
-
-fn write_dev_auth_callback_empty(stream: &mut TcpStream) -> std::io::Result<()> {
-    write!(
-        stream,
-        "HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n"
-    )
-}
-
-fn write_dev_auth_callback_response(
-    stream: &mut TcpStream,
-    status: u16,
-    message: &str,
-) -> std::io::Result<()> {
-    let status_text = match status {
-        200 => "OK",
-        400 => "Bad Request",
-        404 => "Not Found",
-        _ => "Internal Server Error",
-    };
-    let body = dev_auth_callback_html(status, message);
-    write!(
-        stream,
-        "HTTP/1.1 {status} {status_text}\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
-        body.len(),
-        body
-    )
 }
 
 fn watch_companion_window_layout(app: &tauri::AppHandle, window: &tauri::WebviewWindow) {
@@ -1010,63 +498,5 @@ mod tests {
             TrayMenuAction::QuitAmadeus
         );
         assert_eq!(tray_menu_action("unknown"), TrayMenuAction::Ignore);
-    }
-
-    #[test]
-    fn parses_dev_auth_callback_request() {
-        let request = "GET /auth/callback?code=oauth-code&state=state HTTP/1.1\r\nHost: 127.0.0.1:17421\r\n\r\n";
-
-        assert_eq!(
-            dev_auth_callback_url_from_request(request),
-            Some("http://127.0.0.1:17421/auth/callback?code=oauth-code&state=state".to_string())
-        );
-    }
-
-    #[test]
-    fn rejects_dev_auth_callback_without_code() {
-        let request = "GET /auth/callback?state=state HTTP/1.1\r\nHost: 127.0.0.1:17421\r\n\r\n";
-
-        assert_eq!(dev_auth_callback_url_from_request(request), None);
-    }
-
-    #[test]
-    fn extracts_supported_auth_callback_from_single_instance_argv() {
-        let args = vec![
-            "/Applications/Amadeus.app/Contents/MacOS/Amadeus".to_string(),
-            "amadeus://auth/callback?code=oauth-code&state=state".to_string(),
-        ];
-
-        assert_eq!(
-            auth_callback_url_from_argv(args),
-            Some("amadeus://auth/callback?code=oauth-code&state=state".to_string())
-        );
-    }
-
-    #[test]
-    fn rejects_fake_auth_callback_argv() {
-        assert_eq!(
-            auth_callback_url_from_argv(vec!["amadeus://auth.evil/callback?code=oauth-code"]),
-            None
-        );
-        assert_eq!(
-            auth_callback_url_from_argv(vec!["amadeus://auth/callback/extra?code=oauth-code"]),
-            None
-        );
-        assert_eq!(
-            auth_callback_url_from_argv(vec!["amadeus://auth/callback?state=state"]),
-            None
-        );
-    }
-
-    #[test]
-    fn pending_auth_callback_is_consumed_once() {
-        let _ = take_pending_auth_callback();
-        store_pending_auth_callback("amadeus://auth/callback?code=oauth-code");
-
-        assert_eq!(
-            take_pending_auth_callback(),
-            Some("amadeus://auth/callback?code=oauth-code".to_string())
-        );
-        assert_eq!(take_pending_auth_callback(), None);
     }
 }

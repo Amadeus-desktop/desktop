@@ -2,10 +2,7 @@ import { useState, type ReactNode } from "react";
 import { useI18n } from "../../../i18n";
 import { cn } from "../../../lib/utils/cn";
 import { isTauriRuntime } from "../../../lib/tauri/runtime";
-import {
-  requestAnimatedMainWindowLayoutMode,
-  requestMainWindowLayoutMode,
-} from "../../auth/lib/mainWindowLayout";
+import { requestMainWindowLayout } from "../../lifecycle";
 import { LogoutTransitionStep } from "../../auth/components/LogoutTransitionStep";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { logger } from "../../../observability/logger";
@@ -82,8 +79,19 @@ export function OnboardingFlow({
       setPreparePhase("complete");
       await sleep(ONBOARDING_COMPLETE_DELAY_MS);
       await completeOnboardingWindowTransition({
-        animateToControlCenter: () => requestAnimatedMainWindowLayoutMode("control-center"),
-        applyLayoutMode: requestMainWindowLayoutMode,
+        animateToControlCenter: () =>
+          requestMainWindowLayout({
+            mode: "control-center",
+            reason: "onboarding-complete",
+            animated: true,
+            priority: 50,
+          }),
+        applyLayoutMode: (mode) =>
+          requestMainWindowLayout({
+            mode,
+            reason: "onboarding-complete",
+            priority: 50,
+          }),
         logError: (message, context) => logger.error("window", message, context),
       });
       markSetupDone();
