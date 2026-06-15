@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useTauriCompanionWindow } from "../window/useTauriCompanionWindow";
 import { companionStyles } from "../ui/styles";
 
 type CompanionViewportProps = {
@@ -6,9 +7,11 @@ type CompanionViewportProps = {
 };
 
 export function CompanionViewport({ children }: CompanionViewportProps) {
+  const ref = useTauriCompanionWindow();
+
   return (
-    <div className={companionStyles.root}>
-      <div className={companionStyles.stack}>{children}</div>
+    <div ref={ref} className={companionStyles.stack}>
+      {children}
     </div>
   );
 }

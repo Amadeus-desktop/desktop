@@ -1,7 +1,14 @@
 import { useEffect, useState } from "react";
 import { useI18n } from "../../i18n";
 import { IosSwitch, MacInput, MacSelect, SectionHeading, SettingRow } from "../../ui";
-import { loadLlamaSidecarStatus, type LlamaSidecarStatus } from "./settingsStore";
+import { CompanionPersonaPicker } from "./CompanionPersonaPicker";
+import {
+  generateTestUtterance,
+  loadLlamaSidecarStatus,
+  loadLlmProviderHealth,
+  type LlamaSidecarStatus,
+  type LlmProviderHealth,
+} from "./settingsStore";
 import { useSettings } from "./useSettings";
 
 export function SettingsPanel() {
@@ -37,15 +44,29 @@ export function SettingsPanel() {
     running: false,
     detail: t.settings.sidecarStatus.checking,
   });
+  const [providerHealth, setProviderHealth] = useState<LlmProviderHealth[]>([]);
+  const [healthState, setHealthState] = useState<"loading" | "ready">("loading");
+  const [testState, setTestState] = useState<"idle" | "running">("idle");
+  const [testResult, setTestResult] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
-    void loadLlamaSidecarStatus().then((status) => {
+    async function loadRuntimeStatus() {
+      setHealthState("loading");
+      const [sidecar, health] = await Promise.all([
+        loadLlamaSidecarStatus(),
+        loadLlmProviderHealth(),
+      ]);
+
       if (!cancelled) {
-        setSidecarStatus(status);
+        setSidecarStatus(sidecar);
+        setProviderHealth(health);
+        setHealthState("ready");
       }
-    });
+    }
+
+    void loadRuntimeStatus();
 
     return () => {
       cancelled = true;
@@ -55,6 +76,7 @@ export function SettingsPanel() {
     llamaServerHost,
     llamaServerPort,
     localModelPath,
+    localFallbackEnabled,
     modelRoute,
     settingsRevision,
     t.settings.sidecarStatus.checking,
@@ -65,6 +87,20 @@ export function SettingsPanel() {
     : sidecarStatus.configured
       ? t.settings.sidecarStatus.configured
       : t.settings.sidecarStatus.unconfigured;
+
+  async function handleTestUtterance() {
+    setTestState("running");
+    setTestResult(null);
+
+    try {
+      const generation = await generateTestUtterance();
+      setTestResult(`${generation.message} · ${generation.provider}`);
+    } catch (error) {
+      setTestResult(error instanceof Error ? error.message : String(error));
+    } finally {
+      setTestState("idle");
+    }
+  }
 
   return (
     <section className="tab-panel-enter">
@@ -91,6 +127,9 @@ export function SettingsPanel() {
       </SettingRow>
 
       <SectionHeading>{t.settings.sections.conversation}</SectionHeading>
+      <div className="mb-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+        <CompanionPersonaPicker />
+      </div>
       <SettingRow
         title={t.settings.talkFrequency.label}
         subtitle={t.settings.talkFrequency.subtitle}
@@ -144,6 +183,14 @@ export function SettingsPanel() {
         />
       </SettingRow>
       <SettingRow
+        title={t.settings.modelPreset.label}
+        subtitle={t.settings.modelPreset.subtitle}
+      >
+        <p className="max-w-[260px] text-right text-xs leading-5 text-white/55">
+          {t.settings.modelPreset.recommended}
+        </p>
+      </SettingRow>
+      <SettingRow
         title={t.settings.localModelPath.label}
         subtitle={t.settings.localModelPath.subtitle}
       >
@@ -192,6 +239,46 @@ export function SettingsPanel() {
         <span className="rounded-full border border-white/10 bg-white/8 px-3 py-1 text-xs font-medium text-white/70">
           {sidecarLabel}
         </span>
+      </SettingRow>
+      <SettingRow
+        title={t.settings.llmHealth.label}
+        subtitle={
+          healthState === "loading"
+            ? t.settings.llmHealth.checking
+            : providerHealth
+                .map(
+                  (health) =>
+                    `${health.provider}: ${
+                      health.available
+                        ? t.settings.llmHealth.available
+                        : t.settings.llmHealth.unavailable
+                    }`,
+                )
+                .join(" · ")
+        }
+      >
+        <div className="max-w-[260px] space-y-1 text-right text-[11px] leading-5 text-white/45">
+          {healthState === "loading"
+            ? t.settings.llmHealth.checking
+            : providerHealth.map((health) => (
+                <p key={health.provider}>{health.detail}</p>
+              ))}
+        </div>
+      </SettingRow>
+      <SettingRow
+        title={t.settings.testUtterance.label}
+        subtitle={testResult ?? t.settings.testUtterance.subtitle}
+      >
+        <button
+          type="button"
+          className="rounded-full border border-white/10 bg-white/8 px-3 py-1 text-xs font-medium text-white/80 transition hover:bg-white/12 disabled:opacity-50"
+          disabled={testState === "running"}
+          onClick={() => void handleTestUtterance()}
+        >
+          {testState === "running"
+            ? t.settings.testUtterance.running
+            : t.settings.testUtterance.button}
+        </button>
       </SettingRow>
     </section>
   );

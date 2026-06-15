@@ -1,12 +1,12 @@
 import type { CompanionLocale } from "../../../i18n";
 import { companionStyles } from "../ui/styles";
 import { CloseIcon } from "../ui/icons";
-import { ChatPanel } from "../chat/components/ChatPanel";
+import { CompanionPanelLayout } from "../chat/components/CompanionPanelLayout";
 import { LocalTimeline } from "../dev/LocalTimeline";
-import type { LocalTimelineEvent } from "../types";
+import type { TimelineEvent } from "../../timeline/types";
 
 type DailyCareNotePreviewProps = {
-  timelineEvents: LocalTimelineEvent[];
+  timelineEvents: TimelineEvent[];
   devToolsOpen: boolean;
   labels: CompanionLocale;
   onClose: () => void;
@@ -19,23 +19,34 @@ export function DailyCareNotePreview({
   onClose,
 }: DailyCareNotePreviewProps) {
   return (
-    <ChatPanel>
-      <header className={companionStyles.header}>
-        <div>
-          <p className={companionStyles.headerSubtitle}>{labels.dailyCare.subtitle}</p>
-          <h2 className={companionStyles.headerTitle}>{labels.dailyCare.title}</h2>
-        </div>
-        <button
-          type="button"
-          aria-label={labels.dailyCare.close}
-          onClick={onClose}
-          className={companionStyles.iconButton}
-        >
-          <CloseIcon />
-        </button>
-      </header>
-
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
+    <CompanionPanelLayout
+      header={
+        <header className={companionStyles.header}>
+          <div>
+            <p className={companionStyles.headerSubtitle}>
+              {labels.dailyCare.subtitle}
+            </p>
+            <h2 className={companionStyles.headerTitle}>
+              {labels.dailyCare.title}
+            </h2>
+          </div>
+          <button
+            type="button"
+            aria-label={labels.dailyCare.close}
+            onClick={onClose}
+            className={companionStyles.iconButton}
+          >
+            <CloseIcon />
+          </button>
+        </header>
+      }
+      dev={
+        devToolsOpen ? (
+          <LocalTimeline events={timelineEvents} labels={labels.dev} />
+        ) : undefined
+      }
+    >
+      <div className="min-h-0 space-y-4 overflow-y-auto px-4 py-4">
         <p className="max-w-[28ch] text-chat-base leading-relaxed text-chat-ink dark:text-chat-ink-dark">
           {labels.dailyCare.intro}
         </p>
@@ -69,13 +80,7 @@ export function DailyCareNotePreview({
           </p>
         </section>
       </div>
-
-      {devToolsOpen ? (
-        <div className={companionStyles.devPanel}>
-          <LocalTimeline events={timelineEvents} labels={labels.dev} />
-        </div>
-      ) : null}
-    </ChatPanel>
+    </CompanionPanelLayout>
   );
 }
 
@@ -87,7 +92,9 @@ type CareStatProps = {
 function CareStat({ label, value }: CareStatProps) {
   return (
     <div className={companionStyles.statCard}>
-      <p className="text-chat-xs text-chat-muted dark:text-chat-muted-dark">{label}</p>
+      <p className="text-chat-xs text-chat-muted dark:text-chat-muted-dark">
+        {label}
+      </p>
       <p className="mt-1 text-chat-sm font-medium text-chat-ink dark:text-chat-ink-dark">
         {value}
       </p>

@@ -6,6 +6,7 @@ pub mod ocr;
 pub mod policy;
 mod privacy;
 mod settings;
+mod shared;
 mod timeline;
 mod trigger;
 
@@ -20,7 +21,8 @@ use privacy::{
     get_screen_capture_permission_status,
 };
 use settings::{get_app_settings, llama_endpoint, update_app_settings, SettingsState};
-use tauri::Manager;
+use shared::constants::{APP_DATABASE_FILE_NAME, APP_NAME, APP_SETTINGS_FILE_NAME};
+use tauri::{Manager, WindowEvent};
 use timeline::{
     create_context_event, create_local_memory, create_user_reaction, create_utterance_event,
     enqueue_sync_payload, list_timeline_events, TimelineRepository, TimelineState,
@@ -32,7 +34,7 @@ use trigger::{
 
 #[tauri::command]
 fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
+    format!("Hello, {name}! You've been greeted from {APP_NAME}!")
 }
 
 #[tauri::command]
@@ -56,31 +58,20 @@ fn position_companion_window(window: &tauri::WebviewWindow) {
     let work_area = monitor.work_area();
     let window_size = window.outer_size().unwrap_or(work_area.size);
 
-    let x = work_area.position.x
-        + work_area.size.width as i32
-        - window_size.width as i32
-        - MARGIN;   
-    let y = work_area.position.y
-        + work_area.size.height as i32
-        - window_size.height as i32
-        - MARGIN;
+    let x = work_area.position.x + work_area.size.width as i32 - window_size.width as i32 - MARGIN;
+    let y =
+        work_area.position.y + work_area.size.height as i32 - window_size.height as i32 - MARGIN;
 
     if let Err(error) = window.set_position(PhysicalPosition::new(x, y)) {
         eprintln!("position_companion_window: set_position failed: {error}");
     }
 }
 
-/// Make the window visible on every macOS Space.
-///
-/// Transparency and shadow are handled declaratively in `tauri.conf.json`
-/// (`transparent: true` + `macOSPrivateApi: true`, `shadow: false`). The only
-/// thing Tauri config cannot express is `NSWindowCollectionBehavior`, so that is
-/// the sole reason this AppKit call exists. We intentionally do NOT set
-/// `Stationary` — it makes the window render incompletely in Mission Control.
+/// Make the main control-center window follow normal Space / Mission Control rules.
 #[cfg(target_os = "macos")]
-fn configure_macos_window(window: &tauri::WebviewWindow) {
+fn configure_macos_main_window(window: &tauri::WebviewWindow) {
     let Ok(ptr) = window.ns_window() else {
-        eprintln!("configure_macos_window: ns_window() unavailable");
+        eprintln!("configure_macos_main_window: ns_window() unavailable");
         return;
     };
 
@@ -88,8 +79,56 @@ fn configure_macos_window(window: &tauri::WebviewWindow) {
         use objc2_app_kit::{NSWindow, NSWindowCollectionBehavior};
 
         let ns_window: &NSWindow = &*(ptr as *const NSWindow);
-        ns_window.setCollectionBehavior(NSWindowCollectionBehavior::CanJoinAllSpaces);
+        ns_window.setCollectionBehavior(NSWindowCollectionBehavior::Managed);
     }
+}
+
+/// Configure the companion overlay as a floating HUD that follows the active Space.
+///
+/// - `MoveToActiveSpace` — moves with the user instead of cloning onto every desktop
+/// - `Transient` — hides from Mission Control thumbnails
+/// - `FullScreenAuxiliary` — stays usable over full-screen apps
+/// - `IgnoresCycle` — keeps the overlay out of Cmd+` window cycling
+///
+/// We intentionally do NOT set `CanJoinAllSpaces` (Mission Control clutter) or
+/// `Stationary` (broken Mission Control rendering).
+#[cfg(target_os = "macos")]
+fn configure_macos_companion_window(window: &tauri::WebviewWindow) {
+    let Ok(ptr) = window.ns_window() else {
+        eprintln!("configure_macos_companion_window: ns_window() unavailable");
+        return;
+    };
+
+    unsafe {
+        use objc2_app_kit::{NSFloatingWindowLevel, NSWindow, NSWindowCollectionBehavior};
+
+        let ns_window: &NSWindow = &*(ptr as *const NSWindow);
+        let behavior = NSWindowCollectionBehavior::MoveToActiveSpace
+            | NSWindowCollectionBehavior::Transient
+            | NSWindowCollectionBehavior::FullScreenAuxiliary
+            | NSWindowCollectionBehavior::IgnoresCycle;
+        ns_window.setCollectionBehavior(behavior);
+        ns_window.setLevel(NSFloatingWindowLevel);
+    }
+}
+
+fn watch_companion_window_layout(app: &tauri::AppHandle, window: &tauri::WebviewWindow) {
+    let app_handle = app.clone();
+    window.on_window_event(move |event| {
+        let should_reposition = matches!(
+            event,
+            WindowEvent::Focused(_)
+                | WindowEvent::Moved(_)
+                | WindowEvent::ScaleFactorChanged { .. }
+                | WindowEvent::Resized(_)
+        );
+
+        if should_reposition {
+            if let Some(companion) = app_handle.get_webview_window("companion") {
+                position_companion_window(&companion);
+            }
+        }
+    });
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -98,8 +137,8 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             let app_data_dir = app.path().app_data_dir()?;
-            let database_path = app_data_dir.join("amadeus.sqlite3");
-            let settings_path = app_data_dir.join("settings.json");
+            let database_path = app_data_dir.join(APP_DATABASE_FILE_NAME);
+            let settings_path = app_data_dir.join(APP_SETTINGS_FILE_NAME);
             let mut repository = TimelineRepository::open(database_path)?;
             repository.migrate()?;
             let settings_state = SettingsState::open(settings_path)?;
@@ -129,11 +168,12 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             {
                 if let Some(win) = app.get_webview_window("main") {
-                    configure_macos_window(&win);
+                    configure_macos_main_window(&win);
                 }
                 if let Some(win) = app.get_webview_window("companion") {
-                    configure_macos_window(&win);
+                    configure_macos_companion_window(&win);
                     position_companion_window(&win);
+                    watch_companion_window_layout(app.handle(), &win);
                 }
             }
 
@@ -141,6 +181,7 @@ pub fn run() {
             {
                 if let Some(win) = app.get_webview_window("companion") {
                     position_companion_window(&win);
+                    watch_companion_window_layout(app.handle(), &win);
                 }
             }
 

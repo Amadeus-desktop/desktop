@@ -1,9 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
+import {
+  browserPreviewDetail,
+  readBrowserSettings,
+  writeBrowserSettings,
+} from "../../mocks/settings";
 import { isTauriRuntime } from "../../lib/tauriRuntime";
 import { initialSettings } from "./settings";
 import type { GeneralSettings } from "./types";
-
-let browserSettings = initialSettings;
 
 export type LlamaSidecarStatus = {
   configured: boolean;
@@ -13,7 +16,7 @@ export type LlamaSidecarStatus = {
 
 export async function loadGeneralSettings(): Promise<GeneralSettings> {
   if (!isTauriRuntime()) {
-    return { ...initialSettings, ...browserSettings };
+    return readBrowserSettings();
   }
 
   const settings = await invoke<GeneralSettings>("get_app_settings");
@@ -24,8 +27,7 @@ export async function saveGeneralSettings(
   settings: GeneralSettings,
 ): Promise<GeneralSettings> {
   if (!isTauriRuntime()) {
-    browserSettings = settings;
-    return browserSettings;
+    return writeBrowserSettings(settings);
   }
 
   return invoke<GeneralSettings>("update_app_settings", {
@@ -38,9 +40,12 @@ export async function loadLlamaSidecarStatus(): Promise<LlamaSidecarStatus> {
     return {
       configured: false,
       running: false,
-      detail: "browser preview",
+      detail: browserPreviewDetail,
     };
   }
 
   return invoke<LlamaSidecarStatus>("get_llama_sidecar_status");
 }
+
+export { loadLlmProviderHealth, generateTestUtterance } from "../llm/llmRepository";
+export type { LlmProviderHealth, LlmGeneration } from "../llm/types";

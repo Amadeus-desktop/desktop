@@ -1,16 +1,18 @@
+import type { PersonaId } from "../../../../domain/persona/types";
 import { cn } from "../../../../lib/cn";
-import { companionStyles } from "../../ui/styles";
+import { PersonaPresenceIcon } from "../../ui/PersonaPresenceIcon";
 
 type ChatAvatarProps = {
+  personaId: PersonaId;
   className?: string;
 };
 
-export function ChatAvatar({ className }: ChatAvatarProps) {
+export function ChatAvatar({ personaId, className }: ChatAvatarProps) {
   return (
-    <div className={cn(companionStyles.avatar, className)} aria-hidden="true">
-      <div className="flex h-full w-full items-center justify-center">
-        <div className={companionStyles.avatarDot} />
-      </div>
-    </div>
+    <PersonaPresenceIcon
+      personaId={personaId}
+      size="sm"
+      className={cn(className)}
+    />
   );
 }

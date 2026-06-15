@@ -1,19 +1,25 @@
 import type { AppLocale } from "../../i18n/types";
-import type { Persona, PersonaId } from "./types";
+import {
+  PERSONA_IDS,
+  PRESENCE_ICON_BY_PERSONA,
+  type Persona,
+  type PersonaId,
+} from "./types";
 
 export function getPersonas(locale: AppLocale): Record<PersonaId, Persona> {
-  return {
-    warm_friend: {
-      id: "warm_friend",
-      ...locale.persona.warm_friend,
+  return PERSONA_IDS.reduce(
+    (personas, id) => {
+      personas[id] = {
+        id,
+        icon: PRESENCE_ICON_BY_PERSONA[id],
+        ...locale.persona[id],
+      };
+      return personas;
     },
-    fantasy_guardian: {
-      id: "fantasy_guardian",
-      ...locale.persona.fantasy_guardian,
-    },
-  };
+    {} as Record<PersonaId, Persona>,
+  );
 }
 
 export function getPersonaList(locale: AppLocale): Persona[] {
-  return Object.values(getPersonas(locale));
+  return PERSONA_IDS.map((id) => getPersonas(locale)[id]);
 }

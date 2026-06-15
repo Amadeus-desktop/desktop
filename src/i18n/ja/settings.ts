@@ -1,0 +1,107 @@
+import type { SettingsMessages } from "../modules/settings";
+
+export const settings: SettingsMessages = {
+  eyebrow: "Preferences",
+  title: "一般設定",
+  description: "能動的な声かけ、モデルルーティング、夜間配慮を設定します。",
+  sections: {
+    conversation: "Conversation",
+    model: "Model",
+    language: "Language",
+  },
+  locale: {
+    label: "表示言語",
+    subtitle: "UIとcompanionメッセージの言語",
+    options: {
+      ko: "한국어",
+      en: "English",
+      ja: "日本語",
+    },
+  },
+  talkFrequency: {
+    label: "声かけ頻度",
+    subtitle: "作業の流れを妨げない基本強度",
+    options: {
+      quiet: "静かに控えめに",
+      balanced: "ほどよくやさしく",
+      active: "元気に積極的に",
+    },
+  },
+  nickname: {
+    label: "呼び名",
+    subtitle: "吹き出しとチャットで使う名前",
+    inputLabel: "呼び名",
+  },
+  nightCare: {
+    label: "夜間配慮",
+    subtitle: "遅い時間は短く、低いトーンで",
+    switchLabel: "夜間配慮",
+  },
+  modelRoute: {
+    label: "LLMルーティング",
+    subtitle: "既定の応答経路とローカル優先度",
+    options: {
+      "api-first": "API優先",
+      "local-first": "ローカル優先",
+      template: "テンプレート",
+    },
+  },
+  localFallback: {
+    label: "ローカル代替",
+    subtitle: "API失敗時にllama.cppへ切り替え",
+    switchLabel: "ローカルLLM代替",
+  },
+  localModelPath: {
+    label: "GGUFモデルパス",
+    subtitle: "llama.cppが読み込むローカルモデル",
+    inputLabel: "モデルパス",
+  },
+  llamaBinaryPath: {
+    label: "llama-serverパス",
+    subtitle: "アプリデータsidecars内の実行ファイル",
+    inputLabel: "バイナリパス",
+  },
+  llamaServer: {
+    label: "llama.cppサーバー",
+    subtitle: "ローカルsidecar接続先",
+    hostLabel: "ホスト",
+    portLabel: "ポート",
+  },
+  sidecarStatus: {
+    label: "ローカルサーバー状態",
+    running: "実行中",
+    configured: "準備完了",
+    unconfigured: "未設定",
+    checking: "確認中…",
+  },
+  modelPreset: {
+    label: "推奨ローカルモデル",
+    subtitle: "8GB RAMノートPC向けの既定推奨",
+    recommended: "Qwen2.5-3B-Instruct GGUF (Q4_K_M, ~2GB)",
+  },
+  llmHealth: {
+    label: "LLM provider状態",
+    checking: "確認中…",
+    available: "利用可能",
+    unavailable: "利用不可",
+  },
+  testUtterance: {
+    label: "テスト発話",
+    subtitle: "現在のルートで短いcompanion発話を生成します。",
+    button: "テスト実行",
+    running: "生成中…",
+  },
+  companionPersona: {
+    label: "companionペルソナ",
+    subtitle: "口調と下部presenceアイコンスタイルを選びます。",
+    icons: {
+      bubble: "吹き出しアイコン",
+      letter: "手紙/メモアイコン",
+      star: "星/きらめきアイコン",
+      orb: "オーブ/ラウンドアイコン",
+      line: "シンプルラインアイコン",
+      face: "小さな顔/感情アイコン",
+      leaf: "葉/水滴アイコン",
+    },
+  },
+};

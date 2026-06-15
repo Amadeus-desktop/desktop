@@ -1,4 +1,5 @@
 import { MacWindow, Sidebar, SidebarItem } from "../../ui";
+import { ResizableColumns } from "../../ui/ResizableColumns";
 import { useI18n } from "../../i18n";
 import { CharacterPanel } from "../character";
 import { PerceptionPanel } from "../perception";
@@ -30,31 +31,39 @@ export function ControlCenter() {
 
   return (
     <MacWindow>
-      <Sidebar>
-        <div data-tauri-drag-region className="min-w-0 px-3 py-3 max-sm:hidden">
-          <div className="truncate text-[13px] font-semibold text-white">
-            {t.common.appName}
-          </div>
-          <div className="mt-0.5 truncate text-[11px] text-white/35">
-            {t.common.activeCompanion}
-          </div>
-        </div>
-        {tabs.map((tab) => (
-          <SidebarItem
-            key={tab.id}
-            label={tab.label}
-            icon={tab.icon}
-            active={activeTab === tab.id}
-            onClick={() => selectTab(tab.id)}
-          />
-        ))}
-      </Sidebar>
-      <div
-        data-tauri-drag-region
-        className="min-w-0 flex-1 overflow-y-auto px-8 py-7 max-sm:px-5 max-sm:py-5"
+      <ResizableColumns
+        sidebar={
+          <Sidebar>
+            <div
+              data-tauri-drag-region
+              className="min-w-0 px-3 py-3 max-sm:hidden"
+            >
+              <div className="truncate text-[13px] font-semibold text-white">
+                {t.common.appName}
+              </div>
+              <div className="mt-0.5 truncate text-[11px] text-white/35">
+                {t.common.activeCompanion}
+              </div>
+            </div>
+            {tabs.map((tab) => (
+              <SidebarItem
+                key={tab.id}
+                label={tab.label}
+                icon={tab.icon}
+                active={activeTab === tab.id}
+                onClick={() => selectTab(tab.id)}
+              />
+            ))}
+          </Sidebar>
+        }
       >
-        {renderPanel(activeTab)}
-      </div>
+        <div
+          data-tauri-drag-region
+          className="h-full min-h-0 overflow-y-auto px-8 py-7 max-sm:px-5 max-sm:py-5"
+        >
+          {renderPanel(activeTab)}
+        </div>
+      </ResizableColumns>
     </MacWindow>
   );
 }

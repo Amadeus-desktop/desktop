@@ -14,6 +14,7 @@ export function CompanionShell() {
     <CompanionViewport>
       {shell.mode === "nudge" ? (
         <NudgeNote
+          personaId={shell.selectedPersonaId}
           personaName={shell.selectedPersona.name}
           nudge={shell.nudge}
           labels={shell.t}
@@ -55,6 +56,7 @@ export function CompanionShell() {
       {shell.showPresence ? (
         <FloatingMessageIcon
           mode={shell.mode}
+          personaId={shell.selectedPersonaId}
           labels={shell.t.presence}
           onClick={() => void shell.openIcon()}
         />

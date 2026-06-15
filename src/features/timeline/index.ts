@@ -2,7 +2,6 @@ export {
   createContextEvent,
   createUserReaction,
   createUtteranceEvent,
-  ensureTimelineSeed,
   listTimelineEvents,
 } from "./timelineRepository";
 export type {

@@ -1,14 +1,10 @@
 export const companionStyles = {
-  root: "h-screen w-screen overflow-visible bg-transparent",
-  stack: "flex h-full w-full flex-col items-end justify-end gap-2",
+  stack: "inline-flex flex-col items-end gap-2 overflow-visible",
 
   panel:
     "flex flex-col overflow-hidden rounded-chat-panel border border-chat-border bg-chat-surface text-chat-ink shadow-chat-panel animate-chat-in dark:border-chat-border-dark dark:bg-chat-surface-dark dark:text-chat-ink-dark dark:shadow-chat-panel-dark",
   panelSize:
     "h-chat-panel max-h-[calc(100vh-1rem)] w-chat-panel max-w-[calc(100vw-1rem)]",
-
-  nudgeCard:
-    "animate-chat-in w-chat-nudge max-w-[calc(100vw-1rem)] rounded-chat-nudge border border-chat-border bg-chat-surface px-3.5 py-3 shadow-chat-panel dark:border-chat-border-dark dark:bg-chat-surface-dark dark:shadow-chat-panel-dark",
 
   header:
     "flex h-chat-header shrink-0 items-center gap-2.5 border-b border-chat-border bg-chat-header px-3 dark:border-chat-border-dark dark:bg-chat-header-dark",
@@ -45,6 +41,9 @@ export const companionStyles = {
     "pointer-events-none absolute inset-0 rounded-chat-fab ring-2 ring-chat-accent/25 dark:ring-chat-accent-dark/30",
   fabPulse:
     "pointer-events-none absolute -inset-1 rounded-chat-fab bg-chat-accent/15 animate-chat-pulse dark:bg-chat-accent-dark/20",
+  presenceChip:
+    "relative flex size-chat-fab shrink-0 items-center justify-center rounded-chat-fab border border-chat-border/80 bg-chat-surface/95 shadow-sm backdrop-blur-sm transition hover:scale-105 dark:border-chat-border-dark dark:bg-chat-surface-dark/95",
+  presenceChipMuted: "opacity-55 hover:scale-100",
   badgeDot:
     "absolute -right-0.5 -top-0.5 size-1.5 rounded-full border border-chat-surface bg-chat-accent dark:border-chat-surface-dark dark:bg-chat-accent-dark",
 

@@ -81,6 +81,43 @@ export type AppLocale = {
       unconfigured: string;
       checking: string;
     };
+    modelPreset: {
+      label: string;
+      subtitle: string;
+      recommended: string;
+    };
+    llmHealth: {
+      label: string;
+      checking: string;
+      available: string;
+      unavailable: string;
+    };
+    testUtterance: {
+      label: string;
+      subtitle: string;
+      button: string;
+      running: string;
+    };
+    companionPersona: {
+      label: string;
+      subtitle: string;
+      icons: Record<
+        | "bubble"
+        | "letter"
+        | "star"
+        | "orb"
+        | "line"
+        | "face"
+        | "leaf",
+        string
+      >;
+    };
+  };
+  llm: {
+    template: {
+      chatEmpty: string;
+      chatReply: string;
+    };
   };
   character: {
     eyebrow: string;
@@ -183,9 +220,13 @@ export type AppLocale = {
       loading: string;
       empty: string;
     };
-    fallback: {
-      focusTimeValue: string;
-      utterancesValue: string;
+    format: {
+      hoursMinutes: string;
+      hoursOnly: string;
+      minutesOnly: string;
+      zeroDuration: string;
+      utteranceCount: string;
+      zeroUtterances: string;
     };
   };
   companion: {
@@ -239,7 +280,32 @@ export type AppLocale = {
       shortLabel: string;
       description: string;
     };
+    loving_partner: {
+      name: string;
+      shortLabel: string;
+      description: string;
+    };
     fantasy_guardian: {
+      name: string;
+      shortLabel: string;
+      description: string;
+    };
+    quiet_companion: {
+      name: string;
+      shortLabel: string;
+      description: string;
+    };
+    minimal_user: {
+      name: string;
+      shortLabel: string;
+      description: string;
+    };
+    cute_character: {
+      name: string;
+      shortLabel: string;
+      description: string;
+    };
+    nature_healing: {
       name: string;
       shortLabel: string;
       description: string;

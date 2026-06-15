@@ -151,6 +151,8 @@ export function useSettings() {
     ...settings,
     settingsRevision: revision,
     setLocale: (value: LocaleCode) => patchAppSettings({ locale: value }),
+    setCompanionPersonaId: (value: GeneralSettings["companionPersonaId"]) =>
+      patchAppSettings({ companionPersonaId: value }),
     setTalkFrequency: (value: TalkFrequency) =>
       patchAppSettings({ talkFrequency: value }),
     setModelRoute: (value: ModelRoute) => patchAppSettings({ modelRoute: value }),

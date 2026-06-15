@@ -3,6 +3,7 @@ import type { GeneralSettings, ModelRoute, TalkFrequency } from "./types";
 
 export const initialSettings: GeneralSettings = {
   locale: "ko",
+  companionPersonaId: "warm_friend",
   talkFrequency: "balanced",
   modelRoute: "api-first",
   localFallbackEnabled: true,

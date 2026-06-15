@@ -1,0 +1,158 @@
+import { cn } from "../../../lib/cn";
+import type { PersonaId, PresenceIconKind } from "../../../domain/persona/types";
+import { PRESENCE_ICON_BY_PERSONA } from "../../../domain/persona/types";
+
+type PersonaPresenceIconProps = {
+  personaId?: PersonaId;
+  kind?: PresenceIconKind;
+  size?: "sm" | "md" | "lg";
+  className?: string;
+};
+
+const sizeClass = {
+  sm: "size-7",
+  md: "size-10",
+  lg: "size-11",
+} as const;
+
+const iconClass = {
+  sm: "size-3.5",
+  md: "size-4.5",
+  lg: "size-5",
+} as const;
+
+export function PersonaPresenceIcon({
+  personaId,
+  kind,
+  size = "sm",
+  className,
+}: PersonaPresenceIconProps) {
+  const resolvedKind =
+    kind ?? (personaId ? PRESENCE_ICON_BY_PERSONA[personaId] : "bubble");
+
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center justify-center rounded-full border border-chat-border/80 bg-chat-surface text-chat-ink shadow-sm dark:border-chat-border-dark dark:bg-chat-bubble-companion-dark dark:text-chat-ink-dark",
+        sizeClass[size],
+        className,
+      )}
+      aria-hidden="true"
+    >
+      <PresenceGlyph kind={resolvedKind} className={iconClass[size]} />
+    </span>
+  );
+}
+
+function PresenceGlyph({
+  kind,
+  className,
+}: {
+  kind: PresenceIconKind;
+  className: string;
+}) {
+  switch (kind) {
+    case "bubble":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" className={className}>
+          <path
+            d="M7 18.5 8.5 15H17a4 4 0 0 0 0-8H9a4 4 0 0 0-4 4v5.5Z"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinejoin="round"
+          />
+        </svg>
+      );
+    case "letter":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" className={className}>
+          <path
+            d="M5 8.5 12 12.5 19 8.5M6 17h12a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2Z"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinejoin="round"
+          />
+        </svg>
+      );
+    case "star":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" className={className}>
+          <path
+            d="M12 4.5 13.6 9l4.7.3-3.6 2.8 1.3 4.6L12 14.8 7 16.7l1.3-4.6-3.6-2.8 4.7-.3L12 4.5Z"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M18.5 5.5v2M19.5 6.5h-2"
+            stroke="currentColor"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+          />
+        </svg>
+      );
+    case "orb":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" className={className}>
+          <circle
+            cx="12"
+            cy="12"
+            r="7"
+            stroke="currentColor"
+            strokeWidth="1.6"
+          />
+          <circle cx="12" cy="12" r="2.5" fill="currentColor" opacity="0.35" />
+        </svg>
+      );
+    case "line":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" className={className}>
+          <circle cx="12" cy="12" r="7" stroke="currentColor" strokeWidth="1.6" />
+          <path
+            d="M8.5 12h7"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          />
+        </svg>
+      );
+    case "face":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" className={className}>
+          <circle cx="12" cy="12" r="7" stroke="currentColor" strokeWidth="1.6" />
+          <circle cx="9.5" cy="11" r="0.9" fill="currentColor" />
+          <circle cx="14.5" cy="11" r="0.9" fill="currentColor" />
+          <path
+            d="M9.5 14.2c.9.8 2.1 1.2 2.5 1.2s1.6-.4 2.5-1.2"
+            stroke="currentColor"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+          />
+        </svg>
+      );
+    case "leaf":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" className={className}>
+          <path
+            d="M15.5 6.5C11 6 7.5 8.8 6.5 13c3.2-.4 6.1-2.2 7.8-5.1"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M8.5 16.5c1.2-2.4 3.2-4.1 6-5"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          />
+          <path
+            d="M11.5 18.5c.4-1.2.4-2.2 0-3.5"
+            stroke="currentColor"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+          />
+        </svg>
+      );
+  }
+}

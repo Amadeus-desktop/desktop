@@ -1,9 +1,10 @@
+import { formatLocaleTime } from "../../../i18n";
 import type { CompanionLocale } from "../../../i18n";
 import { companionStyles } from "../ui/styles";
-import type { LocalTimelineEvent } from "../types";
+import type { TimelineEvent } from "../../timeline/types";
 
 type LocalTimelineProps = {
-  events: LocalTimelineEvent[];
+  events: TimelineEvent[];
   labels: CompanionLocale["dev"];
 };
 
@@ -22,27 +23,24 @@ export function LocalTimeline({ events, labels }: LocalTimelineProps) {
             {labels.timelineEmpty}
           </p>
         ) : (
-          events
-            .slice()
-            .reverse()
-            .map((event) => (
-              <div
-                key={event.id}
-                className="grid grid-cols-[62px_1fr] gap-1.5 px-1 py-0.5 text-[10px]"
-              >
-                <span className="text-chat-faint dark:text-chat-faint-dark">
-                  {event.createdAt}
+          events.map((event) => (
+            <div
+              key={event.id}
+              className="grid grid-cols-[62px_1fr] gap-1.5 px-1 py-0.5 text-[10px]"
+            >
+              <span className="text-chat-faint dark:text-chat-faint-dark">
+                {formatLocaleTime(new Date(event.occurredAt))}
+              </span>
+              <span className="min-w-0 truncate">
+                <span className="font-medium text-chat-muted dark:text-chat-muted-dark">
+                  {event.kind}
                 </span>
-                <span className="min-w-0">
-                  <span className="font-medium text-chat-muted dark:text-chat-muted-dark">
-                    {event.type}
-                  </span>
-                  <span className="ml-1 text-chat-faint dark:text-chat-faint-dark">
-                    /{event.mode}
-                  </span>
+                <span className="ml-1 text-chat-faint dark:text-chat-faint-dark">
+                  {event.title}
                 </span>
-              </div>
-            ))
+              </span>
+            </div>
+          ))
         )}
       </div>
     </aside>

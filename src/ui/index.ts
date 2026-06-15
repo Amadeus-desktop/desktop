@@ -3,6 +3,7 @@ export { MacInput } from "./MacInput";
 export { MacSelect } from "./MacSelect";
 export { MacWindow } from "./MacWindow";
 export { ReportCard } from "./ReportCard";
+export { ResizableColumns } from "./ResizableColumns";
 export { SectionHeading } from "./SectionHeading";
 export { SettingRow } from "./SettingRow";
 export { Sidebar } from "./Sidebar";

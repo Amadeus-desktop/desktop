@@ -1,45 +1,63 @@
 import { useEffect, useMemo, useState } from "react";
+import { REPORT_TIMELINE_LIMIT } from "../../domain/report";
 import { getLocale, LOCALE_TAGS, useI18n } from "../../i18n";
-import { getReportMetrics } from "./report";
-import type { WorkTimelineItem } from "./types";
-import { ensureTimelineSeed } from "../timeline/timelineRepository";
+import { listTimelineEvents } from "../timeline/timelineRepository";
 import type { TimelineEvent, TimelineEventKind } from "../timeline/types";
+import { buildReportMetrics } from "./report";
+import type { WorkTimelineItem } from "./types";
 
 export function useReport() {
   const t = useI18n();
-  const [timelineItems, setTimelineItems] = useState<WorkTimelineItem[]>([]);
+  const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [timelineState, setTimelineState] = useState<"loading" | "ready">(
     "loading",
   );
-  const reportMetrics = useMemo(() => getReportMetrics(t), [t]);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function loadTimeline() {
-      const events = await ensureTimelineSeed();
+    async function loadReport() {
+      const nextEvents = await listTimelineEvents(REPORT_TIMELINE_LIMIT);
 
       if (!cancelled) {
-        setTimelineItems(events.map((event) => toWorkTimelineItem(event)));
+        setEvents(nextEvents);
         setTimelineState("ready");
       }
     }
 
-    void loadTimeline().catch(() => {
+    void loadReport().catch(() => {
       if (!cancelled) {
-        setTimelineItems([]);
+        setEvents([]);
         setTimelineState("ready");
       }
     });
 
+    function handleVisibilityChange() {
+      if (!document.hidden) {
+        void loadReport();
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     return () => {
       cancelled = true;
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [t]);
 
+  const reportMetrics = useMemo(
+    () => buildReportMetrics(events, t),
+    [events, t],
+  );
+  const workTimeline = useMemo(
+    () => events.map((event) => toWorkTimelineItem(event)),
+    [events],
+  );
+
   return {
     reportMetrics,
-    workTimeline: timelineItems,
+    workTimeline,
     timelineState,
   };
 }

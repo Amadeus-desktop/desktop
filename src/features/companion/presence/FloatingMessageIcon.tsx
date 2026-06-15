@@ -1,20 +1,23 @@
 import { cn } from "../../../lib/cn";
 import type { CompanionLocale } from "../../../i18n";
+import type { PersonaId } from "../../../domain/persona/types";
+import { PersonaPresenceIcon } from "../ui/PersonaPresenceIcon";
 import { companionStyles } from "../ui/styles";
 import type { CompanionMode } from "../types";
 
 type FloatingMessageIconProps = {
   mode: CompanionMode;
+  personaId: PersonaId;
   labels: CompanionLocale["presence"];
   onClick: () => void;
 };
 
 export function FloatingMessageIcon({
   mode,
+  personaId,
   labels,
   onClick,
 }: FloatingMessageIconProps) {
-  const hasNewNote = mode === "new_note";
   const sleeping = mode === "sleep";
 
   return (
@@ -22,15 +25,12 @@ export function FloatingMessageIcon({
       type="button"
       aria-label={sleeping ? labels.wake : labels.open}
       onClick={onClick}
-      className={cn(companionStyles.fab, sleeping && companionStyles.fabMuted)}
+      className={cn(
+        companionStyles.presenceChip,
+        sleeping && companionStyles.presenceChipMuted,
+      )}
     >
-      {!sleeping && !hasNewNote ? (
-        <span className={companionStyles.fabPulse} aria-hidden="true" />
-      ) : null}
-      <span className={companionStyles.fabRing} aria-hidden="true" />
-      {hasNewNote ? (
-        <span className={companionStyles.badgeDot} aria-label={labels.newMessage} />
-      ) : null}
+      <PersonaPresenceIcon personaId={personaId} size="lg" />
     </button>
   );
 }

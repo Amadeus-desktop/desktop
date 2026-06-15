@@ -1,7 +1,8 @@
 import { useSyncExternalStore } from "react";
-import { base as enBase } from "./en/base";
-import { base as jaBase } from "./ja/base";
-import { base as koBase } from "./ko/base";
+import { locale as enLocale } from "./en";
+import { locale as jaLocale } from "./ja";
+import { locale as koLocale } from "./ko";
+import { assertLocaleKeyParity } from "./parity";
 import type { AppLocale, CompanionLocale, LocaleCode } from "./types";
 
 export const LOCALE_TAGS: Record<LocaleCode, string> = {
@@ -11,10 +12,14 @@ export const LOCALE_TAGS: Record<LocaleCode, string> = {
 };
 
 const locales: Record<LocaleCode, AppLocale> = {
-  ko: koBase,
-  en: enBase,
-  ja: jaBase,
+  ko: koLocale,
+  en: enLocale,
+  ja: jaLocale,
 };
+
+if (import.meta.env.DEV) {
+  assertLocaleKeyParity();
+}
 
 const LOCALE_CODES = Object.keys(locales) as LocaleCode[];
 
@@ -30,6 +35,10 @@ export function setLocale(locale: LocaleCode) {
 
 export function getLocale(): LocaleCode {
   return currentLocale;
+}
+
+export function getAppLocale(locale: LocaleCode = currentLocale): AppLocale {
+  return locales[locale];
 }
 
 export function formatLocaleTime(date: Date, locale = currentLocale): string {
@@ -61,3 +70,15 @@ export function setCompanionLocale(locale: LocaleCode) {
 }
 
 export type { AppLocale, CompanionLocale, LocaleCode };
+export type {
+  CharacterMessages,
+  CommonMessages,
+  CompanionMessages,
+  ControlCenterMessages,
+  LlmMessages,
+  PerceptionMessages,
+  PersonaMessages,
+  ReportMessages,
+  SettingsMessages,
+} from "./modules";
+export { assertLocaleKeyParity, getLocaleKeyPaths } from "./parity";

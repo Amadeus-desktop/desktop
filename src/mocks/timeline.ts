@@ -1,0 +1,202 @@
+import type {
+  ContextEvent,
+  CreateContextEventInput,
+  CreateLocalMemoryInput,
+  CreateUserReactionInput,
+  CreateUtteranceEventInput,
+  EnqueueSyncPayloadInput,
+  LocalMemory,
+  SyncPayloadEnvelope,
+  SyncQueueRow,
+  TimelineEvent,
+  UserReaction,
+  UtteranceEvent,
+} from "../features/timeline/types";
+
+const events: TimelineEvent[] = [];
+let sequence = 0;
+
+export function createMockContextEvent(
+  input: CreateContextEventInput,
+): ContextEvent {
+  const event: ContextEvent = {
+    ...input,
+    id: nextMockId("ctx"),
+    occurredAt: nextMockOccurredAt(),
+  };
+
+  events.unshift({
+    id: event.id,
+    occurredAt: event.occurredAt,
+    kind: "context",
+    title: event.appName,
+    subtitle: event.windowTitle,
+  });
+
+  return event;
+}
+
+export function createMockUtteranceEvent(
+  input: CreateUtteranceEventInput,
+): UtteranceEvent {
+  const event: UtteranceEvent = {
+    ...input,
+    contextEventId: input.contextEventId ?? null,
+    id: nextMockId("utt"),
+    occurredAt: nextMockOccurredAt(),
+  };
+
+  events.unshift({
+    id: event.id,
+    occurredAt: event.occurredAt,
+    kind: "utterance",
+    title: event.message,
+    subtitle: `${event.triggerType} · ${event.provider}`,
+  });
+
+  return event;
+}
+
+export function createMockUserReaction(
+  input: CreateUserReactionInput,
+): UserReaction {
+  const reaction: UserReaction = {
+    ...input,
+    utteranceEventId: input.utteranceEventId ?? null,
+    id: nextMockId("rxn"),
+    occurredAt: nextMockOccurredAt(),
+  };
+
+  events.unshift({
+    id: reaction.id,
+    occurredAt: reaction.occurredAt,
+    kind: "reaction",
+    title: reaction.reactionType,
+    subtitle: reaction.utteranceEventId ?? "",
+  });
+
+  return reaction;
+}
+
+export function createMockLocalMemory(
+  input: CreateLocalMemoryInput,
+): LocalMemory {
+  if (input.scope === "local_private" && input.syncable) {
+    throw new Error("local_private memory cannot be marked syncable");
+  }
+
+  return {
+    personaId: input.personaId ?? null,
+    memoryType: input.memoryType,
+    content: input.content,
+    scope: input.scope,
+    confidence: input.confidence,
+    id: nextMockId("mem"),
+    createdAtMs: nextMockOccurredAt(),
+    updatedAtMs: nextMockOccurredAt(),
+  };
+}
+
+export function enqueueMockSyncPayload(
+  input: EnqueueSyncPayloadInput,
+): SyncQueueRow {
+  const envelope = validateSyncPayloadEnvelope(input);
+
+  return {
+    ...input,
+    id: nextMockId("sync"),
+    safetyGrade: envelope.safetyGrade,
+    redactionLevel: envelope.redactionLevel,
+    retentionPolicy: envelope.retentionPolicy,
+    status: "pending",
+    retryCount: 0,
+    lastError: null,
+    createdAtMs: nextMockOccurredAt(),
+    updatedAtMs: nextMockOccurredAt(),
+  };
+}
+
+export function listMockTimelineEvents(limit = 20): TimelineEvent[] {
+  return [...events]
+    .sort((left, right) => right.occurredAt - left.occurredAt)
+    .slice(0, limit);
+}
+
+function nextMockId(prefix: string) {
+  sequence += 1;
+  return `${prefix}-${Date.now()}-${sequence}`;
+}
+
+function nextMockOccurredAt() {
+  sequence += 1;
+  return Date.now() + sequence;
+}
+
+function validateSyncPayloadEnvelope(
+  input: EnqueueSyncPayloadInput,
+): SyncPayloadEnvelope {
+  const value = JSON.parse(input.payloadJson) as SyncPayloadEnvelope;
+  rejectForbiddenSyncValues(value);
+
+  if (
+    value.schemaVersion !== 1 ||
+    value.eventType !== input.eventType ||
+    value.eventType !== "memory.summary" ||
+    value.payloadClass !== "SafeSummary" ||
+    value.safetyGrade !== "SafeWorkSummary" ||
+    value.redactionLevel !== "SummaryRedacted" ||
+    !["Session", "Timeline"].includes(value.retentionPolicy)
+  ) {
+    throw new Error("unsupported sync payload envelope");
+  }
+
+  return value;
+}
+
+function rejectForbiddenSyncValues(value: unknown): void {
+  if (Array.isArray(value)) {
+    value.forEach(rejectForbiddenSyncValues);
+    return;
+  }
+
+  if (value && typeof value === "object") {
+    for (const [key, nested] of Object.entries(value)) {
+      if (
+        [
+          "raw_window_title",
+          "raw_ocr_text",
+          "screenshot_path",
+          "file_path",
+          "full_url",
+          "url_query",
+          "token",
+          "keystroke_text",
+        ].includes(key)
+      ) {
+        throw new Error("sync payload contains forbidden key");
+      }
+      rejectForbiddenSyncValues(nested);
+    }
+    return;
+  }
+
+  if (typeof value !== "string") return;
+
+  const normalized = value.toLowerCase();
+  if (
+    value.includes("/") ||
+    value.includes("\\") ||
+    normalized.includes("://") ||
+    normalized.includes("token=") ||
+    normalized.includes("password=") ||
+    normalized.includes("api_key=") ||
+    normalized.includes("apikey=") ||
+    normalized.includes("secret=") ||
+    [".xlsx", ".docx", ".pdf", ".hwp"].some((extension) =>
+      normalized.includes(extension),
+    ) ||
+    normalized.includes("?")
+  ) {
+    throw new Error("sync payload contains forbidden raw context value");
+  }
+}
