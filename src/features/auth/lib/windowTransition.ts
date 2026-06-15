@@ -1,6 +1,4 @@
 export {
-  animateMainWindowLayoutMode,
-  animateMainWindowToControlCenter,
-  animateMainWindowToOnboarding,
-  applyMainWindowLayoutMode,
+  requestAnimatedMainWindowLayoutMode,
+  requestMainWindowLayoutMode,
 } from "./mainWindowLayout";

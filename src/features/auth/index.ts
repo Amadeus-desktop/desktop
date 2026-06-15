@@ -4,8 +4,7 @@ export { hydrateAuth, signOut, signOutWithTransition } from "./store/authStore";
 export { useAuth } from "./hooks/useAuth";
 export { useAuthWindow } from "./hooks/useAuthWindow";
 export {
-  animateMainWindowToControlCenter,
-  animateMainWindowToOnboarding,
-  applyMainWindowLayoutMode,
+  requestAnimatedMainWindowLayoutMode,
+  requestMainWindowLayoutMode,
 } from "./lib/mainWindowLayout";
 export type { AuthProvider, AuthUser } from "./types";

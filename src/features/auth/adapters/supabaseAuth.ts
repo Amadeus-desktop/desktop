@@ -89,6 +89,13 @@ export async function ensureDevAuthCallbackServer(): Promise<void> {
   await invoke<string>("start_dev_auth_callback_server");
 }
 
+export async function consumePendingAuthCallback(): Promise<string | null> {
+  if (!isTauriRuntime()) return null;
+
+  const payload = await invoke<{ url?: string } | null>("consume_pending_auth_callback");
+  return typeof payload?.url === "string" ? payload.url : null;
+}
+
 export function extractAuthCallbackCode(callbackUrl: string): string | null {
   let parsed: URL;
   try {

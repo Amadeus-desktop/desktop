@@ -406,21 +406,26 @@ Amadeus에 적용할 점:
 
 P1:
 
-- single-instance argv URL fallback 없음.
-- dev auth callback replay 없음.
-- `bootstrapAuth()`가 local mirror만 보고 `hydrated=true`를 설정하여 Supabase verification을 막을 수 있음.
-- `CompanionApp`의 `hydrateAuth()`가 loopback auth event listener를 등록할 수 있음.
-- JS frame loop로 native resize animation을 수행하고 layout request serialization이 없음.
+- JS frame loop로 native resize animation을 수행한다. layout request serialization 1차 queue는 들어갔지만, frame마다 `setSize`/`setPosition`을 치는 구조는 아직 L3 제거 대상이다.
 - drag 중 root opacity를 직접 0으로 만드는 코드가 있음.
 - startup critical path와 deferred warmup이 분리되지 않음.
+- `lib.rs`가 auth callback, setup, window, tray 책임을 여전히 한 파일에 많이 가진다.
 
 P2:
 
 - transparent/compositor refresh owner가 명확하지 않음.
-- window layout transition fallback이 경로별로 일관되지 않음.
-- debug dev callback server start error가 setup에서 silent drop됨.
-- lifecycle event 로그가 부족함.
+- auth callback owner 판정이 Tauri window label이 아니라 `?view=companion` URL 계약에 의존한다.
+- layout request에 reason/priority object가 아직 없다.
+- frontend auth callback getCurrent/onOpenUrl/dev loopback event의 integration-level duplicate consume 테스트가 아직 없다.
 - config/capability regression test가 없음.
+
+해소됨:
+
+- single-instance argv URL fallback은 Rust contract test와 함께 추가됨.
+- dev auth callback pending replay는 Rust command와 1회 소비 test로 추가됨.
+- local mirror가 `hydrated=true`를 최종 확정하던 auth source-of-truth 문제는 bootstrap/storage path 모두 Supabase verification을 다시 타도록 수정됨.
+- companion window가 auth callback listener/dev callback server를 소유하던 문제는 main-only owner guard로 1차 차단됨.
+- companion resize loop는 size skip/in-flight coalesce/debounce/position-only sync로 hotfix됨.
 
 ---
 
@@ -450,7 +455,13 @@ P2:
 
 - auth callback URL은 exact app route, exact dev loopback host/port/path만 허용하도록 adapter contract test를 보강했다.
 - companion resize loop 회귀 방지를 위해 native window size 계산과 unchanged-size skip 정책을 pure contract test로 고정했다.
-- 아직 남은 L1a 항목: Rust single-instance argv extraction, dev loopback pending replay, main-only frontend listener, onboarding completion fallback layout test.
+- Rust single-instance argv extraction은 `amadeus://auth/callback?code=...` exact route만 허용하도록 contract test로 고정했다.
+- dev loopback/deep-link race 대응을 위해 pending auth callback 저장/1회 소비 command를 추가하고 contract test로 고정했다.
+- main-only frontend listener ownership은 `view=companion`을 callback owner에서 제외하는 contract test로 고정했고, main window만 pending replay/listener/dev server를 시작하도록 연결했다.
+- onboarding completion은 animation 실패 시 `control-center` layout fallback을 호출하고 fallback 실패도 completion을 막지 않는 contract test로 고정했다.
+- L1a 핵심 contract slice 완료. 남은 integration-level duplicate consume 테스트는 P2 backlog로 둔다. 다음 phase는 L1b Rust App Lifecycle Split이다.
+- subagent 검토에서 지적된 auth source-of-truth P1은 local mirror가 `hydrated=true`를 확정하지 않도록 수정했고, 최종 auth hydration은 Supabase `getUser()` 결과만 인정하도록 조정했다.
+- cross-window storage event도 local mirror만으로 `hydrated=true`를 세우지 않고 Supabase verification을 다시 예약하도록 수정했다.
 
 ### Phase L1b: Rust App Lifecycle Split
 
@@ -468,6 +479,12 @@ P2:
 - auth callback consumption은 main window only로 제한.
 - `bootstrapAuth()`가 Supabase verification을 막지 않도록 수정.
 - onboarding completion은 `finally requestLayout("control-center", "onboarding-complete")`를 보장.
+
+진행 상태:
+
+- main window layout request는 `requestMainWindowLayoutMode` / `requestAnimatedMainWindowLayoutMode`를 통해 serialized async queue를 타도록 1차 정리했다.
+- `authStore`, `useAuthWindow`, `OnboardingFlow`의 직접 layout 전환 호출은 queue 기반 entrypoint로 전환했다.
+- 아직 남은 L2 항목: 별도 `src/features/lifecycle` coordinator module 승격, reason/priority가 포함된 request object. JS RAF native resize 제거는 L3 범위다.
 
 ### Phase L2a: First Paint Gate And Logging
 

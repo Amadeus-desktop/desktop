@@ -77,7 +77,10 @@ fn configure_macos_window_transparency(ns_window: &objc2_app_kit::NSWindow) {
 pub fn refresh_macos_webview_layers(window: &WebviewWindow) {
     log_info(
         LogArea::Window,
-        format!("macos webview layer refresh started: label={}", window.label()),
+        format!(
+            "macos webview layer refresh started: label={}",
+            window.label()
+        ),
     );
     if let Ok(ptr) = window.ns_view() {
         unsafe {
@@ -99,7 +102,10 @@ pub fn refresh_macos_webview_layers(window: &WebviewWindow) {
     }
     log_info(
         LogArea::Window,
-        format!("macos webview layer refresh completed: label={}", window.label()),
+        format!(
+            "macos webview layer refresh completed: label={}",
+            window.label()
+        ),
     );
 }
 

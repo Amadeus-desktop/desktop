@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { isTauriRuntime } from "../../../lib/tauri/runtime";
-import { applyMainWindowLayoutMode } from "../lib/mainWindowLayout";
+import { requestMainWindowLayoutMode } from "../lib/mainWindowLayout";
 
 export function useAuthWindow(
   showOnboardingShell: boolean,
@@ -29,12 +29,12 @@ export function useAuthWindow(
     previousShowOnboardingShell.current = showOnboardingShell;
 
     if (skipWasActive && showOnboardingShell) {
-      void applyMainWindowLayoutMode("onboarding");
+      void requestMainWindowLayoutMode("onboarding");
       return;
     }
 
     if (previous === null) {
-      void applyMainWindowLayoutMode(
+      void requestMainWindowLayoutMode(
         showOnboardingShell ? "onboarding" : "control-center",
       );
       return;
@@ -46,7 +46,7 @@ export function useAuthWindow(
     }
 
     if (previous !== showOnboardingShell) {
-      void applyMainWindowLayoutMode(
+      void requestMainWindowLayoutMode(
         showOnboardingShell ? "onboarding" : "control-center",
       );
     }

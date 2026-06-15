@@ -20,14 +20,14 @@ use macos_context::{get_current_context_snapshot, ContextBridgeState};
 use macos_window::{
     configure_macos_companion_window, configure_macos_main_window, position_companion_window,
     restore_companion_window_on_active_space, schedule_macos_webview_layer_refresh,
-    start_main_window_drag, sync_companion_window_position_only, watch_macos_companion_space_changes,
-    CompanionWindowVisibility,
+    start_main_window_drag, sync_companion_window_position_only,
+    watch_macos_companion_space_changes, CompanionWindowVisibility,
 };
+use observability::{error as log_error, info as log_info, init as init_logger, LogArea};
 use ocr::{
     capture_primary_display_ocr, get_ocr_provider_status, recognize_captured_image, OcrState,
     ScreenCaptureState,
 };
-use observability::{error as log_error, info as log_info, init as init_logger, LogArea};
 use privacy::{
     assess_current_privacy_context, capture_privacy_checked_context_event,
     get_screen_capture_permission_status, request_screen_capture_permission,
@@ -39,7 +39,10 @@ use shared::constants::{
 use std::{
     io::{Read, Write},
     net::{TcpListener, TcpStream},
-    sync::atomic::{AtomicBool, Ordering},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Mutex,
+    },
     thread,
     time::{Duration, Instant},
 };
@@ -67,6 +70,7 @@ const DEV_AUTH_CALLBACK_PORT: u16 = 17421;
 const DEV_AUTH_CALLBACK_URL: &str = "http://127.0.0.1:17421/auth/callback";
 const AUTH_CALLBACK_EVENT: &str = "amadeus-auth-callback";
 static DEV_AUTH_CALLBACK_SERVER_RUNNING: AtomicBool = AtomicBool::new(false);
+static PENDING_AUTH_CALLBACK_URL: Mutex<Option<String>> = Mutex::new(None);
 
 struct StartupPhaseTimer {
     name: &'static str,
@@ -126,6 +130,35 @@ fn tray_menu_action(menu_id: &str) -> TrayMenuAction {
         TRAY_QUIT_AMADEUS_ID => TrayMenuAction::QuitAmadeus,
         _ => TrayMenuAction::Ignore,
     }
+}
+
+fn store_pending_auth_callback(url: impl Into<String>) {
+    if let Ok(mut pending) = PENDING_AUTH_CALLBACK_URL.lock() {
+        *pending = Some(url.into());
+    }
+}
+
+fn take_pending_auth_callback() -> Option<String> {
+    PENDING_AUTH_CALLBACK_URL
+        .lock()
+        .ok()
+        .and_then(|mut pending| pending.take())
+}
+
+fn route_auth_callback(app: &tauri::AppHandle, url: String) {
+    store_pending_auth_callback(url.clone());
+    let payload = AuthCallbackPayload { url };
+    if let Err(error) = app.emit(AUTH_CALLBACK_EVENT, payload) {
+        log_error(
+            LogArea::Auth,
+            format!("auth callback event emit failed; pending replay retained: {error}"),
+        );
+    }
+}
+
+#[tauri::command]
+fn consume_pending_auth_callback() -> Option<AuthCallbackPayload> {
+    take_pending_auth_callback().map(|url| AuthCallbackPayload { url })
 }
 
 #[tauri::command]
@@ -260,16 +293,7 @@ fn handle_dev_auth_callback_stream(
             Ok(false)
         }
         DevAuthCallbackRequest::Callback(callback_url) => {
-            let payload = AuthCallbackPayload { url: callback_url };
-            if let Err(error) = app.emit(AUTH_CALLBACK_EVENT, payload) {
-                log_error(
-                    LogArea::Auth,
-                    format!("dev auth callback event emit failed: {error}"),
-                );
-                write_dev_auth_callback_response(stream, 500, "Amadeus auth callback failed")?;
-                return Ok(false);
-            }
-
+            route_auth_callback(app, callback_url);
             log_info(LogArea::Auth, "dev auth callback emitted to frontend");
             write_dev_auth_callback_response(stream, 200, "Amadeus login completed")?;
             Ok(true)
@@ -318,11 +342,39 @@ fn classify_dev_auth_callback_request(request: &str) -> DevAuthCallbackRequest {
     DevAuthCallbackRequest::Callback(format!("http://127.0.0.1:{DEV_AUTH_CALLBACK_PORT}{target}"))
 }
 
+#[cfg(test)]
 fn dev_auth_callback_url_from_request(request: &str) -> Option<String> {
     match classify_dev_auth_callback_request(request) {
         DevAuthCallbackRequest::Callback(url) => Some(url),
         _ => None,
     }
+}
+
+fn auth_callback_url_from_argv<I, S>(args: I) -> Option<String>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    args.into_iter()
+        .map(|arg| {
+            arg.as_ref()
+                .trim_matches('"')
+                .trim_matches('\'')
+                .to_string()
+        })
+        .find(|arg| is_supported_app_auth_callback_url(arg))
+}
+
+fn is_supported_app_auth_callback_url(url: &str) -> bool {
+    let Some(query_start) = url.find('?') else {
+        return false;
+    };
+    if &url[..query_start] != "amadeus://auth/callback" {
+        return false;
+    }
+    url[query_start + 1..]
+        .split('&')
+        .any(|part| part.starts_with("code=") && part.len() > "code=".len())
 }
 
 fn dev_auth_callback_success_html() -> String {
@@ -758,7 +810,10 @@ fn setup_menu_bar(app: &tauri::App) -> tauri::Result<()> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            if let Some(url) = auth_callback_url_from_argv(argv) {
+                route_auth_callback(app, url);
+            }
             show_main_window(app);
         }))
         .plugin(tauri_plugin_deep_link::init())
@@ -909,6 +964,7 @@ pub fn run() {
             generate_test_utterance,
             generate_chat_reply,
             record_frontend_log,
+            consume_pending_auth_callback,
             start_dev_auth_callback_server
         ])
         .run(tauri::generate_context!())
@@ -971,5 +1027,46 @@ mod tests {
         let request = "GET /auth/callback?state=state HTTP/1.1\r\nHost: 127.0.0.1:17421\r\n\r\n";
 
         assert_eq!(dev_auth_callback_url_from_request(request), None);
+    }
+
+    #[test]
+    fn extracts_supported_auth_callback_from_single_instance_argv() {
+        let args = vec![
+            "/Applications/Amadeus.app/Contents/MacOS/Amadeus".to_string(),
+            "amadeus://auth/callback?code=oauth-code&state=state".to_string(),
+        ];
+
+        assert_eq!(
+            auth_callback_url_from_argv(args),
+            Some("amadeus://auth/callback?code=oauth-code&state=state".to_string())
+        );
+    }
+
+    #[test]
+    fn rejects_fake_auth_callback_argv() {
+        assert_eq!(
+            auth_callback_url_from_argv(vec!["amadeus://auth.evil/callback?code=oauth-code"]),
+            None
+        );
+        assert_eq!(
+            auth_callback_url_from_argv(vec!["amadeus://auth/callback/extra?code=oauth-code"]),
+            None
+        );
+        assert_eq!(
+            auth_callback_url_from_argv(vec!["amadeus://auth/callback?state=state"]),
+            None
+        );
+    }
+
+    #[test]
+    fn pending_auth_callback_is_consumed_once() {
+        let _ = take_pending_auth_callback();
+        store_pending_auth_callback("amadeus://auth/callback?code=oauth-code");
+
+        assert_eq!(
+            take_pending_auth_callback(),
+            Some("amadeus://auth/callback?code=oauth-code".to_string())
+        );
+        assert_eq!(take_pending_auth_callback(), None);
     }
 }

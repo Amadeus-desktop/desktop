@@ -1,5 +1,6 @@
 import { LogicalPosition, LogicalSize } from "@tauri-apps/api/dpi";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
+import { createSerializedAsyncQueue } from "../../../lib/async/serializedAsyncQueue";
 import { isTauriRuntime } from "../../../lib/tauri/runtime";
 import { scheduleMainWindowCompositorKick } from "../../../lib/tauri/mainWindowChrome";
 import { logger } from "../../../observability/logger";
@@ -11,6 +12,7 @@ import {
 } from "../../../ui/layout/controlCenterPreferences";
 
 export type MainWindowLayoutMode = "control-center" | "onboarding";
+const enqueueMainWindowLayout = createSerializedAsyncQueue();
 
 type LogicalRect = {
   x: number;
@@ -282,6 +284,17 @@ export async function animateMainWindowLayoutMode(
     targetWidth: target.width,
     targetHeight: target.height,
   });
+}
+
+export function requestMainWindowLayoutMode(mode: MainWindowLayoutMode) {
+  return enqueueMainWindowLayout(() => applyMainWindowLayoutMode(mode));
+}
+
+export function requestAnimatedMainWindowLayoutMode(
+  mode: MainWindowLayoutMode,
+  durationMs?: number,
+) {
+  return enqueueMainWindowLayout(() => animateMainWindowLayoutMode(mode, durationMs));
 }
 
 export async function animateMainWindowToOnboarding(durationMs = 480) {

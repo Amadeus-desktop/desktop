@@ -2,15 +2,20 @@ import { useState, type ReactNode } from "react";
 import { useI18n } from "../../../i18n";
 import { cn } from "../../../lib/utils/cn";
 import { isTauriRuntime } from "../../../lib/tauri/runtime";
-import { animateMainWindowToControlCenter } from "../../auth/lib/mainWindowLayout";
+import {
+  requestAnimatedMainWindowLayoutMode,
+  requestMainWindowLayoutMode,
+} from "../../auth/lib/mainWindowLayout";
 import { LogoutTransitionStep } from "../../auth/components/LogoutTransitionStep";
 import { useAuth } from "../../auth/hooks/useAuth";
+import { logger } from "../../../observability/logger";
 import { usePermissionReadiness } from "../hooks/usePermissionReadiness";
 import {
   ONBOARDING_COMPLETE_DELAY_MS,
   ONBOARDING_PREPARE_DELAY_MS,
   sleep,
 } from "../lib/transitionTiming";
+import { completeOnboardingWindowTransition } from "../lib/onboardingWindowTransition";
 import { OnboardingShell } from "../shell/OnboardingShell";
 import { LoginStep } from "../steps/LoginStep";
 import { PermissionsStep } from "../steps/PermissionsStep";
@@ -76,11 +81,11 @@ export function OnboardingFlow({
       await sleep(ONBOARDING_PREPARE_DELAY_MS);
       setPreparePhase("complete");
       await sleep(ONBOARDING_COMPLETE_DELAY_MS);
-      try {
-        await animateMainWindowToControlCenter();
-      } catch {
-        // Window animation is best-effort; onboarding still completes below.
-      }
+      await completeOnboardingWindowTransition({
+        animateToControlCenter: () => requestAnimatedMainWindowLayoutMode("control-center"),
+        applyLayoutMode: requestMainWindowLayoutMode,
+        logError: (message, context) => logger.error("window", message, context),
+      });
       markSetupDone();
     } finally {
       setPreparePhase(null);
