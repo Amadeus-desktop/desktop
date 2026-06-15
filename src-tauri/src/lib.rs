@@ -2,6 +2,7 @@
 mod llama_sidecar;
 mod llm;
 mod macos_context;
+mod macos_window;
 mod observability;
 pub mod ocr;
 pub mod policy;
@@ -16,7 +17,12 @@ use llm::{
     generate_chat_reply, generate_test_utterance, get_llm_provider_health, LlmService, LlmState,
 };
 use macos_context::{get_current_context_snapshot, ContextBridgeState};
-use observability::{error as log_error, init as init_logger, warn as log_warn, LogArea};
+use macos_window::{
+    configure_macos_companion_window, configure_macos_main_window, position_companion_window,
+    restore_companion_window_on_active_space, watch_macos_companion_space_changes,
+    CompanionWindowVisibility,
+};
+use observability::{error as log_error, init as init_logger, LogArea};
 use ocr::{
     capture_primary_display_ocr, get_ocr_provider_status, recognize_captured_image, OcrState,
     ScreenCaptureState,
@@ -98,9 +104,7 @@ fn tray_menu_action(menu_id: &str) -> TrayMenuAction {
 
 #[tauri::command]
 fn sync_companion_window_position(app: tauri::AppHandle) {
-    if let Some(window) = app.get_webview_window("companion") {
-        position_companion_window(&window);
-    }
+    restore_companion_window_on_active_space(&app);
 }
 
 #[tauri::command]
@@ -112,10 +116,11 @@ fn start_dev_auth_callback_server(app: tauri::AppHandle) -> Result<String, Strin
         return Ok(DEV_AUTH_CALLBACK_URL.to_string());
     }
 
-    let listener = TcpListener::bind(format!("127.0.0.1:{DEV_AUTH_CALLBACK_PORT}")).map_err(|error| {
-        DEV_AUTH_CALLBACK_SERVER_RUNNING.store(false, Ordering::SeqCst);
-        format!("dev auth callback bind failed: {error}")
-    })?;
+    let listener =
+        TcpListener::bind(format!("127.0.0.1:{DEV_AUTH_CALLBACK_PORT}")).map_err(|error| {
+            DEV_AUTH_CALLBACK_SERVER_RUNNING.store(false, Ordering::SeqCst);
+            format!("dev auth callback bind failed: {error}")
+        })?;
     listener.set_nonblocking(false).map_err(|error| {
         DEV_AUTH_CALLBACK_SERVER_RUNNING.store(false, Ordering::SeqCst);
         format!("dev auth callback configure failed: {error}")
@@ -237,9 +242,7 @@ fn classify_dev_auth_callback_request(request: &str) -> DevAuthCallbackRequest {
         return DevAuthCallbackRequest::Invalid;
     }
 
-    DevAuthCallbackRequest::Callback(format!(
-        "http://127.0.0.1:{DEV_AUTH_CALLBACK_PORT}{target}"
-    ))
+    DevAuthCallbackRequest::Callback(format!("http://127.0.0.1:{DEV_AUTH_CALLBACK_PORT}{target}"))
 }
 
 fn dev_auth_callback_url_from_request(request: &str) -> Option<String> {
@@ -508,86 +511,6 @@ fn write_dev_auth_callback_response(
     )
 }
 
-/// Position the companion overlay at the bottom-right of the primary monitor work area.
-fn position_companion_window(window: &tauri::WebviewWindow) {
-    use tauri::PhysicalPosition;
-
-    const MARGIN: i32 = 12;
-
-    let Ok(Some(monitor)) = window.current_monitor() else {
-        log_warn(
-            LogArea::Window,
-            "position_companion_window: current_monitor() unavailable",
-        );
-        return;
-    };
-
-    let work_area = monitor.work_area();
-    let window_size = window.outer_size().unwrap_or(work_area.size);
-
-    let x = work_area.position.x + work_area.size.width as i32 - window_size.width as i32 - MARGIN;
-    let y =
-        work_area.position.y + work_area.size.height as i32 - window_size.height as i32 - MARGIN;
-
-    if let Err(error) = window.set_position(PhysicalPosition::new(x, y)) {
-        log_error(
-            LogArea::Window,
-            format!("position_companion_window: set_position failed: {error}"),
-        );
-    }
-}
-
-/// Make the main control-center window follow normal Space / Mission Control rules.
-#[cfg(target_os = "macos")]
-fn configure_macos_main_window(window: &tauri::WebviewWindow) {
-    let Ok(ptr) = window.ns_window() else {
-        log_warn(
-            LogArea::Window,
-            "configure_macos_main_window: ns_window() unavailable",
-        );
-        return;
-    };
-
-    unsafe {
-        use objc2_app_kit::{NSWindow, NSWindowCollectionBehavior};
-
-        let ns_window: &NSWindow = &*(ptr as *const NSWindow);
-        ns_window.setCollectionBehavior(NSWindowCollectionBehavior::Managed);
-    }
-}
-
-/// Configure the companion overlay as a floating HUD that follows the active Space.
-///
-/// - `MoveToActiveSpace` — moves with the user instead of cloning onto every desktop
-/// - `Transient` — hides from Mission Control thumbnails
-/// - `FullScreenAuxiliary` — stays usable over full-screen apps
-/// - `IgnoresCycle` — keeps the overlay out of Cmd+` window cycling
-///
-/// We intentionally do NOT set `CanJoinAllSpaces` (Mission Control clutter) or
-/// `Stationary` (broken Mission Control rendering).
-#[cfg(target_os = "macos")]
-fn configure_macos_companion_window(window: &tauri::WebviewWindow) {
-    let Ok(ptr) = window.ns_window() else {
-        log_warn(
-            LogArea::Window,
-            "configure_macos_companion_window: ns_window() unavailable",
-        );
-        return;
-    };
-
-    unsafe {
-        use objc2_app_kit::{NSFloatingWindowLevel, NSWindow, NSWindowCollectionBehavior};
-
-        let ns_window: &NSWindow = &*(ptr as *const NSWindow);
-        let behavior = NSWindowCollectionBehavior::MoveToActiveSpace
-            | NSWindowCollectionBehavior::Transient
-            | NSWindowCollectionBehavior::FullScreenAuxiliary
-            | NSWindowCollectionBehavior::IgnoresCycle;
-        ns_window.setCollectionBehavior(behavior);
-        ns_window.setLevel(NSFloatingWindowLevel);
-    }
-}
-
 fn watch_companion_window_layout(app: &tauri::AppHandle, window: &tauri::WebviewWindow) {
     let app_handle = app.clone();
     window.on_window_event(move |event| {
@@ -642,9 +565,11 @@ fn show_main_window(app: &tauri::AppHandle) {
 }
 
 fn toggle_companion_window(app: &tauri::AppHandle) {
+    let visibility = app.state::<CompanionWindowVisibility>();
     if let Some(window) = app.get_webview_window("companion") {
         match window.is_visible() {
             Ok(true) => {
+                visibility.set_user_hidden(true);
                 if let Err(error) = window.hide() {
                     log_error(
                         LogArea::Window,
@@ -653,13 +578,8 @@ fn toggle_companion_window(app: &tauri::AppHandle) {
                 }
             }
             Ok(false) => {
-                if let Err(error) = window.show() {
-                    log_error(
-                        LogArea::Window,
-                        format!("toggle_companion_window: show failed: {error}"),
-                    );
-                }
-                position_companion_window(&window);
+                visibility.set_user_hidden(false);
+                restore_companion_window_on_active_space(app);
             }
             Err(error) => log_error(
                 LogArea::Window,
@@ -800,6 +720,7 @@ pub fn run() {
             app.manage(settings_state);
             app.manage(llm_state);
             app.manage(sidecar_state);
+            app.manage(CompanionWindowVisibility::default());
             app.manage(OcrState::platform_default());
             app.manage(ScreenCaptureState::platform_default());
             setup_menu_bar(app)?;
@@ -813,9 +734,10 @@ pub fn run() {
                 }
                 if let Some(win) = app.get_webview_window("companion") {
                     configure_macos_companion_window(&win);
-                    position_companion_window(&win);
+                    restore_companion_window_on_active_space(app.handle());
                     watch_companion_window_layout(app.handle(), &win);
                     watch_resident_window_close(&win);
+                    watch_macos_companion_space_changes(app.handle());
                 }
             }
 

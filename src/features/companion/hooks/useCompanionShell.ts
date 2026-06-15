@@ -1,20 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getPersonas } from "../../../domain/persona/registry";
 import { useI18n } from "../../../i18n";
-import { generatePocketIntro } from "../../../mocks/companion";
-import {
-  patchAppSettings,
-  useAppSettings,
-} from "../../settings";
-import {
-  createUserReaction,
-} from "../../timeline";
-import {
-  recordTriggerReactionForScoring,
-} from "../../trigger";
-import { resolveCompanionReply } from "../lib/reply";
-import { patchCompanionSession } from "../lib/companionSessionStore";
-import type { CompanionMessage, PersonaId } from "../types";
+import { useAppSettings } from "../../settings";
+import { patchCompanionSession, resetCompanionSession } from "../lib/companionSessionStore";
+import { useCompanionChatActions } from "./useCompanionChatActions";
+import { useCompanionReactions } from "./useCompanionReactions";
 import { useCompanionSessionState } from "./useCompanionSessionState";
 import { useCompanionTimeline } from "./useCompanionTimeline";
 import { useCompanionTrigger } from "./useCompanionTrigger";
@@ -50,18 +40,9 @@ export function useCompanionShell({
   const canPresentTrigger =
     mode === "quiet" || mode === "sleep";
 
-  const recordReaction = useCallback(
-    async (reactionType: string, options?: { score?: boolean }) => {
-      await createUserReaction({
-        reactionType,
-        utteranceEventId: activeUtteranceId,
-      });
-      if (options?.score !== false) {
-        await recordTriggerReactionForScoring(reactionType);
-      }
-      refreshTimeline();
-    },
-    [activeUtteranceId, refreshTimeline],
+  const { recordReaction } = useCompanionReactions(
+    activeUtteranceId,
+    refreshTimeline,
   );
 
   const presentNudge = useCallback(
@@ -87,150 +68,27 @@ export function useCompanionShell({
 
   useEffect(() => {
     if (companionEnabled) return;
+    resetCompanionSession();
     if (mode === "nudge" || mode === "new_note") {
       void transitionMode("quiet");
     }
   }, [companionEnabled, mode, transitionMode]);
 
-  const openPocket = useCallback(async () => {
-    const intro = generatePocketIntro(nudge, selectedPersona);
-
-    setMessages([
-      {
-        id: `companion-intro-${Date.now()}`,
-        sender: "companion",
-        text: intro,
-      },
-    ]);
-    await recordReaction("opened");
-    await transitionMode("pocket");
-  }, [nudge, recordReaction, selectedPersona, setMessages, transitionMode]);
-
-  const openIcon = useCallback(async () => {
-    if (mode === "sleep") {
-      await transitionMode("quiet");
-      return;
-    }
-
-    if (mode === "pocket" || mode === "deep" || mode === "daily_care") {
-      return;
-    }
-
-    if (mode === "nudge" && nudge) {
-      await openPocket();
-      return;
-    }
-
-    if (mode === "new_note" && nudge) {
-      await transitionMode("nudge");
-      return;
-    }
-  }, [mode, nudge, openPocket, transitionMode]);
-
-  const dismissNudge = useCallback(async () => {
-    await recordReaction("dismissed");
-    patchCompanionSession({ activeUtteranceId: null });
-    await transitionMode("quiet");
-  }, [recordReaction, transitionMode]);
-
-  const ignoreNudge = useCallback(async () => {
-    await recordReaction("ignored");
-    patchCompanionSession({ activeUtteranceId: null });
-    await transitionMode("quiet");
-  }, [recordReaction, transitionMode]);
-
-  const closePocket = useCallback(async () => {
-    await recordReaction("closed", { score: true });
-    patchCompanionSession({ activeUtteranceId: null, messages: [], draft: "" });
-    setMessages([]);
-    setDraft("");
-    await transitionMode("quiet");
-  }, [recordReaction, setDraft, setMessages, transitionMode]);
-
-  const openDailyCare = useCallback(async () => {
-    if (!settings.nightCareEnabled) return;
-    await recordReaction("daily_care_opened", { score: false });
-    await transitionMode("daily_care");
-  }, [recordReaction, settings.nightCareEnabled, transitionMode]);
-
-  const closeDailyCare = useCallback(async () => {
-    await transitionMode("quiet");
-  }, [transitionMode]);
-
-  const selectPersona = useCallback(
-    (personaId: PersonaId) => {
-      patchAppSettings({ companionPersonaId: personaId });
-
-      if (mode !== "pocket") return;
-
-      const nextIntro = generatePocketIntro(nudge, personas[personaId]);
-      setMessages([
-        {
-          id: `companion-intro-${Date.now()}`,
-          sender: "companion",
-          text: nextIntro,
-        },
-      ]);
-    },
-    [mode, nudge, personas, setMessages],
-  );
-
-  const sendMessage = useCallback(async () => {
-    const text = draft.trim();
-    if (!text || isSending) return;
-
-    const userMessage: CompanionMessage = {
-      id: `user-${Date.now()}`,
-      sender: "user",
-      text,
-    };
-    const nextMessages = [...messages, userMessage];
-
-    setDraft("");
-    setIsSending(true);
-    setMessages(nextMessages);
-
-    try {
-      await recordReaction("user_input", { score: false });
-      const generation = await resolveCompanionReply(
-        nextMessages,
-        selectedPersona,
-        settings,
-        {
-          currentContext: nudge
-            ? {
-                source: "user_visible",
-                summary: nudge,
-                allowed_surface: "both",
-              }
-            : null,
-        },
-      );
-      const replyMessage: CompanionMessage = {
-        id: `companion-${Date.now()}`,
-        sender: "companion",
-        text: generation.message,
-      };
-
-      setMessages((currentMessages) => [...currentMessages, replyMessage]);
-      await recordReaction("deep_reply", { score: false });
-      await recordTriggerReactionForScoring("replied");
-      await transitionMode("deep");
-    } finally {
-      setIsSending(false);
-    }
-  }, [
+  const chatActions = useCompanionChatActions({
+    mode,
+    nudge,
+    messages,
     draft,
     isSending,
-    messages,
-    nudge,
-    recordReaction,
     selectedPersona,
+    personas,
+    settings,
     setDraft,
     setMessages,
-    settings,
+    setIsSending,
     transitionMode,
-  ]);
+    recordReaction,
+  });
 
   const showPresence = mode === "quiet" || mode === "new_note" || mode === "sleep";
 
@@ -250,14 +108,6 @@ export function useCompanionShell({
     nightCareEnabled: settings.nightCareEnabled,
     nickname: settings.nickname,
     setDraft,
-    openIcon,
-    openPocket,
-    dismissNudge,
-    ignoreNudge,
-    closePocket,
-    openDailyCare,
-    closeDailyCare,
-    selectPersona,
-    sendMessage,
+    ...chatActions,
   };
 }

@@ -1,5 +1,6 @@
 export { OnboardingFlow } from "./flow/OnboardingFlow";
 export {
+  getOnboardingSnapshot,
   hydrateOnboardingProgress,
   markPermissionsDone,
   markModelRouteDone,

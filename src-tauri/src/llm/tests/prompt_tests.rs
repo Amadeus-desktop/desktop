@@ -139,7 +139,8 @@ fn prompt_envelope_redaction_removes_camel_case_forbidden_keys() {
         }
     }));
 
-    let envelope = LlmChatEnvelope::from_request(request).for_provider(ProviderInputGrade::LocalRedacted);
+    let envelope =
+        LlmChatEnvelope::from_request(request).for_provider(ProviderInputGrade::LocalRedacted);
     let serialized = serde_json::to_string(&envelope.prompt_envelope).expect("json serializes");
 
     assert!(!serialized.contains("rawOcrText"));

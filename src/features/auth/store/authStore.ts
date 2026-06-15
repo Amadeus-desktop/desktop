@@ -1,11 +1,12 @@
 import { createExternalStore } from "../../../lib/store/createExternalStore";
 import { isTauriRuntime } from "../../../lib/tauri/runtime";
 import { logger } from "../../../observability/logger";
+import { resetCompanionSession } from "../../companion/lib/companionSessionStore";
 import {
   getOnboardingSnapshot,
   hydrateOnboardingProgress,
   resetOnboardingProgress,
-} from "../../onboarding/store/onboardingStore";
+} from "../../onboarding";
 import { animateMainWindowToControlCenter, animateMainWindowToOnboarding } from "../lib/mainWindowLayout";
 import {
   AMADEUS_AUTH_CALLBACK_EVENT,
@@ -214,6 +215,7 @@ export function signOut() {
   loopbackUnlisten = null;
   deepLinkAuthPromise = null;
   consumedAuthCodes.clear();
+  resetCompanionSession();
   writeStoredUser(null);
   authStore.setSnapshot({
     user: null,

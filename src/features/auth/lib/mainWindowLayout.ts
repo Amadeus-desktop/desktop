@@ -158,6 +158,8 @@ export async function animateMainWindowLayoutMode(
     return;
   }
 
+  await ensureMainWindowVisible(webviewWindow);
+
   const start = (await readMainWindowLogicalSize()) ?? {
     width: controlCenterWindowPolicy.defaultWidth,
     height: controlCenterWindowPolicy.defaultHeight,
@@ -185,32 +187,29 @@ export async function animateMainWindowLayoutMode(
     );
   }
 
-  await new Promise<void>((resolve) => {
-    const beganAt = performance.now();
+  const beganAt = performance.now();
 
-    function frame(now: number) {
-      const progress = easeOutCubic(
-        Math.min(1, (now - beganAt) / durationMs),
-      );
-      const width = Math.round(
-        start.width + (target.width - start.width) * progress,
-      );
-      const height = Math.round(
-        start.height + (target.height - start.height) * progress,
-      );
+  while (true) {
+    const progress = easeOutCubic(
+      Math.min(1, (performance.now() - beganAt) / durationMs),
+    );
+    const width = Math.round(
+      start.width + (target.width - start.width) * progress,
+    );
+    const height = Math.round(
+      start.height + (target.height - start.height) * progress,
+    );
 
-      void setMainWindowLogicalSizeCentered(width, height);
+    await setMainWindowLogicalSizeCentered(width, height);
 
-      if (progress >= 1) {
-        resolve();
-        return;
-      }
-
-      requestAnimationFrame(frame);
+    if (progress >= 1) {
+      break;
     }
 
-    requestAnimationFrame(frame);
-  });
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => resolve());
+    });
+  }
 
   if (mode === "control-center") {
     await webviewWindow.setMinSize(

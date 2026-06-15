@@ -1,6 +1,16 @@
 use super::*;
 
 #[test]
+fn local_schema_selection_is_explicit_for_dev_and_production() {
+    let dev_schema = local_schema_sql_for_environment(LocalSchemaEnvironment::Development);
+    let production_schema = local_schema_sql_for_environment(LocalSchemaEnvironment::Production);
+
+    assert!(dev_schema.contains("CREATE TABLE IF NOT EXISTS context_events"));
+    assert!(production_schema.contains("CREATE TABLE IF NOT EXISTS context_events"));
+    assert_eq!(dev_schema, production_schema);
+}
+
+#[test]
 fn stores_context_utterance_and_reaction_as_timeline_rows() {
     let mut repository = TimelineRepository::open_in_memory().expect("in-memory db opens");
     repository.migrate().expect("migration succeeds");
@@ -148,7 +158,9 @@ fn migration_prepares_phase_6_local_tables() {
         "sync_status",
     ] {
         assert!(
-            local_persona_columns.iter().any(|column| column == column_name),
+            local_persona_columns
+                .iter()
+                .any(|column| column == column_name),
             "local_personas should include {column_name}"
         );
     }
@@ -172,7 +184,9 @@ fn migration_prepares_phase_6_local_tables() {
         "metadata_json",
     ] {
         assert!(
-            local_memory_columns.iter().any(|column| column == column_name),
+            local_memory_columns
+                .iter()
+                .any(|column| column == column_name),
             "local_memories should include {column_name}"
         );
     }

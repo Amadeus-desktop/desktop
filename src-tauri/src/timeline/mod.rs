@@ -14,7 +14,9 @@ pub use core::{
 pub(crate) use core::{CommandError, TimelineError};
 
 #[cfg(test)]
-pub(crate) use core::SyncPayloadEnvelope;
+pub(crate) use core::{
+    local_schema_sql_for_environment, LocalSchemaEnvironment, SyncPayloadEnvelope,
+};
 
 #[cfg(test)]
 mod tests;

@@ -1,4 +1,4 @@
-import type { Persona } from "../domain/persona/types";
+import type { Persona } from "../types";
 
 const POCKET_INTRO_SUFFIX: Record<Persona["id"], string> = {
   "seoyeon-modern-senior":
@@ -16,5 +16,3 @@ const POCKET_INTRO_SUFFIX: Record<Persona["id"], string> = {
 export function generatePocketIntro(nudge: string, persona: Persona): string {
   return `${nudge} ${POCKET_INTRO_SUFFIX[persona.id]}`;
 }
-
-export const mockPersonaReplies = POCKET_INTRO_SUFFIX;

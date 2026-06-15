@@ -3,7 +3,6 @@ export {
   mockPermissionStatus,
   mockPrivacyAssessment,
 } from "./context";
-export { generatePocketIntro } from "./companion";
 export { browserLlmProviderHealth, browserTestUtterance } from "./llm";
 export {
   browserPreviewDetail,

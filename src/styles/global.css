@@ -173,6 +173,30 @@ body,
   animation: onboarding-enter 360ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
+@keyframes onboarding-step-enter {
+  from {
+    transform: translateY(6px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.onboarding-step-enter {
+  animation: onboarding-step-enter 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-window-appear,
+  .onboarding-enter,
+  .onboarding-step-enter {
+    animation: none;
+  }
+}
+
 
 .ios-switch {
   position: relative;

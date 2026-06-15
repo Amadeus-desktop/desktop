@@ -104,10 +104,10 @@ fn qwen_input_budget_rejects_oversized_nudge_input() {
 
 #[test]
 fn protocol_errors_do_not_use_legacy_completion_fallback() {
-    assert!(!local_llama_should_fallback_to_completion(&LlmError::Protocol(
-        "qwen input budget exceeded".to_string()
-    )));
-    assert!(local_llama_should_fallback_to_completion(&LlmError::Unavailable(
-        "chat endpoint unavailable".to_string()
-    )));
+    assert!(!local_llama_should_fallback_to_completion(
+        &LlmError::Protocol("qwen input budget exceeded".to_string())
+    ));
+    assert!(local_llama_should_fallback_to_completion(
+        &LlmError::Unavailable("chat endpoint unavailable".to_string())
+    ));
 }

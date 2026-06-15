@@ -2,7 +2,7 @@ import type { Persona } from "../../../domain/persona/types";
 import type { MemoryCard } from "../../../domain/memory/cards";
 import type { PromptCurrentContext } from "../../../domain/prompt/assembly";
 import { generateChatReply } from "../../llm";
-import { listCloudSafeMemoryCards } from "../../memory/adapters/supabaseCloudMemoryRepository";
+import { listCloudSafeMemoryCards } from "../../memory";
 import type { GeneralSettings } from "../../settings/types";
 import type { CompanionMessage } from "../types";
 import type { LlmGeneration } from "../../llm/types";

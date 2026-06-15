@@ -17,7 +17,13 @@ export {
   useTauriCompanionWindow,
 } from "./hooks/useTauriCompanionWindow";
 export { resolveCompanionReply } from "./lib/reply";
-export { generatePocketIntro } from "../../mocks/companion";
+export { generatePocketIntro } from "./lib/pocketIntro";
+export {
+  getCompanionSessionSnapshot,
+  patchCompanionSession,
+  resetCompanionSession,
+  subscribeToCompanionSession,
+} from "./lib/companionSessionStore";
 export type {
   CompanionMessage,
   CompanionMode,

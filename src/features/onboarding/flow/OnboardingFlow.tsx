@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useI18n } from "../../../i18n";
 import { animateMainWindowToControlCenter } from "../../auth/lib/mainWindowLayout";
 import { LogoutTransitionStep } from "../../auth/components/LogoutTransitionStep";
@@ -24,6 +24,20 @@ type OnboardingFlowProps = {
   markModelRouteDone: () => void;
   markSetupDone: () => void;
 };
+
+function OnboardingStepPanel({
+  stepKey,
+  children,
+}: {
+  stepKey: string;
+  children: ReactNode;
+}) {
+  return (
+    <div key={stepKey} className="onboarding-step-enter w-full">
+      {children}
+    </div>
+  );
+}
 
 export function OnboardingFlow({
   currentStep,
@@ -70,39 +84,55 @@ export function OnboardingFlow({
       stepLabels={stepLabels}
       hideProgress={isFinishing || isLogoutTransition}
     >
-      {isLogoutTransition ? <LogoutTransitionStep phase={logoutPhase} /> : null}
+      {isLogoutTransition ? (
+        <OnboardingStepPanel stepKey={`logout-${logoutPhase}`}>
+          <LogoutTransitionStep phase={logoutPhase} />
+        </OnboardingStepPanel>
+      ) : null}
 
-      {preparePhase ? <PreparingStep phase={preparePhase} /> : null}
+      {preparePhase ? (
+        <OnboardingStepPanel stepKey={`preparing-${preparePhase}`}>
+          <PreparingStep phase={preparePhase} />
+        </OnboardingStepPanel>
+      ) : null}
 
       {!isLogoutTransition && !isFinishing && currentStep === "login" ? (
-        <LoginStep
-          onGoogleSignIn={signInWithGoogle}
-          loggingOut={logoutTransitioning}
-        />
+        <OnboardingStepPanel stepKey="login">
+          <LoginStep
+            onGoogleSignIn={signInWithGoogle}
+            loggingOut={logoutTransitioning}
+          />
+        </OnboardingStepPanel>
       ) : null}
 
       {!isLogoutTransition && !isFinishing && currentStep === "permissions" ? (
-        <PermissionsStep
-          readiness={readiness}
-          onRefresh={readiness.refresh}
-          onContinue={markPermissionsDone}
-          onSkip={markPermissionsDone}
-          continuing={continuing}
-        />
+        <OnboardingStepPanel stepKey="permissions">
+          <PermissionsStep
+            readiness={readiness}
+            onRefresh={readiness.refresh}
+            onContinue={markPermissionsDone}
+            onSkip={markPermissionsDone}
+            continuing={continuing}
+          />
+        </OnboardingStepPanel>
       ) : null}
 
       {!isLogoutTransition && !isFinishing && currentStep === "modelRoute" ? (
-        <ModelRouteStep
-          onContinue={markModelRouteDone}
-          continuing={continuing}
-        />
+        <OnboardingStepPanel stepKey="modelRoute">
+          <ModelRouteStep
+            onContinue={markModelRouteDone}
+            continuing={continuing}
+          />
+        </OnboardingStepPanel>
       ) : null}
 
       {!isLogoutTransition && !isFinishing && currentStep === "setup" ? (
-        <SetupStep
-          onComplete={() => void finishOnboarding()}
-          continuing={continuing}
-        />
+        <OnboardingStepPanel stepKey="setup">
+          <SetupStep
+            onComplete={() => void finishOnboarding()}
+            continuing={continuing}
+          />
+        </OnboardingStepPanel>
       ) : null}
     </OnboardingShell>
   );

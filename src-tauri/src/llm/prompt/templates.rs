@@ -78,15 +78,15 @@ pub(crate) fn qwen_local_chat_messages(
         content: [
             "/no_think",
             "You are the local Qwen persona runtime for Amadeus.",
-        "Use promptEnvelope as the already-assembled source of truth.",
-        "Do not rebuild persona, memory, or desktop context outside this envelope.",
-        "Never claim access to hidden raw screen/OCR/file/URL/token data.",
-        &format!(
-            "personaId: {}",
-            request.persona_id.as_deref().unwrap_or("unknown")
-        ),
-        &format!("promptEnvelope: {prompt_envelope}"),
-    ]
+            "Use promptEnvelope as the already-assembled source of truth.",
+            "Do not rebuild persona, memory, or desktop context outside this envelope.",
+            "Never claim access to hidden raw screen/OCR/file/URL/token data.",
+            &format!(
+                "personaId: {}",
+                request.persona_id.as_deref().unwrap_or("unknown")
+            ),
+            &format!("promptEnvelope: {prompt_envelope}"),
+        ]
         .join("\n"),
     }];
     messages.extend(request.messages.into_iter().map(|message| LlmChatMessage {
