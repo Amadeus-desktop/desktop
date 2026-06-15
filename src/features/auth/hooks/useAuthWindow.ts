@@ -8,15 +8,30 @@ export function useAuthWindow(
   skipInstantLayout = false,
 ) {
   const previousShowOnboardingShell = useRef<boolean | null>(null);
+  const previousSkipInstantLayout = useRef<boolean | null>(null);
 
   useEffect(() => {
-    if (!hydrated || !isTauriRuntime() || skipInstantLayout) {
+    if (!hydrated || !isTauriRuntime()) {
+      previousShowOnboardingShell.current = showOnboardingShell;
+      previousSkipInstantLayout.current = skipInstantLayout;
+      return;
+    }
+
+    const skipWasActive = previousSkipInstantLayout.current === true;
+    previousSkipInstantLayout.current = skipInstantLayout;
+
+    if (skipInstantLayout) {
       previousShowOnboardingShell.current = showOnboardingShell;
       return;
     }
 
     const previous = previousShowOnboardingShell.current;
     previousShowOnboardingShell.current = showOnboardingShell;
+
+    if (skipWasActive && showOnboardingShell) {
+      void applyMainWindowLayoutMode("onboarding");
+      return;
+    }
 
     if (previous === null) {
       void applyMainWindowLayoutMode(

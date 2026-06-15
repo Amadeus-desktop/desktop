@@ -1,11 +1,12 @@
-import { useWindowDragRegion } from "../../../ui/hooks/useWindowDragRegion";
+import { useTauriWindowDragOpacity } from "../../../lib/tauri/useTauriWindowDragOpacity";
 
 export function OnboardingDragHandle() {
-  const dragRef = useWindowDragRegion<HTMLDivElement>();
+  const dragRef = useTauriWindowDragOpacity<HTMLDivElement>();
 
   return (
     <div
       ref={dragRef}
+      data-tauri-drag-region
       aria-hidden="true"
       className="tauri-titlebar flex h-11 w-full shrink-0 cursor-default select-none items-center justify-center"
     >

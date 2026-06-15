@@ -37,6 +37,7 @@ Final utterance decision source of truth = Rust policy engine
 
 ```text
 policy-and-security.md
+  > app-lifecycle.md
   > data-model.md
   > local-ai-ocr-llm.md
   > persona-card-contract.md
@@ -58,6 +59,7 @@ policy-and-security.md
 | --- | --- |
 | [system-overview.md](./system-overview.md) | Web, Supabase, Tauri의 전체 책임 경계 |
 | [state-management.md](./state-management.md) | Web/App/Rust/Supabase 상태관리 source of truth |
+| [app-lifecycle.md](./app-lifecycle.md) | Tauri auth/protocol/onboarding/window/drag/resize/startup lifecycle 계약 |
 | [data-model.md](./data-model.md) | Local SQLite와 Supabase DB 계약 |
 | [sync-and-web.md](./sync-and-web.md) | Next.js 웹, device pairing, sync queue 계약 |
 | [policy-and-security.md](./policy-and-security.md) | RLS, secret, privacy, provider input security |

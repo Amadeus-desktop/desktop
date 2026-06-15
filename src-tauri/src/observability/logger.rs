@@ -12,6 +12,7 @@ static LOG_FILE_PATH: Mutex<Option<PathBuf>> = Mutex::new(None);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LogLevel {
+    Info,
     Warn,
     Error,
 }
@@ -19,12 +20,18 @@ pub enum LogLevel {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LogArea {
     Auth,
+    Context,
+    Startup,
+    Settings,
+    Trigger,
+    Ui,
     Window,
 }
 
 impl LogLevel {
     fn as_str(self) -> &'static str {
         match self {
+            Self::Info => "info",
             Self::Warn => "warn",
             Self::Error => "error",
         }
@@ -35,6 +42,11 @@ impl LogArea {
     fn as_str(self) -> &'static str {
         match self {
             Self::Auth => "auth",
+            Self::Context => "context",
+            Self::Startup => "startup",
+            Self::Settings => "settings",
+            Self::Trigger => "trigger",
+            Self::Ui => "ui",
             Self::Window => "window",
         }
     }
@@ -53,6 +65,10 @@ pub fn init(path: PathBuf) -> std::io::Result<()> {
 
 pub fn warn(area: LogArea, message: impl AsRef<str>) {
     log(LogLevel::Warn, area, message.as_ref());
+}
+
+pub fn info(area: LogArea, message: impl AsRef<str>) {
+    log(LogLevel::Info, area, message.as_ref());
 }
 
 pub fn error(area: LogArea, message: impl AsRef<str>) {

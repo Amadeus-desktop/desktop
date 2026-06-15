@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
+import { cn } from "../../../lib/utils/cn";
 import { MacWindow } from "../../../ui";
+import { isTauriRuntime } from "../../../lib/tauri/runtime";
 import { OnboardingDragHandle } from "./OnboardingDragHandle";
 import type { OnboardingStep } from "../../../domain/onboarding";
 import { OnboardingProgressDots } from "./OnboardingProgressDots";
@@ -17,6 +19,8 @@ export function OnboardingShell({
   children,
   hideProgress = false,
 }: OnboardingShellProps) {
+  const skipMotion = isTauriRuntime();
+
   return (
     <MacWindow variant="onboarding">
       <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden">
@@ -25,7 +29,12 @@ export function OnboardingShell({
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_95%_50%_at_50%_-10%,rgb(var(--accent-rgb)/0.14),transparent_62%)]"
         />
         <OnboardingDragHandle />
-        <div className="motion-safe-animate animate-onboarding-enter relative z-10 flex min-h-0 flex-1 flex-col">
+        <div
+          className={cn(
+            "relative z-10 flex min-h-0 flex-1 flex-col",
+            !skipMotion && "motion-safe-animate animate-onboarding-enter",
+          )}
+        >
           <div className="tauri-interactive-zone flex min-h-0 flex-1 flex-col items-center justify-center px-5 py-2">
             {children}
           </div>

@@ -1,5 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { useI18n } from "../../../i18n";
+import { cn } from "../../../lib/utils/cn";
+import { isTauriRuntime } from "../../../lib/tauri/runtime";
 import { animateMainWindowToControlCenter } from "../../auth/lib/mainWindowLayout";
 import { LogoutTransitionStep } from "../../auth/components/LogoutTransitionStep";
 import { useAuth } from "../../auth/hooks/useAuth";
@@ -32,8 +34,16 @@ function OnboardingStepPanel({
   stepKey: string;
   children: ReactNode;
 }) {
+  const skipMotion = isTauriRuntime();
+
   return (
-    <div key={stepKey} className="motion-safe-animate animate-onboarding-step-enter w-full">
+    <div
+      key={stepKey}
+      className={cn(
+        "w-full",
+        !skipMotion && "motion-safe-animate animate-onboarding-step-enter",
+      )}
+    >
       {children}
     </div>
   );

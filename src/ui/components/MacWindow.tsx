@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "../../lib/utils/cn";
+import { isTauriRuntime } from "../../lib/tauri/runtime";
 import { glassStyles } from "../theme/shellStyles";
 import {
   controlCenterWindowPolicy,
@@ -26,6 +27,7 @@ const minSizeByVariant = {
 
 export function MacWindow({ children, variant = "control-center" }: MacWindowProps) {
   const minSize = minSizeByVariant[variant];
+  const skipMotion = isTauriRuntime();
 
   return (
     <section
@@ -33,8 +35,9 @@ export function MacWindow({ children, variant = "control-center" }: MacWindowPro
         "flex h-full w-full min-h-0 overflow-hidden text-white",
         glassStyles.shell,
         glassStyles.radiusWindow,
-        variant === "control-center" && "tauri-no-drag motion-safe-animate animate-window-appear",
-        variant === "onboarding" && "motion-safe-animate animate-window-fade-in",
+        "tauri-no-drag",
+        !skipMotion && variant === "control-center" && "motion-safe-animate animate-window-appear",
+        !skipMotion && variant === "onboarding" && "motion-safe-animate animate-window-fade-in",
       )}
       style={{
         minWidth: minSize.minWidth,

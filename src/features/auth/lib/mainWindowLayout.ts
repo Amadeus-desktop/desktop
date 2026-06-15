@@ -1,6 +1,8 @@
 import { LogicalPosition, LogicalSize } from "@tauri-apps/api/dpi";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { isTauriRuntime } from "../../../lib/tauri/runtime";
+import { scheduleMainWindowCompositorKick } from "../../../lib/tauri/mainWindowChrome";
+import { logger } from "../../../observability/logger";
 import {
   controlCenterWindowPolicy,
   onboardingWindowPolicy,
@@ -91,6 +93,14 @@ async function setMainWindowLogicalSizeCentered(width: number, height: number) {
   await webviewWindow.setPosition(new LogicalPosition(nextX, nextY));
 }
 
+async function setMainWindowLogicalSizeOnMonitor(width: number, height: number) {
+  const webviewWindow = getMainWebviewWindow();
+  if (!webviewWindow) return;
+
+  await webviewWindow.setSize(new LogicalSize(width, height));
+  await webviewWindow.center();
+}
+
 export function clampControlCenterSize(
   width: number,
   height: number,
@@ -110,8 +120,10 @@ export function clampControlCenterSize(
 export async function applyMainWindowLayoutMode(mode: MainWindowLayoutMode) {
   const webviewWindow = getMainWebviewWindow();
   if (!webviewWindow) return;
+  const beganAt = performance.now();
 
   await ensureMainWindowVisible(webviewWindow);
+  logger.info("window", "main layout apply started", { mode });
 
   if (mode === "onboarding") {
     await webviewWindow.setMinSize(
@@ -120,11 +132,17 @@ export async function applyMainWindowLayoutMode(mode: MainWindowLayoutMode) {
         onboardingWindowPolicy.minHeight,
       ),
     );
-    await setMainWindowLogicalSizeCentered(
+    await setMainWindowLogicalSizeOnMonitor(
       onboardingWindowPolicy.width,
       onboardingWindowPolicy.height,
     );
-    await centerMainWindowOnMonitor();
+    scheduleMainWindowCompositorKick();
+    logger.info("window", "main layout apply completed", {
+      mode,
+      durationMs: Math.round(performance.now() - beganAt),
+      width: onboardingWindowPolicy.width,
+      height: onboardingWindowPolicy.height,
+    });
     return;
   }
 
@@ -140,8 +158,14 @@ export async function applyMainWindowLayoutMode(mode: MainWindowLayoutMode) {
       controlCenterWindowPolicy.minHeight,
     ),
   );
-  await setMainWindowLogicalSizeCentered(next.width, next.height);
-  await centerMainWindowOnMonitor();
+  await setMainWindowLogicalSizeOnMonitor(next.width, next.height);
+  scheduleMainWindowCompositorKick();
+  logger.info("window", "main layout apply completed", {
+    mode,
+    durationMs: Math.round(performance.now() - beganAt),
+    width: next.width,
+    height: next.height,
+  });
 }
 
 function easeOutCubic(t: number) {
@@ -159,6 +183,10 @@ export async function animateMainWindowLayoutMode(
   }
 
   await ensureMainWindowVisible(webviewWindow);
+  logger.info("window", "main layout animation started", {
+    mode,
+    durationMs,
+  });
 
   const start = (await readMainWindowLogicalSize()) ?? {
     width: controlCenterWindowPolicy.defaultWidth,
@@ -188,8 +216,13 @@ export async function animateMainWindowLayoutMode(
   }
 
   const beganAt = performance.now();
+  let frameCount = 0;
+  let slowFrameCount = 0;
+  let maxFrameMs = 0;
+  let loggedSlowFrames = 0;
 
   while (true) {
+    const frameBeganAt = performance.now();
     const progress = easeOutCubic(
       Math.min(1, (performance.now() - beganAt) / durationMs),
     );
@@ -201,6 +234,22 @@ export async function animateMainWindowLayoutMode(
     );
 
     await setMainWindowLogicalSizeCentered(width, height);
+    frameCount += 1;
+    const frameMs = performance.now() - frameBeganAt;
+    maxFrameMs = Math.max(maxFrameMs, frameMs);
+    if (frameMs > 34) {
+      slowFrameCount += 1;
+      if (loggedSlowFrames < 5) {
+        loggedSlowFrames += 1;
+        logger.warn("window", "main layout animation slow native resize frame", {
+          mode,
+          frameMs: Math.round(frameMs),
+          width,
+          height,
+          progress: Number(progress.toFixed(3)),
+        });
+      }
+    }
 
     if (progress >= 1) {
       break;
@@ -211,16 +260,28 @@ export async function animateMainWindowLayoutMode(
     });
   }
 
-  if (mode === "control-center") {
+  if (mode === "onboarding") {
+    await setMainWindowLogicalSizeOnMonitor(target.width, target.height);
+  } else {
     await webviewWindow.setMinSize(
       new LogicalSize(
         controlCenterWindowPolicy.minWidth,
         controlCenterWindowPolicy.minHeight,
       ),
     );
+    await setMainWindowLogicalSizeOnMonitor(target.width, target.height);
   }
 
-  await centerMainWindowOnMonitor();
+  scheduleMainWindowCompositorKick();
+  logger.info("window", "main layout animation completed", {
+    mode,
+    frameCount,
+    slowFrameCount,
+    maxFrameMs: Math.round(maxFrameMs),
+    totalMs: Math.round(performance.now() - beganAt),
+    targetWidth: target.width,
+    targetHeight: target.height,
+  });
 }
 
 export async function animateMainWindowToOnboarding(durationMs = 480) {

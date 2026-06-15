@@ -9,14 +9,15 @@ import {
   useOnboarding,
 } from "../features/onboarding";
 import { ensureSettingsSync } from "../features/settings";
-import { ensureMainWebviewTransparency } from "../lib/tauri/mainWindowChrome";
-import { isTauriRuntime } from "../lib/tauri/runtime";
+import { useTauriDevTools } from "../lib/tauri/useTauriDevTools";
+import { logger } from "../observability/logger";
 import { useShellTheme } from "../ui";
 
 function App() {
   const { hydrated: authHydrated, isAuthenticated, logoutTransitioning } = useAuth();
   const onboarding = useOnboarding(isAuthenticated, logoutTransitioning);
   useShellTheme();
+  useTauriDevTools();
 
   const showOnboardingShell =
     logoutTransitioning || onboarding.showOnboardingShell;
@@ -30,13 +31,11 @@ function App() {
   useControlCenterWindow(isAuthenticated && isComplete && !logoutTransitioning);
 
   useEffect(() => {
+    logger.info("ui", "main app mounted", {
+      performanceNowMs: Math.round(performance.now()),
+    });
     void hydrateAuth();
     hydrateOnboardingProgress();
-  }, []);
-
-  useEffect(() => {
-    if (!isTauriRuntime()) return;
-    void ensureMainWebviewTransparency();
   }, []);
 
   useEffect(() => {
@@ -48,16 +47,11 @@ function App() {
   return (
     <main
       className={cn(
-        "pointer-events-none relative flex h-dvh w-dvw overflow-hidden bg-transparent text-white",
+        "relative flex h-dvh w-dvw overflow-hidden bg-transparent text-white",
         showOnboardingShell ? "p-0" : "p-3 max-sm:p-2.5",
       )}
     >
-      <div
-        className={cn(
-          "pointer-events-auto relative z-10 h-full min-h-0 w-full",
-          !showOnboardingShell && "tauri-no-drag",
-        )}
-      >
+      <div className="tauri-no-drag relative z-10 h-full min-h-0 w-full">
         {showOnboardingShell ? (
           <OnboardingFlow
             currentStep={onboarding.currentStep}

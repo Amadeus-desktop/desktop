@@ -7,7 +7,11 @@ import {
   hydrateOnboardingProgress,
   resetOnboardingProgress,
 } from "../../onboarding";
-import { animateMainWindowToControlCenter, animateMainWindowToOnboarding } from "../lib/mainWindowLayout";
+import {
+  animateMainWindowToControlCenter,
+  animateMainWindowToOnboarding,
+  applyMainWindowLayoutMode,
+} from "../lib/mainWindowLayout";
 import {
   AMADEUS_AUTH_CALLBACK_EVENT,
   completeSupabaseAuthCallback,
@@ -108,10 +112,14 @@ if (typeof window !== "undefined") {
 export function hydrateAuth() {
   const snapshot = authStore.getSnapshot();
   if (snapshot.hydrated) {
+    logger.info("auth", "hydrateAuth skipped because auth store is already hydrated", {
+      hasUser: Boolean(snapshot.user),
+    });
     return Promise.resolve(snapshot.user);
   }
 
   if (!hydratePromise) {
+    logger.info("auth", "hydrateAuth started");
     startDeepLinkAuthListener();
     hydratePromise = ensureDevAuthCallbackServer()
       .then(() => getCurrentSupabaseUser())
@@ -119,7 +127,15 @@ export function hydrateAuth() {
         const user = supabaseUser ?? readStoredUser();
         replaceSnapshot(user, true);
         writeStoredUser(user);
+        logger.info("auth", "hydrateAuth completed", {
+          source: supabaseUser ? "supabase" : user ? "local-mirror" : "empty",
+          hasUser: Boolean(user),
+        });
         return user;
+      })
+      .catch((error) => {
+        logger.error("auth", "hydrateAuth failed", { error });
+        throw error;
       });
   }
 
@@ -130,15 +146,19 @@ function bootstrapAuth() {
   const snapshot = authStore.getSnapshot();
   if (typeof window === "undefined" || snapshot.hydrated) return;
   startDeepLinkAuthListener();
+  const storedUser = readStoredUser();
   authStore.setSnapshot(
     {
-      user: readStoredUser(),
+      user: storedUser,
       hydrated: true,
       logoutTransitioning: false,
       logoutPhase: null,
     },
     { notify: false },
   );
+  logger.info("auth", "bootstrapAuth applied local mirror snapshot", {
+    hasUser: Boolean(storedUser),
+  });
 }
 
 bootstrapAuth();
@@ -162,14 +182,22 @@ export async function signInWithGoogleAuth(): Promise<AuthUser | null> {
 function startDeepLinkAuthListener() {
   if (!isTauriRuntime() || deepLinkAuthPromise) return;
 
+  logger.info("auth", "deep link auth listener setup started");
   deepLinkAuthPromise = import("@tauri-apps/plugin-deep-link")
     .then(async ({ getCurrent, onOpenUrl }) => {
       await startLoopbackAuthListener();
       const currentUrls = await getCurrent();
+      logger.info("auth", "deep link current urls loaded", {
+        count: currentUrls?.length ?? 0,
+      });
       await consumeAuthDeepLinks(currentUrls ?? []);
       deepLinkUnlisten = await onOpenUrl((urls) => {
+        logger.info("auth", "deep link open urls received", {
+          count: urls.length,
+        });
         void consumeAuthDeepLinks(urls);
       });
+      logger.info("auth", "deep link auth listener setup completed");
     })
     .catch((error) => {
       logger.error("auth", "deep link auth listener failed", { error });
@@ -184,20 +212,33 @@ async function startLoopbackAuthListener() {
   loopbackUnlisten = await listen<{ url?: string }>(AMADEUS_AUTH_CALLBACK_EVENT, (event) => {
     const url = event.payload.url;
     if (typeof url !== "string") return;
+    logger.info("auth", "loopback auth callback event received");
     void consumeAuthDeepLinks([url]);
   });
+  logger.info("auth", "loopback auth callback listener ready");
 }
 
 async function consumeAuthDeepLinks(urls: string[]) {
   for (const url of urls) {
     const code = extractAuthCallbackCode(url);
-    if (!code || consumedAuthCodes.has(code)) continue;
+    if (!code) {
+      logger.warn("auth", "ignored unsupported auth callback url");
+      continue;
+    }
+    if (consumedAuthCodes.has(code)) {
+      logger.warn("auth", "ignored duplicate auth callback code");
+      continue;
+    }
     consumedAuthCodes.add(code);
 
     try {
+      logger.info("auth", "supabase auth callback exchange started");
       const user = await completeSupabaseAuthCallback(url);
       if (!user) continue;
       applyAuthenticatedUser(user);
+      logger.info("auth", "supabase auth callback exchange completed", {
+        hasUser: true,
+      });
       if (getOnboardingSnapshot().progress.setupDone) {
         await animateMainWindowToControlCenter();
       }
@@ -248,15 +289,22 @@ export async function signOutWithTransition() {
   });
 
   try {
-    await sleep(ONBOARDING_PREPARE_DELAY_MS);
-    setLogoutPhase("complete");
-    await sleep(ONBOARDING_COMPLETE_DELAY_MS);
-
     try {
       await animateMainWindowToOnboarding();
     } catch (error) {
       logger.error("auth", "logout window transition failed", { error });
+      try {
+        await applyMainWindowLayoutMode("onboarding");
+      } catch (fallbackError) {
+        logger.error("auth", "logout window layout fallback failed", {
+          error: fallbackError,
+        });
+      }
     }
+
+    await sleep(ONBOARDING_PREPARE_DELAY_MS);
+    setLogoutPhase("complete");
+    await sleep(ONBOARDING_COMPLETE_DELAY_MS);
 
     try {
       await signOutSupabase();

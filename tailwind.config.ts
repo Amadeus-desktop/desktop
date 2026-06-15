@@ -99,7 +99,7 @@ export default {
           to: { opacity: "1", transform: "translateY(0) scale(1)" },
         },
         "window-fade-in": {
-          from: { opacity: "0" },
+          from: { opacity: "0.001" },
           to: { opacity: "1" },
         },
         "tab-panel-enter": {
@@ -107,11 +107,11 @@ export default {
           to: { opacity: "1", transform: "translateY(0)" },
         },
         "onboarding-enter": {
-          from: { opacity: "0" },
+          from: { opacity: "0.001" },
           to: { opacity: "1" },
         },
         "onboarding-step-enter": {
-          from: { opacity: "0" },
+          from: { opacity: "0.001" },
           to: { opacity: "1" },
         },
       },

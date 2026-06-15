@@ -1,7 +1,7 @@
 #[cfg(target_os = "macos")]
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use crate::observability::{error as log_error, warn as log_warn, LogArea};
+use crate::observability::{error as log_error, info as log_info, warn as log_warn, LogArea};
 use tauri::{AppHandle, Emitter, Manager, WebviewWindow};
 
 pub const COMPANION_SPACE_CHANGED_EVENT: &str = "companion-space-changed";
@@ -64,6 +64,70 @@ pub fn position_companion_window(window: &WebviewWindow) {
 }
 
 #[cfg(target_os = "macos")]
+fn configure_macos_window_transparency(ns_window: &objc2_app_kit::NSWindow) {
+    use objc2_app_kit::NSColor;
+
+    ns_window.setOpaque(false);
+    ns_window.setBackgroundColor(Some(&NSColor::clearColor()));
+}
+
+/// WKWebView on transparent windows can keep stale GPU tiles until the view is invalidated.
+/// DevTools toggle / a 1px resize fix the same compositor state — do that proactively.
+#[cfg(target_os = "macos")]
+pub fn refresh_macos_webview_layers(window: &WebviewWindow) {
+    log_info(
+        LogArea::Window,
+        format!("macos webview layer refresh started: label={}", window.label()),
+    );
+    if let Ok(ptr) = window.ns_view() {
+        unsafe {
+            use objc2_app_kit::NSView;
+
+            let view: &NSView = &*(ptr as *const NSView);
+            view.setNeedsDisplay(true);
+            view.displayIfNeeded();
+        }
+    }
+
+    if let Ok(ptr) = window.ns_window() {
+        unsafe {
+            use objc2_app_kit::NSWindow;
+
+            let ns_window: &NSWindow = &*(ptr as *const NSWindow);
+            ns_window.displayIfNeeded();
+        }
+    }
+    log_info(
+        LogArea::Window,
+        format!("macos webview layer refresh completed: label={}", window.label()),
+    );
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn refresh_macos_webview_layers(_window: &WebviewWindow) {}
+
+#[cfg(target_os = "macos")]
+pub fn schedule_macos_webview_layer_refresh(app: AppHandle, label: &'static str) {
+    log_info(
+        LogArea::Window,
+        format!("macos webview layer refresh scheduled: label={label} delay_ms=500"),
+    );
+    let app_handle = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(500));
+        let app_for_main = app_handle.clone();
+        let _ = app_handle.run_on_main_thread(move || {
+            if let Some(window) = app_for_main.get_webview_window(label) {
+                refresh_macos_webview_layers(&window);
+            }
+        });
+    });
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn schedule_macos_webview_layer_refresh(_app: AppHandle, _label: &'static str) {}
+
+#[cfg(target_os = "macos")]
 pub fn configure_macos_main_window(window: &WebviewWindow) {
     let Ok(ptr) = window.ns_window() else {
         log_warn(
@@ -74,12 +138,12 @@ pub fn configure_macos_main_window(window: &WebviewWindow) {
     };
 
     unsafe {
-        use objc2_app_kit::{NSColor, NSWindow, NSWindowCollectionBehavior};
+        use objc2_app_kit::{NSWindow, NSWindowCollectionBehavior};
 
         let ns_window: &NSWindow = &*(ptr as *const NSWindow);
         ns_window.setCollectionBehavior(NSWindowCollectionBehavior::Managed);
-        ns_window.setOpaque(false);
-        ns_window.setBackgroundColor(Some(&NSColor::clearColor()));
+        configure_macos_window_transparency(ns_window);
+        refresh_macos_webview_layers(window);
     }
 }
 
@@ -122,6 +186,7 @@ pub fn configure_macos_companion_window(window: &WebviewWindow) {
             | NSWindowCollectionBehavior::IgnoresCycle;
         ns_window.setCollectionBehavior(behavior);
         ns_window.setLevel(NSFloatingWindowLevel);
+        configure_macos_window_transparency(ns_window);
     }
 }
 
@@ -167,6 +232,14 @@ pub fn restore_companion_window_on_active_space(app: &AppHandle) {
             format!("restore_companion_window_on_active_space: emit failed: {error}"),
         );
     }
+}
+
+pub fn sync_companion_window_position_only(app: &AppHandle) {
+    let Some(window) = app.get_webview_window("companion") else {
+        return;
+    };
+
+    position_companion_window(&window);
 }
 
 #[cfg(target_os = "macos")]

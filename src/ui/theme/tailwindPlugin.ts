@@ -79,12 +79,17 @@ export const amadeusTailwindPlugin = plugin(({ addBase, addUtilities }) => {
         animation: "none !important",
       },
     },
+    "[data-tauri] .motion-safe-animate": {
+      animation: "none !important",
+    },
   });
 
   addUtilities({
     ".tauri-no-drag": noDragRule,
     ".tauri-titlebar": {
-      ...noDragRule,
+      "-webkit-app-region": "drag",
+      "app-region": "drag",
+      userSelect: "none",
       touchAction: "none",
     },
     ".tauri-interactive": {

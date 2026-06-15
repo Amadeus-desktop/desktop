@@ -55,6 +55,29 @@ function writeLog(
 function defaultSink(event: LogEvent) {
   const method = event.level === "error" ? console.error : console.warn;
   method(`[amadeus][${event.level}][${event.area}] ${event.message}`, event.context ?? {});
+  forwardLogToTauri(event);
+}
+
+function forwardLogToTauri(event: LogEvent) {
+  if (
+    typeof window === "undefined" ||
+    !("__TAURI_INTERNALS__" in (window as unknown as { __TAURI_INTERNALS__?: unknown }))
+  ) {
+    return;
+  }
+
+  void import("@tauri-apps/api/core")
+    .then(({ invoke }) =>
+      invoke("record_frontend_log", {
+        level: event.level,
+        area: event.area,
+        message: event.message,
+        context: event.context ? JSON.stringify(event.context) : undefined,
+      }),
+    )
+    .catch(() => {
+      // Logging must never affect app lifecycle.
+    });
 }
 
 function redactLogContext(context: LogContext): LogContext {

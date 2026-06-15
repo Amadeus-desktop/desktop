@@ -23,7 +23,10 @@
         "resizable": true,
         "decorations": false,
         "transparent": true,
-        "shadow": false
+        "shadow": false,
+        "titleBarStyle": "Transparent",
+        "acceptFirstMouse": true,
+        "devtools": true
       },
       {
         "label": "companion",
@@ -34,14 +37,17 @@
         "decorations": false,
         "transparent": true,
         "shadow": false,
+        "titleBarStyle": "Transparent",
+        "acceptFirstMouse": true,
         "alwaysOnTop": true,
+        "devtools": true,
         "resizable": false,
         "skipTaskbar": true,
         "visible": true
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: data: https:; font-src 'self'; connect-src 'self' ipc: http://ipc.localhost http://127.0.0.1:* http://localhost:* https://*.supabase.co; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
+      "csp": "default-src 'self' asset:; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: http://asset.localhost data: blob: https:; font-src 'self' asset:; connect-src 'self' ipc: http://ipc.localhost http://127.0.0.1:* http://localhost:* https://*.supabase.co; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
       "capabilities": ["default", "companion"]
     }
   },

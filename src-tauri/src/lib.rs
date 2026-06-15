@@ -19,14 +19,15 @@ use llm::{
 use macos_context::{get_current_context_snapshot, ContextBridgeState};
 use macos_window::{
     configure_macos_companion_window, configure_macos_main_window, position_companion_window,
-    restore_companion_window_on_active_space, start_main_window_drag,
-    watch_macos_companion_space_changes, CompanionWindowVisibility,
+    restore_companion_window_on_active_space, schedule_macos_webview_layer_refresh,
+    start_main_window_drag, sync_companion_window_position_only, watch_macos_companion_space_changes,
+    CompanionWindowVisibility,
 };
-use observability::{error as log_error, init as init_logger, LogArea};
 use ocr::{
     capture_primary_display_ocr, get_ocr_provider_status, recognize_captured_image, OcrState,
     ScreenCaptureState,
 };
+use observability::{error as log_error, info as log_info, init as init_logger, LogArea};
 use privacy::{
     assess_current_privacy_context, capture_privacy_checked_context_event,
     get_screen_capture_permission_status, request_screen_capture_permission,
@@ -40,7 +41,7 @@ use std::{
     net::{TcpListener, TcpStream},
     sync::atomic::{AtomicBool, Ordering},
     thread,
-    time::Duration,
+    time::{Duration, Instant},
 };
 use tauri::{
     image::Image,
@@ -66,6 +67,31 @@ const DEV_AUTH_CALLBACK_PORT: u16 = 17421;
 const DEV_AUTH_CALLBACK_URL: &str = "http://127.0.0.1:17421/auth/callback";
 const AUTH_CALLBACK_EVENT: &str = "amadeus-auth-callback";
 static DEV_AUTH_CALLBACK_SERVER_RUNNING: AtomicBool = AtomicBool::new(false);
+
+struct StartupPhaseTimer {
+    name: &'static str,
+    started_at: Instant,
+}
+
+impl StartupPhaseTimer {
+    fn start(name: &'static str) -> Self {
+        Self {
+            name,
+            started_at: Instant::now(),
+        }
+    }
+
+    fn finish(self) {
+        log_info(
+            LogArea::Startup,
+            format!(
+                "startup phase completed: phase={} duration_ms={}",
+                self.name,
+                self.started_at.elapsed().as_millis()
+            ),
+        );
+    }
+}
 
 #[derive(Debug, Clone, serde::Serialize)]
 struct AuthCallbackPayload {
@@ -104,12 +130,43 @@ fn tray_menu_action(menu_id: &str) -> TrayMenuAction {
 
 #[tauri::command]
 fn sync_companion_window_position(app: tauri::AppHandle) {
-    restore_companion_window_on_active_space(&app);
+    sync_companion_window_position_only(&app);
 }
 
 #[tauri::command]
 fn start_main_window_drag_command(app: tauri::AppHandle) -> Result<(), String> {
+    log_info(LogArea::Window, "main window native drag requested");
     start_main_window_drag(&app)
+}
+
+#[tauri::command]
+fn record_frontend_log(level: String, area: String, message: String, context: Option<String>) {
+    let area = frontend_log_area(&area);
+    let message = match context {
+        Some(context) if !context.is_empty() && context != "{}" => {
+            format!("frontend: {message} context={context}")
+        }
+        _ => format!("frontend: {message}"),
+    };
+
+    match level.as_str() {
+        "error" => log_error(area, message),
+        "warn" => observability::warn(area, message),
+        _ => log_info(area, message),
+    }
+}
+
+fn frontend_log_area(area: &str) -> LogArea {
+    match area {
+        "auth" => LogArea::Auth,
+        "context" => LogArea::Context,
+        "settings" => LogArea::Settings,
+        "startup" => LogArea::Startup,
+        "trigger" => LogArea::Trigger,
+        "ui" => LogArea::Ui,
+        "window" => LogArea::Window,
+        _ => LogArea::Ui,
+    }
 }
 
 #[tauri::command]
@@ -118,9 +175,14 @@ fn start_dev_auth_callback_server(app: tauri::AppHandle) -> Result<String, Strin
         .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
         .is_err()
     {
+        log_info(
+            LogArea::Auth,
+            "dev auth callback server already running; reusing loopback redirect",
+        );
         return Ok(DEV_AUTH_CALLBACK_URL.to_string());
     }
 
+    let bind_timer = StartupPhaseTimer::start("dev_auth_callback_bind");
     let listener =
         TcpListener::bind(format!("127.0.0.1:{DEV_AUTH_CALLBACK_PORT}")).map_err(|error| {
             DEV_AUTH_CALLBACK_SERVER_RUNNING.store(false, Ordering::SeqCst);
@@ -130,6 +192,11 @@ fn start_dev_auth_callback_server(app: tauri::AppHandle) -> Result<String, Strin
         DEV_AUTH_CALLBACK_SERVER_RUNNING.store(false, Ordering::SeqCst);
         format!("dev auth callback configure failed: {error}")
     })?;
+    bind_timer.finish();
+    log_info(
+        LogArea::Auth,
+        format!("dev auth callback server listening: url={DEV_AUTH_CALLBACK_URL}"),
+    );
 
     thread::spawn(move || {
         if let Err(error) = serve_dev_auth_callback(app, listener) {
@@ -203,6 +270,7 @@ fn handle_dev_auth_callback_stream(
                 return Ok(false);
             }
 
+            log_info(LogArea::Auth, "dev auth callback emitted to frontend");
             write_dev_auth_callback_response(stream, 200, "Amadeus login completed")?;
             Ok(true)
         }
@@ -696,29 +764,40 @@ pub fn run() {
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
+            let setup_timer = StartupPhaseTimer::start("setup_total");
+            let phase = StartupPhaseTimer::start("path_resolution");
             let app_data_dir = app.path().app_data_dir()?;
+            phase.finish();
+            let phase = StartupPhaseTimer::start("logger_init");
             if let Err(error) = init_logger(app_data_dir.join(APP_LOG_FILE_NAME)) {
                 eprintln!("[amadeus][warn][observability] logger init failed: {error}");
             }
+            phase.finish();
+            log_info(LogArea::Startup, "startup setup entered");
+            let phase = StartupPhaseTimer::start("state_path_resolution");
             let database_path = app_data_dir.join(APP_DATABASE_FILE_NAME);
             let settings_path = app_data_dir.join(APP_SETTINGS_FILE_NAME);
+            phase.finish();
+            let phase = StartupPhaseTimer::start("timeline_repository_open_and_migrate");
             let mut repository = TimelineRepository::open(database_path)?;
             repository.migrate()?;
+            phase.finish();
+            let phase = StartupPhaseTimer::start("settings_load");
             let settings_state = SettingsState::open(settings_path)?;
             let settings = settings_state.current()?;
+            phase.finish();
+            let phase = StartupPhaseTimer::start("llm_state_configure");
             let llm_state = LlmState::new(LlmService::default());
             let sidecar_state = LlamaSidecarState::new(app_data_dir.join("sidecars"));
             let _ = sidecar_state.configure(&settings);
-            if settings.model_route == "local-first" {
-                if let Err(error) = sidecar_state.ensure_running() {
-                    let _ = sidecar_state.record_error(error);
-                }
-            }
+            let start_sidecar = settings.model_route == "local-first";
             llm_state.configure_local(
                 llama_endpoint(&settings.llama_server_host, settings.llama_server_port),
                 settings.local_model_path.clone(),
             )?;
             llm_state.set_route(&settings.model_route, settings.local_fallback_enabled)?;
+            phase.finish();
+            let phase = StartupPhaseTimer::start("tauri_state_manage");
             app.manage(TimelineState::new(repository));
             app.manage(ContextBridgeState::native());
             app.manage(TriggerEngineState::new());
@@ -728,14 +807,39 @@ pub fn run() {
             app.manage(CompanionWindowVisibility::default());
             app.manage(OcrState::platform_default());
             app.manage(ScreenCaptureState::platform_default());
+            phase.finish();
+            let phase = StartupPhaseTimer::start("menu_bar_setup");
             setup_menu_bar(app)?;
+            phase.finish();
+
+            if start_sidecar {
+                log_info(
+                    LogArea::Startup,
+                    "local-first sidecar warmup scheduled after startup delay",
+                );
+                let app_handle = app.handle().clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_millis(500));
+                    let handle = app_handle.clone();
+                    let _ = app_handle.run_on_main_thread(move || {
+                        let phase = StartupPhaseTimer::start("deferred_sidecar_ensure_running");
+                        let sidecar = handle.state::<LlamaSidecarState>();
+                        if let Err(error) = sidecar.ensure_running() {
+                            let _ = sidecar.record_error(error);
+                        }
+                        phase.finish();
+                    });
+                });
+            }
 
             // Make windows transparent + popup-style on macOS
             #[cfg(target_os = "macos")]
             {
+                let phase = StartupPhaseTimer::start("macos_window_configure");
                 if let Some(win) = app.get_webview_window("main") {
                     configure_macos_main_window(&win);
                     watch_resident_window_close(&win);
+                    schedule_macos_webview_layer_refresh(app.handle().clone(), "main");
                 }
                 if let Some(win) = app.get_webview_window("companion") {
                     configure_macos_companion_window(&win);
@@ -744,10 +848,12 @@ pub fn run() {
                     watch_resident_window_close(&win);
                     watch_macos_companion_space_changes(app.handle());
                 }
+                phase.finish();
             }
 
             #[cfg(not(target_os = "macos"))]
             {
+                let phase = StartupPhaseTimer::start("window_configure");
                 if let Some(win) = app.get_webview_window("main") {
                     watch_resident_window_close(&win);
                 }
@@ -756,13 +862,23 @@ pub fn run() {
                     watch_companion_window_layout(app.handle(), &win);
                     watch_resident_window_close(&win);
                 }
+                phase.finish();
             }
 
             #[cfg(debug_assertions)]
             {
-                let _ = start_dev_auth_callback_server(app.handle().clone());
+                let phase = StartupPhaseTimer::start("debug_dev_auth_callback_server_start");
+                match start_dev_auth_callback_server(app.handle().clone()) {
+                    Ok(_) => log_info(LogArea::Auth, "debug dev auth callback server ready"),
+                    Err(error) => log_error(
+                        LogArea::Auth,
+                        format!("debug dev auth callback server start failed: {error}"),
+                    ),
+                }
+                phase.finish();
             }
 
+            setup_timer.finish();
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -792,6 +908,7 @@ pub fn run() {
             capture_primary_display_ocr,
             generate_test_utterance,
             generate_chat_reply,
+            record_frontend_log,
             start_dev_auth_callback_server
         ])
         .run(tauri::generate_context!())

@@ -3,6 +3,7 @@ import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect } from "react";
 import { isTauriRuntime } from "../../../lib/tauri/runtime";
+import { logger } from "../../../observability/logger";
 
 const COMPANION_SPACE_CHANGED_EVENT = "companion-space-changed";
 
@@ -17,6 +18,7 @@ export function useCompanionWindowLifecycle() {
 
     void window
       .listen("tauri://focus", () => {
+        logger.info("window", "companion focus event requested resync");
         void resyncTauriCompanionWindow();
       })
       .then((unlisten) => {
@@ -25,6 +27,7 @@ export function useCompanionWindowLifecycle() {
 
     void window
       .listen("tauri://scale-change", () => {
+        logger.info("window", "companion scale-change event requested resync");
         void resyncTauriCompanionWindow();
       })
       .then((unlisten) => {
@@ -32,6 +35,7 @@ export function useCompanionWindowLifecycle() {
       });
 
     void listen(COMPANION_SPACE_CHANGED_EVENT, () => {
+      logger.info("window", "companion space-change event requested resync");
       void resyncTauriCompanionWindow();
     }).then((unlisten) => {
       unlisteners.push(unlisten);
