@@ -82,6 +82,41 @@ fn ocr_state_routes_bytes_through_adapter_without_raw_text_escape() {
     assert!(!serialized.contains("/Users/user/private.pdf"));
 }
 
+#[test]
+fn ocr_state_recognizes_only_approved_fresh_capture() {
+    let state = OcrState::new(Box::new(FakeOcrAdapter));
+    let capture = CaptureMetadata {
+        approved: true,
+        captured_at_ms: 1_000,
+        ttl_ms: 1_000,
+        sensitive_marker: false,
+    };
+
+    let observation = state
+        .recognize_captured_image(vec![1, 2, 3], capture, 1_500)
+        .expect("fresh capture routes through adapter");
+
+    assert_eq!(observation.source_ttl_ms, 30_000);
+    assert_eq!(observation.sensitive_hits, 2);
+}
+
+#[test]
+fn ocr_state_blocks_expired_capture_before_adapter() {
+    let state = OcrState::new(Box::new(FakeOcrAdapter));
+    let capture = CaptureMetadata {
+        approved: true,
+        captured_at_ms: 1_000,
+        ttl_ms: 250,
+        sensitive_marker: false,
+    };
+
+    let error = state
+        .recognize_captured_image(vec![1, 2, 3], capture, 1_500)
+        .expect_err("expired capture is denied before OCR");
+
+    assert_eq!(error.to_string(), "ocr denied: capture_expired");
+}
+
 struct FakeOcrAdapter;
 
 impl OcrAdapter for FakeOcrAdapter {

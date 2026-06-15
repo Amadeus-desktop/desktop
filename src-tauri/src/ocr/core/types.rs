@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CaptureGateInput {
@@ -15,7 +15,8 @@ pub struct GateDecision {
     pub reason: &'static str,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CaptureMetadata {
     pub approved: bool,
     pub captured_at_ms: u128,

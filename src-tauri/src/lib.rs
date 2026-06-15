@@ -15,7 +15,7 @@ use llm::{
     generate_chat_reply, generate_test_utterance, get_llm_provider_health, LlmService, LlmState,
 };
 use macos_context::{get_current_context_snapshot, ContextBridgeState};
-use ocr::{get_ocr_provider_status, OcrState};
+use ocr::{get_ocr_provider_status, recognize_captured_image, OcrState};
 use privacy::{
     assess_current_privacy_context, capture_privacy_checked_context_event,
     get_screen_capture_permission_status,
@@ -208,6 +208,7 @@ pub fn run() {
             get_llm_provider_health,
             get_llama_sidecar_status,
             get_ocr_provider_status,
+            recognize_captured_image,
             generate_test_utterance,
             generate_chat_reply
         ])

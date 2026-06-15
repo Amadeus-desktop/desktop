@@ -3,6 +3,7 @@ pub enum OcrError {
     Unsupported(String),
     Adapter(String),
     State(String),
+    Denied(String),
 }
 
 impl std::fmt::Display for OcrError {
@@ -11,6 +12,7 @@ impl std::fmt::Display for OcrError {
             Self::Unsupported(message) => write!(formatter, "ocr unsupported: {message}"),
             Self::Adapter(message) => write!(formatter, "ocr adapter error: {message}"),
             Self::State(message) => write!(formatter, "ocr state error: {message}"),
+            Self::Denied(reason) => write!(formatter, "ocr denied: {reason}"),
         }
     }
 }
