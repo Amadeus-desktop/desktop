@@ -3,6 +3,7 @@ import { LogicalSize } from "@tauri-apps/api/dpi";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { useEffect, useRef } from "react";
 import { isTauriRuntime } from "../../../lib/tauriRuntime";
+import { COMPANION_WINDOW_MEASURE_INSET } from "./measureInsets";
 
 let contentElement: HTMLElement | null = null;
 
@@ -13,8 +14,9 @@ export async function syncTauriWindowToElement(element: HTMLElement | null) {
   if (window.label !== "companion") return;
 
   const { width, height } = element.getBoundingClientRect();
-  const nextWidth = Math.max(1, Math.ceil(width));
-  const nextHeight = Math.max(1, Math.ceil(height));
+  const inset = COMPANION_WINDOW_MEASURE_INSET;
+  const nextWidth = Math.max(1, Math.ceil(width) + inset * 2);
+  const nextHeight = Math.max(1, Math.ceil(height) + inset * 2);
 
   await window.setSize(new LogicalSize(nextWidth, nextHeight));
   await invoke("sync_companion_window_position");

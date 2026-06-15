@@ -123,7 +123,7 @@ export function SettingsPanel() {
       </SettingRow>
 
       <SectionHeading>{t.settings.sections.conversation}</SectionHeading>
-      <div className="mb-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+      <div className={`mb-4 rounded-[22px] border border-[#3a3a40] bg-[#222226] p-4`}>
         <CompanionPersonaPicker />
       </div>
       <SettingRow

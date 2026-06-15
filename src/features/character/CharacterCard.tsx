@@ -1,3 +1,4 @@
+import { glassStyles } from "../../ui/glassStyles";
 import type { Character } from "./types";
 
 type CharacterCardProps = {
@@ -16,14 +17,14 @@ export function CharacterCard({
       type="button"
       aria-pressed={selected}
       onClick={onSelect}
-      className={`min-w-0 rounded-lg border p-4 text-center transition ${
+      className={`min-w-0 p-4 text-center transition ${glassStyles.radiusCard} ${
         selected
-          ? "border-[#007aff] bg-[#007aff]/12"
-          : "border-white/6 bg-white/[0.03] hover:border-white/14 hover:bg-white/[0.06]"
+          ? `${glassStyles.rowSelected} ${glassStyles.panelStrong}`
+          : `${glassStyles.row} hover:bg-[#2a2a2e]`
       }`}
     >
       <div
-        className={`mx-auto flex size-20 items-center justify-center rounded-full bg-gradient-to-br text-3xl shadow-[inset_0_0_0_1px_rgba(255,255,255,0.15)] ${character.avatarClassName}`}
+        className={`mx-auto flex size-20 items-center justify-center rounded-[22px] bg-gradient-to-br text-3xl ${character.avatarClassName}`}
       >
         {character.avatar}
       </div>

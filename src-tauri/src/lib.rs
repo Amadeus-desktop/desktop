@@ -15,7 +15,10 @@ use llm::{
     generate_chat_reply, generate_test_utterance, get_llm_provider_health, LlmService, LlmState,
 };
 use macos_context::{get_current_context_snapshot, ContextBridgeState};
-use ocr::{get_ocr_provider_status, recognize_captured_image, OcrState};
+use ocr::{
+    capture_primary_display_ocr, get_ocr_provider_status, recognize_captured_image, OcrState,
+    ScreenCaptureState,
+};
 use privacy::{
     assess_current_privacy_context, capture_privacy_checked_context_event,
     get_screen_capture_permission_status,
@@ -163,6 +166,7 @@ pub fn run() {
             app.manage(llm_state);
             app.manage(sidecar_state);
             app.manage(OcrState::platform_default());
+            app.manage(ScreenCaptureState::platform_default());
 
             // Make windows transparent + popup-style on macOS
             #[cfg(target_os = "macos")]
@@ -209,6 +213,7 @@ pub fn run() {
             get_llama_sidecar_status,
             get_ocr_provider_status,
             recognize_captured_image,
+            capture_primary_display_ocr,
             generate_test_utterance,
             generate_chat_reply
         ])

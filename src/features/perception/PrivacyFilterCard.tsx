@@ -20,7 +20,7 @@ export function PrivacyFilterCard({
   const sensitive = assessment?.isSensitive ?? false;
 
   return (
-    <article className="rounded-lg border border-white/6 bg-white/[0.03] p-4">
+    <article className="rounded-lg border border-[#333338] bg-[#222226] p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold text-white">{labels.title}</h3>

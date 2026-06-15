@@ -1,45 +1,73 @@
 import { cn } from "../../../lib/cn";
+import { getPersonaAccent } from "../../../domain/persona/theme";
 import type { PersonaId, PresenceIconKind } from "../../../domain/persona/types";
 import { PRESENCE_ICON_BY_PERSONA } from "../../../domain/persona/types";
 
 type PersonaPresenceIconProps = {
   personaId?: PersonaId;
   kind?: PresenceIconKind;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "fab";
+  variant?: "filled" | "outline";
+  showFill?: boolean;
   className?: string;
 };
 
 const sizeClass = {
-  sm: "size-7",
+  sm: "size-8",
   md: "size-10",
   lg: "size-11",
+  fab: "size-full",
 } as const;
 
 const iconClass = {
   sm: "size-3.5",
   md: "size-4.5",
   lg: "size-5",
+  fab: "size-[1.125rem]",
 } as const;
 
 export function PersonaPresenceIcon({
   personaId,
   kind,
   size = "sm",
+  variant = "filled",
+  showFill = true,
   className,
 }: PersonaPresenceIconProps) {
   const resolvedKind =
     kind ?? (personaId ? PRESENCE_ICON_BY_PERSONA[personaId] : "bubble");
+  const accent = personaId ? getPersonaAccent(personaId) : null;
+  const isOutline = variant === "outline";
 
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-full border border-chat-border/80 bg-chat-surface text-chat-ink shadow-sm dark:border-chat-border-dark dark:bg-chat-bubble-companion-dark dark:text-chat-ink-dark",
-        sizeClass[size],
+        "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full text-white",
+        size !== "fab" && sizeClass[size],
+        isOutline
+          ? "border-2 bg-transparent shadow-none"
+          : "border border-[#48484f] bg-[#2c2c30] shadow-none",
+        !isOutline && accent?.ring,
         className,
       )}
+      style={
+        isOutline && accent
+          ? { borderColor: `rgb(${accent.glow})` }
+          : undefined
+      }
       aria-hidden="true"
     >
-      <PresenceGlyph kind={resolvedKind} className={iconClass[size]} />
+      {accent && showFill && !isOutline ? (
+        <span
+          className={cn(
+            "pointer-events-none absolute inset-0 bg-gradient-to-br",
+            accent.gradient,
+          )}
+        />
+      ) : null}
+      <span className="relative z-10 flex items-center justify-center">
+        <PresenceGlyph kind={resolvedKind} className={iconClass[size]} />
+      </span>
     </span>
   );
 }
@@ -94,13 +122,7 @@ function PresenceGlyph({
     case "orb":
       return (
         <svg viewBox="0 0 24 24" fill="none" className={className}>
-          <circle
-            cx="12"
-            cy="12"
-            r="7"
-            stroke="currentColor"
-            strokeWidth="1.6"
-          />
+          <circle cx="12" cy="12" r="7" stroke="currentColor" strokeWidth="1.6" />
           <circle cx="12" cy="12" r="2.5" fill="currentColor" opacity="0.35" />
         </svg>
       );

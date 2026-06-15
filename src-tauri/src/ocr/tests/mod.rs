@@ -155,6 +155,29 @@ fn screen_ocr_workflow_blocks_capture_before_adapter_when_gate_denies() {
     assert_eq!(error.to_string(), "ocr denied: sensitive_context");
 }
 
+#[test]
+fn capture_gate_input_for_command_uses_privacy_permission_and_user_setting() {
+    let gate = capture_gate_input_for_command(10, false, true, false, "Code");
+
+    assert_eq!(
+        gate,
+        CaptureGateInput {
+            privacy_risk_score: 10,
+            sensitive_context: false,
+            screen_capture_permission_granted: true,
+            user_screen_context_enabled: false,
+            known_meeting_app_frontmost: false,
+        }
+    );
+}
+
+#[test]
+fn capture_gate_input_for_command_marks_known_meeting_apps() {
+    let gate = capture_gate_input_for_command(10, false, true, true, "Zoom");
+
+    assert!(gate.known_meeting_app_frontmost);
+}
+
 struct FakeOcrAdapter;
 
 impl OcrAdapter for FakeOcrAdapter {
@@ -194,7 +217,10 @@ impl OcrAdapter for PlainOcrAdapter {
     }
 
     fn recognize_image_bytes(&self, _image_bytes: Vec<u8>) -> Result<OcrObservation, OcrError> {
-        Ok(redacted_observation_from_adapter_text("planning document", 0.9))
+        Ok(redacted_observation_from_adapter_text(
+            "planning document",
+            0.9,
+        ))
     }
 }
 

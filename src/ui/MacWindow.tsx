@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { glassStyles } from "./glassStyles";
 import { controlCenterWindowPolicy } from "./layout/controlCenterPreferences";
 
 type MacWindowProps = {
@@ -8,7 +9,7 @@ type MacWindowProps = {
 export function MacWindow({ children }: MacWindowProps) {
   return (
     <section
-      className="app-shell animate-window-appear flex h-full w-full min-h-0 overflow-hidden rounded-xl border border-white/12 bg-[#1e1e1e] text-white"
+      className={`app-shell animate-window-appear flex h-full w-full min-h-0 overflow-hidden text-white ${glassStyles.shell} ${glassStyles.radiusWindow}`}
       style={{
         minWidth: controlCenterWindowPolicy.minWidth,
         minHeight: controlCenterWindowPolicy.minHeight,
