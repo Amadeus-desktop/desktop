@@ -1,3 +1,4 @@
+import { filterPromptEnvelopeForProvider } from "../../../domain/prompt/assembly";
 import { getSupabaseClient } from "../../../lib/supabase/client";
 import type { LlmChatRequest, LlmGeneration } from "../types";
 
@@ -7,8 +8,15 @@ export async function generateEdgeChatReply(
   input: LlmChatRequest,
 ): Promise<LlmGeneration> {
   const supabase = getSupabaseClient();
+  const cloudInput = {
+    ...input,
+    promptEnvelope: filterPromptEnvelopeForProvider(
+      input.promptEnvelope,
+      "web_cloud",
+    ),
+  };
   const { data, error } = await supabase.functions.invoke(LLM_GENERATE_FUNCTION, {
-    body: input,
+    body: cloudInput,
   });
   if (error) {
     throw error;

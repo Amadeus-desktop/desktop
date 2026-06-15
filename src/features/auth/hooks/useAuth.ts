@@ -19,6 +19,7 @@ export function useAuth() {
     user: snapshot.user,
     hydrated: snapshot.hydrated,
     logoutTransitioning: snapshot.logoutTransitioning,
+    logoutPhase: snapshot.logoutPhase,
     isAuthenticated: snapshot.user !== null,
     hydrate: hydrateAuth,
     signInWithGoogle: signInWithGoogleAuth,

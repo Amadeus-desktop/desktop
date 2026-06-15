@@ -8,6 +8,7 @@ type LlmChatRequest = {
   locale: string;
   personaId: string;
   nickname: string;
+  promptEnvelope: unknown | null;
 };
 
 const corsHeaders = {
@@ -84,6 +85,7 @@ function validateRequest(value: unknown): LlmChatRequest {
     locale: stringField(record.locale, "ko").slice(0, 8),
     personaId: stringField(record.personaId, "warm_friend").slice(0, 64),
     nickname: stringField(record.nickname, "작업자").slice(0, 64),
+    promptEnvelope: normalizePromptEnvelope(record.promptEnvelope),
   };
 }
 
@@ -181,12 +183,17 @@ async function generateWithGemini(input: LlmChatRequest): Promise<string> {
 }
 
 function systemPrompt(input: LlmChatRequest): string {
+  const promptContext = input.promptEnvelope
+    ? JSON.stringify(input.promptEnvelope).slice(0, 6_000)
+    : `Persona: ${input.personaId}`;
+
   return [
     "You are Amadeus, a gentle local desktop companion.",
     "Reply briefly, warmly, and without claiming access to hidden context.",
     `Locale: ${input.locale}`,
-    `Persona: ${input.personaId}`,
     `Nickname: ${input.nickname}`,
+    "Use this structured prompt context as source-of-truth persona and memory input.",
+    promptContext,
   ].join("\n");
 }
 
@@ -198,6 +205,11 @@ function requiredEnv(name: string): string {
 
 function stringField(value: unknown, fallback: string): string {
   return typeof value === "string" && value.trim() ? value : fallback;
+}
+
+function normalizePromptEnvelope(value: unknown): unknown | null {
+  if (!value || typeof value !== "object") return null;
+  return value;
 }
 
 function jsonResponse(body: unknown, status = 200): Response {

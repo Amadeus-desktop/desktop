@@ -11,6 +11,9 @@ export type AuthUser = {
 export type AuthSnapshot = {
   user: AuthUser | null;
   hydrated: boolean;
-  /** True while animating to onboarding UI before session teardown. */
+  /** True while the logout transition UI is visible. */
   logoutTransitioning: boolean;
+  logoutPhase: LogoutPhase | null;
 };
+
+export type LogoutPhase = "preparing" | "complete";

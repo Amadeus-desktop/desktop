@@ -58,6 +58,16 @@ impl TimelineRepository {
         Ok(exists == 1)
     }
 
+    #[cfg(test)]
+    pub(crate) fn table_columns(&self, table_name: &str) -> Result<Vec<String>, TimelineError> {
+        let mut statement = self
+            .connection
+            .prepare(&format!("PRAGMA table_info({table_name})"))?;
+        let rows = statement.query_map([], |row| row.get::<_, String>(1))?;
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(TimelineError::from)
+    }
+
     pub fn create_context_event(
         &mut self,
         input: CreateContextEventInput,

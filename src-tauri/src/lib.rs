@@ -164,42 +164,89 @@ fn handle_dev_auth_callback_stream(
     let mut buffer = [0_u8; 4096];
     let bytes_read = stream.read(&mut buffer)?;
     let request = String::from_utf8_lossy(&buffer[..bytes_read]);
-    let Some(callback_url) = dev_auth_callback_url_from_request(&request) else {
-        write_dev_auth_callback_response(stream, 400, "Invalid Amadeus auth callback")?;
-        return Ok(false);
-    };
 
-    let payload = AuthCallbackPayload { url: callback_url };
-    if let Err(error) = app.emit(AUTH_CALLBACK_EVENT, payload) {
-        log_error(
-            LogArea::Auth,
-            format!("dev auth callback event emit failed: {error}"),
-        );
-        write_dev_auth_callback_response(stream, 500, "Amadeus auth callback failed")?;
-        return Ok(false);
+    match classify_dev_auth_callback_request(&request) {
+        DevAuthCallbackRequest::Favicon => {
+            write_dev_auth_callback_empty(stream)?;
+            Ok(false)
+        }
+        DevAuthCallbackRequest::Waiting => {
+            write_dev_auth_callback_response(stream, 200, "Amadeus auth callback ready")?;
+            Ok(false)
+        }
+        DevAuthCallbackRequest::NotFound => {
+            write_dev_auth_callback_response(stream, 404, "Amadeus auth callback not found")?;
+            Ok(false)
+        }
+        DevAuthCallbackRequest::Invalid => {
+            write_dev_auth_callback_response(stream, 400, "Invalid Amadeus auth callback")?;
+            Ok(false)
+        }
+        DevAuthCallbackRequest::Callback(callback_url) => {
+            let payload = AuthCallbackPayload { url: callback_url };
+            if let Err(error) = app.emit(AUTH_CALLBACK_EVENT, payload) {
+                log_error(
+                    LogArea::Auth,
+                    format!("dev auth callback event emit failed: {error}"),
+                );
+                write_dev_auth_callback_response(stream, 500, "Amadeus auth callback failed")?;
+                return Ok(false);
+            }
+
+            write_dev_auth_callback_response(stream, 200, "Amadeus login completed")?;
+            Ok(true)
+        }
+    }
+}
+
+enum DevAuthCallbackRequest {
+    Callback(String),
+    Waiting,
+    Favicon,
+    NotFound,
+    Invalid,
+}
+
+fn classify_dev_auth_callback_request(request: &str) -> DevAuthCallbackRequest {
+    let request_line = request.lines().next().unwrap_or("");
+    if request_line.contains("/favicon.ico") {
+        return DevAuthCallbackRequest::Favicon;
     }
 
-    write_dev_auth_callback_response(stream, 200, "Amadeus login completed")?;
-    Ok(true)
+    let mut parts = request_line.split_whitespace();
+    let method = parts.next().unwrap_or("");
+    let target = parts.next().unwrap_or("");
+    if method != "GET" {
+        return DevAuthCallbackRequest::Invalid;
+    }
+
+    let path = target.split('?').next().unwrap_or("").trim_end_matches('/');
+    if path != "/auth/callback" {
+        return DevAuthCallbackRequest::NotFound;
+    }
+
+    let query = target.split_once('?').map(|(_, query)| query).unwrap_or("");
+    if query.is_empty() {
+        return DevAuthCallbackRequest::Waiting;
+    }
+
+    if !query
+        .split('&')
+        .any(|part| part.starts_with("code=") && part.len() > "code=".len())
+    {
+        return DevAuthCallbackRequest::Invalid;
+    }
+
+    DevAuthCallbackRequest::Callback(format!(
+        "http://127.0.0.1:{DEV_AUTH_CALLBACK_PORT}{target}"
+    ))
 }
 
 fn dev_auth_callback_url_from_request(request: &str) -> Option<String> {
-    let request_line = request.lines().next()?;
-    let mut parts = request_line.split_whitespace();
-    let method = parts.next()?;
-    let target = parts.next()?;
-    if method != "GET" || !target.starts_with("/auth/callback?") {
-        return None;
+    match classify_dev_auth_callback_request(request) {
+        DevAuthCallbackRequest::Callback(url) => Some(url),
+        _ => None,
     }
-    if !target
-        .trim_start_matches("/auth/callback?")
-        .split('&')
-        .any(|part| part.starts_with("code="))
-    {
-        return None;
-    }
-
-    Some(format!("http://127.0.0.1:{DEV_AUTH_CALLBACK_PORT}{target}"))
 }
 
 fn dev_auth_callback_success_html() -> String {
@@ -335,12 +382,110 @@ fn dev_auth_callback_error_html(message: &str) -> String {
     )
 }
 
-fn dev_auth_callback_html(status: u16, message: &str) -> String {
-    if status == 200 {
-        dev_auth_callback_success_html()
-    } else {
-        dev_auth_callback_error_html(message)
+fn dev_auth_callback_waiting_html() -> String {
+    r#"<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Amadeus</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+      background: #09090b;
+      color: #f4f4f5;
     }
+    .card {
+      width: min(100%, 360px);
+      text-align: center;
+      padding: 28px 24px;
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.04);
+    }
+    h1 { font-size: 1rem; font-weight: 600; margin-bottom: 8px; }
+    p { font-size: 0.875rem; line-height: 1.55; color: rgba(244, 244, 245, 0.62); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>로그인 대기 중</h1>
+    <p>Amadeus에서 Google 로그인을 시작하면 이 페이지로 돌아와요.</p>
+  </div>
+</body>
+</html>"#
+        .to_string()
+}
+
+fn dev_auth_callback_not_found_html() -> String {
+    format!(
+        r#"<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Amadeus</title>
+  <style>
+    * {{ box-sizing: border-box; margin: 0; }}
+    body {{
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+      background: #09090b;
+      color: #f4f4f5;
+    }}
+    .card {{
+      width: min(100%, 360px);
+      text-align: center;
+      padding: 28px 24px;
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.04);
+    }}
+    h1 {{ font-size: 1rem; font-weight: 600; margin-bottom: 8px; }}
+    p {{ font-size: 0.875rem; line-height: 1.55; color: rgba(244, 244, 245, 0.62); }}
+    code {{ font-size: 0.75rem; color: rgba(147, 197, 253, 0.9); }}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>페이지를 찾을 수 없어요</h1>
+    <p>Supabase redirect URL은 <code>{DEV_AUTH_CALLBACK_URL}</code> 로 설정해 주세요. Vite 포트(1420/1421)는 사용하지 않아요.</p>
+  </div>
+</body>
+</html>"#
+    )
+}
+
+fn dev_auth_callback_html(status: u16, message: &str) -> String {
+    if status == 200 && message == "Amadeus auth callback ready" {
+        return dev_auth_callback_waiting_html();
+    }
+    if status == 200 {
+        return dev_auth_callback_success_html();
+    }
+    if status == 404 {
+        return dev_auth_callback_not_found_html();
+    }
+    dev_auth_callback_error_html(message)
+}
+
+fn write_dev_auth_callback_empty(stream: &mut TcpStream) -> std::io::Result<()> {
+    write!(
+        stream,
+        "HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n"
+    )
 }
 
 fn write_dev_auth_callback_response(
@@ -351,6 +496,7 @@ fn write_dev_auth_callback_response(
     let status_text = match status {
         200 => "OK",
         400 => "Bad Request",
+        404 => "Not Found",
         _ => "Internal Server Error",
     };
     let body = dev_auth_callback_html(status, message);
@@ -683,6 +829,11 @@ pub fn run() {
                     watch_companion_window_layout(app.handle(), &win);
                     watch_resident_window_close(&win);
                 }
+            }
+
+            #[cfg(debug_assertions)]
+            {
+                let _ = start_dev_auth_callback_server(app.handle().clone());
             }
 
             Ok(())

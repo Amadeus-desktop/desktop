@@ -324,6 +324,19 @@ export type AppLocale = {
       logout: string;
       loggingOut: string;
     };
+    logout: {
+      preparing: {
+        eyebrow: string;
+        title: string;
+        subtitle: string;
+      };
+      complete: {
+        eyebrow: string;
+        title: string;
+        subtitle: string;
+        hint: string;
+      };
+    };
     profile: {
       eyebrow: string;
       title: string;
@@ -390,6 +403,21 @@ export type AppLocale = {
     };
   };
   persona: {
+    "seoyeon-modern-senior": {
+      name: string;
+      shortLabel: string;
+      description: string;
+    };
+    "eiren-fantasy-guardian": {
+      name: string;
+      shortLabel: string;
+      description: string;
+    };
+    "makise-kurisu": {
+      name: string;
+      shortLabel: string;
+      description: string;
+    };
     warm_friend: {
       name: string;
       shortLabel: string;

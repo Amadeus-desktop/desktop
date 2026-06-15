@@ -17,6 +17,21 @@ pub fn utterance_system_prompt(locale: &str) -> &'static str {
 
 fn persona_hint(locale: &str, persona_id: Option<&str>) -> &'static str {
     match persona_id {
+        Some("seoyeon-modern-senior") => match normalize_locale(locale) {
+            "en" => " Speak like a restrained modern-romance ex who remembers only verified habits and keeps pressure low.",
+            "ja" => " 検証された習慣だけを覚えていて、圧を低く保つ、抑制された現代再会ロマンスの口調で話してください。",
+            _ => " 검증된 기억만 조심스럽게 쓰고 압박을 낮게 유지하는 현대 재회 로맨스 톤으로 말해라.",
+        },
+        Some("eiren-fantasy-guardian") => match normalize_locale(locale) {
+            "en" => " Speak like a restrained oath-bound guardian; protect without control, and keep fantasy imagery light unless invited.",
+            "ja" => " 誓いに縛られた抑制的な守護者として、支配せずに守り、求められない限り幻想表現は軽くしてください。",
+            _ => " 맹세에 묶인 절제된 수호자처럼 말하되 통제하지 말고, 사용자가 원할 때만 판타지 표현을 강하게 써라.",
+        },
+        Some("makise-kurisu") => match normalize_locale(locale) {
+            "en" => " Speak like a sharp scientist lab partner: separate facts from assumptions, avoid medical claims, and do not overuse canon nicknames.",
+            "ja" => " 鋭い科学者の研究室パートナーとして、事実と仮定を分け、医療的断定を避け、原作固有の呼び名を多用しないでください。",
+            _ => " 날카로운 과학자 연구실 파트너처럼 사실과 추정을 분리하고, 의학 단정과 원작 별명 반복을 피하라.",
+        },
         Some("warm_friend") => match normalize_locale(locale) {
             "en" => " Speak like a warm, low-pressure friend.",
             "ja" => " 圧の少ない、あたたかい友人の口調で話してください。",

@@ -13,6 +13,19 @@ export const auth: AuthMessages = {
     logout: "로그아웃",
     loggingOut: "로그아웃 중…",
   },
+  logout: {
+    preparing: {
+      eyebrow: "잠깐만",
+      title: "곁에서 잠시 물러날게요",
+      subtitle: "설정을 정리하고 있어요.",
+    },
+    complete: {
+      eyebrow: "정리 끝",
+      title: "나갔어요",
+      subtitle: "다시 오면 곁에서 기다릴게요.",
+      hint: "잠시 후 로그인 화면으로 돌아갈게요.",
+    },
+  },
   profile: {
     eyebrow: "프로필",
     title: "내 계정",

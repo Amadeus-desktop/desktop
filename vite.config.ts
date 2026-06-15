@@ -1,13 +1,29 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import type { Plugin } from "vite";
+
+function amadeusAuthCallbackPlugin(): Plugin {
+  return {
+    name: "amadeus-auth-callback",
+    configureServer(server) {
+      server.middlewares.use((req, _res, next) => {
+        const url = req.url ?? "";
+        if (url.startsWith("/auth/callback")) {
+          req.url = "/";
+        }
+        next();
+      });
+    },
+  };
+}
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), amadeusAuthCallbackPlugin()],
   envPrefix: ["VITE_", "PUBLIC_"],
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`

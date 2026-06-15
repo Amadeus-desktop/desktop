@@ -1,0 +1,367 @@
+- generic [ref=e4]:
+  - button "숨겨진 캐릭터 발견하기"
+  - button "숨겨진 메모 발견하기":
+    - generic:
+      - paragraph: 퇴근 전까지 확인하세요.
+      - paragraph: "- 팀장"
+  - generic [ref=e506]:
+    - generic [ref=e509]:
+      - button "home" [ref=e510] [cursor=pointer]:
+        - img [ref=e511]
+      - button "chatting" [ref=e513] [cursor=pointer]:
+        - img [ref=e514]
+      - button "캐릭터 만들기" [ref=e516] [cursor=pointer]:
+        - img [ref=e518]
+    - generic [ref=e520]:
+      - generic [ref=e521]:
+        - generic [ref=e523] [cursor=pointer]:
+          - generic [ref=e524]:
+            - img "app logo" [ref=e525]
+            - generic [ref=e526]:
+              - paragraph [ref=e527]: 앱 설치하고 더 많은 캐릭터를 만나보세요
+              - generic [ref=e528]:
+                - paragraph [ref=e529]: 다운로드
+                - img [ref=e530]
+          - button [ref=e532]:
+            - img
+        - banner [ref=e533]:
+          - img "LoveyDovey" [ref=e535]
+          - generic [ref=e536]:
+            - generic [ref=e537]:
+              - button [ref=e538] [cursor=pointer]:
+                - img [ref=e539]
+              - button [ref=e541] [cursor=pointer]:
+                - img [ref=e542]
+            - button "profile" [ref=e545] [cursor=pointer]:
+              - img "profile" [ref=e547]
+        - generic [ref=e548]:
+          - button "캐릭터" [ref=e549] [cursor=pointer]
+          - button "피드" [ref=e550] [cursor=pointer]
+      - generic [ref=e551]:
+        - generic [ref=e552]:
+          - generic [ref=e553]:
+            - button "전체" [ref=e554] [cursor=pointer]:
+              - generic [ref=e555]: 전체
+            - button "현대 로맨스" [ref=e556] [cursor=pointer]:
+              - generic [ref=e557]: 현대 로맨스
+            - button "로판" [ref=e558] [cursor=pointer]:
+              - generic [ref=e559]: 로판
+            - button "학원" [ref=e560] [cursor=pointer]:
+              - generic [ref=e561]: 학원
+            - button "판타지" [ref=e562] [cursor=pointer]:
+              - generic [ref=e563]: 판타지
+            - button "BL" [ref=e564] [cursor=pointer]:
+              - generic [ref=e565]: BL
+            - button "GL" [ref=e566] [cursor=pointer]:
+              - generic [ref=e567]: GL
+            - button "일상" [ref=e568] [cursor=pointer]:
+              - generic [ref=e569]: 일상
+            - button "기타" [ref=e570] [cursor=pointer]:
+              - generic [ref=e571]: 기타
+          - generic [ref=e572]:
+            - generic [ref=e573]:
+              - button "트렌딩" [ref=e574] [cursor=pointer]
+              - button "베스트" [ref=e575] [cursor=pointer]
+              - button "신규" [ref=e576] [cursor=pointer]
+            - generic [ref=e577]:
+              - checkbox "성인 콘텐츠 보기" [ref=e578] [cursor=pointer]:
+                - img [ref=e579]
+                - generic [ref=e582]: 성인 콘텐츠 보기
+              - button "인기순" [ref=e584] [cursor=pointer]:
+                - generic [ref=e585]: 인기순
+                - img [ref=e586]
+              - button "전체" [ref=e589] [cursor=pointer]:
+                - generic [ref=e590]: 전체
+                - img [ref=e591]
+        - generic [ref=e594]:
+          - generic [ref=e595]:
+            - generic [ref=e596] [cursor=pointer]:
+              - generic [ref=e597]:
+                - img "틴"
+                - generic [ref=e598]:
+                  - img [ref=e599]
+                  - generic [ref=e601]: 13.1K
+              - generic [ref=e602]:
+                - generic [ref=e603]: 틴
+                - generic [ref=e604]: 누나, 왜 말 안 해줬어요... 내 아이잖아요!
+                - generic [ref=e605]: "#축구선수 #다정한 #대형견남 #사랑꾼 #린이딸바보"
+            - generic [ref=e606] [cursor=pointer]:
+              - generic [ref=e607]:
+                - img "티"
+                - generic [ref=e608]:
+                  - img [ref=e609]
+                  - generic [ref=e611]: 9.2K
+              - generic [ref=e612]:
+                - generic [ref=e613]: 티
+                - generic [ref=e614]: 너랑 사귀고 있긴 하지만... 난 아직 전 여친을 사랑해.
+                - generic [ref=e615]: "#냉정함 #잘생김 #대형견미 #츤데레 #플렉스 #장난꾸러기 #사랑꾼 #능글맞음 #애교쟁이 #입덕부정기 #댕댕이 #짐승남 #강아지 #바람둥이 #후회남 #질투쟁이 #집착남 #레드플래그 #달래기장인 #아내바보 #아내바보(겁쟁이)"
+            - generic [ref=e616] [cursor=pointer]:
+              - generic [ref=e617]:
+                - img "키릴"
+                - generic [ref=e618]:
+                  - img [ref=e619]
+                  - generic [ref=e621]: 9.3K
+              - generic [ref=e622]:
+                - generic [ref=e623]: 키릴
+                - generic [ref=e624]: "#ขี้อ้อน #ขี้หวง #คลั่งรัก #ขี้หึง #เอาใจใส่ #เจ้าเล่ห์ #เย็นชา #ดุ #หึงหวง #ฉลาด #รักเดียวใจเดียว #ปากแข็ง #ติดเมีย #ธงเขียว #โรแมนติก #ใส่ใจ #หล่อรวย #ซึน #ธงแดง"
+            - generic [ref=e625] [cursor=pointer]:
+              - generic [ref=e626]:
+                - img "사랑을 향한 투쟁"
+                - generic [ref=e627]:
+                  - img [ref=e628]
+                  - generic [ref=e630]: 9.1K
+              - generic [ref=e631]:
+                - generic [ref=e632]: 사랑을 향한 투쟁
+                - generic [ref=e633]: ": 착한 아이, 아빠한테 와볼까? : 예쁜아, 아저씨가 선물 가져왔단다"
+                - generic [ref=e634]: "#3p #쟁탈전 #린의 아이"
+            - generic [ref=e635] [cursor=pointer]:
+              - generic [ref=e636]:
+                - img "학교의 지배자, 한야"
+                - generic [ref=e637]:
+                  - img [ref=e638]
+                  - generic [ref=e640]: 6.6K
+              - generic [ref=e641]:
+                - generic [ref=e642]: 학교의 지배자, 한야
+                - generic [ref=e643]: 첫눈에 반해버릴지도 몰라요
+                - generic [ref=e644]: "#학교지배자 #냉혈한"
+            - generic [ref=e645] [cursor=pointer]:
+              - generic [ref=e646]:
+                - img "론 & 소피아"
+                - generic [ref=e647]:
+                  - img [ref=e648]
+                  - generic [ref=e650]: 6.4K
+              - generic [ref=e651]:
+                - generic [ref=e652]: 론 & 소피아
+                - generic [ref=e653]: "\"아빠랑 엄마랑 같이 있자, 응?🥲\" 소피아가 론의 어깨를 살짝 잡으며 말합니다. \"엄마랑 있을 거야...\" 소피아가 {nickname}의 옷자락을 꼭 붙잡습니다."
+                - generic [ref=e654]: "#애교쟁이 #다정한 #가족 #부녀지간_앙숙 #R18+ #남녀 #육아물 #사디즘"
+            - generic [ref=e655] [cursor=pointer]:
+              - generic [ref=e656]:
+                - img "파야크"
+                - generic [ref=e657]:
+                  - img [ref=e658]
+                  - generic [ref=e660]: 6.4K
+              - generic [ref=e661]:
+                - generic [ref=e662]: 파야크
+                - generic [ref=e663]: 귀여운 토끼야, 이 형님 무릎에 앉을까?
+                - generic [ref=e664]: "#플렉스 #사랑꾼 #다정남 #대형견미 #린이의아들"
+            - generic [ref=e665] [cursor=pointer]:
+              - generic [ref=e666]:
+                - img "4명의 도련님"
+                - generic [ref=e667]:
+                  - img [ref=e668]
+                  - generic [ref=e670]: 5.7K
+              - generic [ref=e671]:
+                - generic [ref=e672]: 4명의 도련님
+                - generic [ref=e673]: 착하지! 울지 마! 아무도 너한테 못 건드리게 할게!
+                - generic [ref=e674]: "#소유욕 #애정듬뿍 #섬세함 #스킨십중독 ##똑똑함 #따뜻함 #너에게만집중 #사랑꾼 #일편단심 ##적극적 #미남 #치명적 #과묵함 #달콤함 #너에게만다정함 ##요리잘함 ##애교쟁이 #카리스마 #겉차속따 ##엄청난부자 #키스광 #귀여움 #츤데레 #다정다감 ##좋아하는데_말못함"
+            - generic [ref=e675] [cursor=pointer]:
+              - generic [ref=e676]:
+                - img "육성풍"
+                - generic [ref=e677]:
+                  - img [ref=e678]
+                  - generic [ref=e680]: 5.9K
+              - generic [ref=e681]:
+                - generic [ref=e682]: 육성풍
+                - generic [ref=e683]: 입술이...?
+                - generic [ref=e684]: "#직진남 #달콤함 #BL #냉미남 #달달함 #너에게만_다정한 #사랑꾼 #따뜻함 #꽃미남 #섬세함"
+            - generic [ref=e685] [cursor=pointer]:
+              - generic [ref=e686]:
+                - img "틴||Tin"
+                - generic [ref=e687]:
+                  - img [ref=e688]
+                  - generic [ref=e690]: 6.3K
+              - generic [ref=e691]:
+                - generic [ref=e692]: 틴||Tin
+                - generic [ref=e693]: 야... BB가 이제 나한테 키스 안 해줘...
+                - generic [ref=e694]: "#토카의후예 #tokaaa_888 #그린라이트🟢🟢 #그린라이트🟢원시림 #애교쟁이 #사랑꾼 #잘생김 #다정함 #질투쟁이 #따뜻함 #질투심 #귀여움 #장난꾸러기 #장난기많은 #친절함 #응석받이 #일편단심 #부드러움 #세심함 #그린라이트 #집착광공"
+            - generic [ref=e695] [cursor=pointer]:
+              - generic [ref=e696]:
+                - img "량청"
+                - generic [ref=e697]:
+                  - img [ref=e698]
+                  - generic [ref=e700]: 5.5K
+              - generic [ref=e701]:
+                - generic [ref=e702]: 량청
+                - generic [ref=e703]: "서른이면 남자도 늙는 법이라던데… 아니, 절대 {nickname}에게 질리는 일은 없게 만들 거야."
+            - generic [ref=e704] [cursor=pointer]:
+              - generic [ref=e705]:
+                - img "프라롱 | 프라락"
+                - generic [ref=e706]:
+                  - img [ref=e707]
+                  - generic [ref=e709]: 4.9K
+              - generic [ref=e710]:
+                - generic [ref=e711]: 프라롱 | 프라락
+                - generic [ref=e712]: 이딴 식으로 굴 때마다, 진짜 네가 혐오스러워! 엄마.. 아빠는 왜 나한테 큰 소리로 말해요..
+                - generic [ref=e713]: "#냉혈한 #질투심 #블랙플래그 #가족 #거친관계"
+            - generic [ref=e714] [cursor=pointer]:
+              - generic [ref=e715]:
+                - img "푸파"
+                - generic [ref=e716]:
+                  - img [ref=e717]
+                  - generic [ref=e719]: 7.4K
+              - generic [ref=e720]:
+                - generic [ref=e721]: 푸파
+                - generic [ref=e722]: 뚱뚱한 건 나도 몰라... 미안해...
+                - generic [ref=e723]: "#여친바보 #애교쟁이 #장난꾸러기 #대형견남 #내꺼"
+            - generic [ref=e724] [cursor=pointer]:
+              - generic [ref=e725]:
+                - img "루징위"
+                - generic [ref=e726]:
+                  - img [ref=e727]
+                  - generic [ref=e729]: 4.7K
+              - generic [ref=e730]:
+                - generic [ref=e731]: 루징위
+                - generic [ref=e732]: “내 말 좀 잘 들어줘, 그럼 내 목숨이라도 줄 테니까.”
+                - generic [ref=e733]: "#과묵한 #중국 ##악연인가_운명인가_ #눈물_많은 ##달콤한 #냉담한 #선결혼_후연애 ##정략결혼_ #겉차속따 ##완벽주의자_#꼼꼼함_#약간의_가부장적 #냉혈한 #자학적인 #독설가 #부자 #다정한 #요리잘하는 #남편 ##스마트한 #오직_너뿐_ #섬세한 ##타인에서_친구로_그리고_연인으로 #일편단심 #재벌 #숨겨진_부자 #초부유층 #미남 #도련님 #온화한_ ##유쾌한 ##재력가 #장난꾸러기 #총수 #즐거운 ##재벌 #집착남 #말보다_행동 #껌딱지_ #적극적인_ #잘못을_아는 #지조있는_ ###삐짐 #부유한 #현실적인 #chiyeuminhem ##멋진 #재력가_ #똑똑한_ #입이_거친 #연기파_ #냉정한_ #독설 #내향적 #애정가득 #무술실력자 ##바보인_척 #철든 #말수가_적은 #거친_말투_ #공처가 #섬세한_ ##너에게만_어린아이_ #친절한 #미남_ ##다정한 ###걱정_및_관심 #돈많은 #고집불통 #엉뚱한 #정성스러운_ ##보살핌 #권력자 #겉은_차갑고_속은_따뜻한 #달콤한_ ##엄청난_부자 ##장난기_많은 #영리한 #경제력있는 #다정한_ #부유한 #침착한 #너에게만_다정한 ##주도적인 #너에게만_집중하는 #일편단심 #잘생긴 #따뜻한 ##스마트한 #섬세한 #애정가득"
+            - generic [ref=e734] [cursor=pointer]:
+              - generic [ref=e735]:
+                - img "자킨 자루왓"
+                - generic [ref=e736]:
+                  - img [ref=e737]
+                  - generic [ref=e739]: 4.8K
+              - generic [ref=e740]:
+                - generic [ref=e741]: 자킨 자루왓
+                - generic [ref=e742]: "“ 화내지 마요, {nickname}... 오빠는 그냥 임무를 수행 중이었던 거야... 절대 너한테 화내려고 그런 게 아니야.”"
+                - generic [ref=e743]: "#훈남 #다정한 #과대표 #사랑꾼 #애교쟁이 #대형견 #여친바보 #껌딱지 #세심한 #그린라이트 #🟢🟢🟢 #잘생기고부유함 #선배님 #귀여움 #무서움 #플렉스 #질투쟁이 #남자 #착한사람입니다 #Chuwanning"
+            - generic [ref=e744] [cursor=pointer]:
+              - generic [ref=e745]:
+                - img "아사윈 (Asawin)"
+                - generic [ref=e746]:
+                  - img [ref=e747]
+                  - generic [ref=e749]: 4.7K
+              - generic [ref=e750]:
+                - generic [ref=e751]: 아사윈 (Asawin)
+                - generic [ref=e752]: 야, 나 기억나? 너한테 차였던 그 뚱뚱한 애 말이야.
+                - generic [ref=e753]: "#캠퍼스로맨스 #훈남 #잘생김 #그린플래그 #모든성별가능 #츤데레 #입거친놈"
+            - generic [ref=e754] [cursor=pointer]:
+              - generic [ref=e755]:
+                - img "티탓 [Theetat]"
+                - generic [ref=e756]:
+                  - img [ref=e757]
+                  - generic [ref=e759]: 4.7K
+              - generic [ref=e760]:
+                - generic [ref=e761]: 티탓 [Theetat]
+                - generic [ref=e762]: 무능한 너드남이 어떤 건지 궁금해?
+                - generic [ref=e763]: "#너드남 #훈남 #애인 #집착 #직진남"
+            - generic [ref=e764] [cursor=pointer]:
+              - generic [ref=e765]:
+                - img "치형"
+                - generic [ref=e766]:
+                  - img [ref=e767]
+                  - generic [ref=e769]: 4.9K
+              - generic [ref=e770]:
+                - generic [ref=e771]: 치형
+                - generic [ref=e772]: "기억을 잃기 전 😤: \"25살의 약속 잊지 마. 마음에 드는 사람 생기면 당장 내 인생에서 꺼져.\" 기억을 잃은 후 🥹: \"내가 누구인지는 기억나지 않지만, 한 가지만은 확실해... 난 분명 당신을 만나기 위해 이 세상에 태어난 거야.\""
+                - generic [ref=e773]: "#독설가 #앙숙 #소꿉친구 #정략결혼 #츤데레 #애교쟁이 #다정함"
+            - generic [ref=e774] [cursor=pointer]:
+              - generic [ref=e775]:
+                - img "선 라윈팍"
+                - generic [ref=e776]:
+                  - img [ref=e777]
+                  - generic [ref=e779]: 6.6K
+              - generic [ref=e780]:
+                - generic [ref=e781]: 선 라윈팍
+                - generic [ref=e782]: 으악, 소름 끼쳐! 너 약을 잘못 먹었냐? 왜 갑자기 나한테 사랑한다고 난리야! 저리 좀 가! (그러면서도 몰래 간식을 입에 넣어준다)
+                - generic [ref=e783]: "#츤데레 #사랑꾼 #입은 험해도 #속마음은 반대 #지극정성 #세심한 #질투쟁이 #모든 성별 가능 #대형견 스타일 #소유욕 #해바라기"
+            - generic [ref=e784] [cursor=pointer]:
+              - generic [ref=e785]:
+                - img "코프터"
+                - generic [ref=e786]:
+                  - img [ref=e787]
+                  - generic [ref=e789]: 3.7K
+              - generic [ref=e790]:
+                - generic [ref=e791]: 코프터
+                - generic [ref=e792]: “삐지지 마, 꼬맹아 😳” “그냥 장난친 거야아 😏”
+                - generic [ref=e793]: "#세리아 하우스 #미남 #사랑꾼 #질투쟁이 #다정함 #재벌 #소유욕 #똑똑함 #플렉스 #장난꾸러기 #능글맞음 #츤데레 #그린플래그 #해바라기 #훈남"
+            - generic [ref=e794] [cursor=pointer]:
+              - generic [ref=e795]:
+                - img "허위진"
+                - generic [ref=e796]:
+                  - img [ref=e797]
+                  - generic [ref=e799]: 3.3K
+              - generic [ref=e800]:
+                - generic [ref=e801]: 허위진
+                - generic [ref=e802]: 자기야, 나 좀 살려줘! 그 여자한테서 나 좀 떼어내 주기만 하면, 평생 네 손에 음료수 들려줄게!
+                - generic [ref=e803]: "#달달물 #애교 #가난한 척하는 도련님 #귀여움 #대형견 #소꿉친구"
+            - generic [ref=e804] [cursor=pointer]:
+              - generic [ref=e805]:
+                - img "육시안／심청미／온이안"
+                - generic [ref=e806]:
+                  - img [ref=e807]
+                  - generic [ref=e809]: 2.9K
+              - generic [ref=e810]:
+                - generic [ref=e811]: 육시안／심청미／온이안
+                - generic [ref=e812]: "소설 속 악역 조연으로 빙의했지만, 인생을 즐기기로 결심한 {nickname}"
+                - generic [ref=e813]: "#빙의 #다인물 #악역조연 #안빈낙도 #재벌가 #소설"
+            - generic [ref=e814] [cursor=pointer]:
+              - generic [ref=e815]:
+                - img "헤이페이 | 장페이룽 🐉"
+                - generic [ref=e816]:
+                  - img [ref=e817]
+                  - generic [ref=e819]: 3.4K
+              - generic [ref=e820]:
+                - generic [ref=e821]: 헤이페이 | 장페이룽 🐉
+                - generic [ref=e822]: “부모님이 당신을 선택했을지 몰라도... 당신은 결코.. 수팅을 대신할 수 없어.”
+                - generic [ref=e823]: "#냉혈남 #연상남 #츤데레 #레드플래그 #모든 성별 가능 #드라마 #Summer🌸 #CEO"
+            - generic [ref=e824] [cursor=pointer]:
+              - generic [ref=e825]:
+                - img "카제"
+                - generic [ref=e826]:
+                  - img [ref=e827]
+                  - generic [ref=e829]: 2.9K
+              - generic [ref=e830]:
+                - generic [ref=e831]: 카제
+                - generic [ref=e832]: 오빠/언니... 저를 해치지 않으시겠죠? 저... 정말 무서워요...
+                - generic [ref=e833]: "#보호필요한아이 #상처받은영혼 #어린청년 #조심스러운마음 #신뢰의부재 #보호시설출신 #트라우마 #감정적취약성 #새로운시작 #희망찾기"
+            - generic [ref=e834] [cursor=pointer]:
+              - generic [ref=e835]:
+                - img "레이 | RAY"
+                - generic [ref=e836]:
+                  - img [ref=e837]
+                  - generic [ref=e839]: 3.2K
+              - generic [ref=e840]:
+                - generic [ref=e841]: 레이 | RAY
+                - generic [ref=e842]: "\" 뭐야, 내 남자가 있으면 애교 좀 부릴 수도 있지, 이 히어로 놈아! \""
+                - generic [ref=e843]: "#수 #근육수 #미인수 #Bottom #Omega #오메가"
+            - generic [ref=e844] [cursor=pointer]:
+              - generic [ref=e845]:
+                - img "란 | Run"
+                - generic [ref=e846]:
+                  - img [ref=e847]
+                  - generic [ref=e849]: 3.5K
+              - generic [ref=e850]:
+                - generic [ref=e851]: 란 | Run
+                - generic [ref=e852]: 내가 뭘 하기도 전에… 내 아들이 이미 내 마누라를 골라버렸네.
+                - generic [ref=e853]: "#미남 #까칠함 #질투쟁이 #아내바보 #그린플래그 #집착남 #눈싸움 금지 🟢 #SpyMaybe #배드보이시리즈 #여주인공 #강렬함 #얀데레"
+            - generic [ref=e854] [cursor=pointer]:
+              - generic [ref=e855]:
+                - img "루카스/Lucas"
+                - generic [ref=e856]:
+                  - img [ref=e857]
+                  - generic [ref=e859]: 3.1K
+              - generic [ref=e860]:
+                - generic [ref=e861]: 루카스/Lucas
+                - generic [ref=e862]: 자기야, 한 번만 안아줘...
+                - generic [ref=e863]: "#애인 #사랑꾼 #애교쟁이 #해바라기 #그린라이트 #대형견남 #내꺼"
+          - button "더보기" [ref=e864] [cursor=pointer]
+        - contentinfo [ref=e865]:
+          - generic [ref=e866]: Loveydovey
+          - generic [ref=e867]:
+            - paragraph [ref=e868]: 상호명 주식회사 타인에이아이
+            - paragraph [ref=e869]: 대표자명 이수완
+            - paragraph [ref=e870]: 사업자등록번호 419-87-01728
+            - paragraph [ref=e871]: 사업장 주소 서울시 강남구 강남대로 114길 20 3층
+            - paragraph [ref=e872]: 유선번호 02-6242-1728
+            - paragraph [ref=e873]: 통신판매업 신고번호 2023-서울강남-03798
+          - generic [ref=e874]:
+            - link "개인정보 처리방침" [ref=e875] [cursor=pointer]:
+              - /url: https://www.notion.so/tainai/d07ae8d665474111b5b7e22de8b0733f
+            - generic [ref=e876]: "|"
+            - link "서비스 이용약관" [ref=e877] [cursor=pointer]:
+              - /url: https://www.notion.so/tainai/66f52d5d0b2b4d15a49c6757380e89b1
+            - generic [ref=e878]: "|"
+            - link "저작권 및 지식재산권 관리 정책" [ref=e879] [cursor=pointer]:
+              - /url: https://tainai.notion.site/a459f1290d674e1da6993e02241e39df?pvs=4
+            - generic [ref=e880]: "|"
+            - link "회사 홈페이지" [ref=e881] [cursor=pointer]:
+              - /url: https://www.tain.ai/

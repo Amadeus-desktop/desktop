@@ -1,4 +1,9 @@
 import type { PersonaId } from "../../domain/persona/types";
+import type { Persona } from "../../domain/persona/types";
+import {
+  buildCompanionPromptEnvelope,
+  type CompanionPromptEnvelope,
+} from "../../domain/prompt/assembly";
 import type { LocaleCode } from "../../i18n/types";
 import type { CompanionMessage } from "../companion/types";
 
@@ -14,6 +19,7 @@ export type LlmChatRequest = {
   locale: LocaleCode;
   personaId: PersonaId;
   nickname: string;
+  promptEnvelope: CompanionPromptEnvelope;
 };
 
 export type LlmGeneration = {
@@ -33,15 +39,60 @@ export function toLlmChatRequest(
     locale: LocaleCode;
     personaId: PersonaId;
     nickname: string;
+    persona: Persona;
   },
 ): LlmChatRequest {
+  const llmMessages = messages.map((message) => ({
+    role: message.sender,
+    content: message.text,
+  }));
+
   return {
-    messages: messages.map((message) => ({
-      role: message.sender,
-      content: message.text,
-    })),
+    messages: llmMessages,
     locale: context.locale,
     personaId: context.personaId,
     nickname: context.nickname,
+    promptEnvelope: buildCompanionPromptEnvelope({
+      surface: "app",
+      mode: "deep",
+      locale: context.locale,
+      isConversationStart: messages.length === 0,
+      personaStatic: {
+        identity: {
+          id: context.persona.id,
+          name: context.persona.name,
+          shortLabel: context.persona.shortLabel,
+          description: context.persona.description,
+        },
+        scenario: {
+          relationship_hook: context.persona.shortLabel,
+        },
+        relationship_boundary: {
+          not_allowed: ["claim_hidden_context", "force_dependency"],
+        },
+        forbidden_claims: [
+          "나는 네 화면 전체를 실시간으로 보고 있다",
+          "너는 내 말대로 해야 한다",
+        ],
+        negative_behavior: ["사용자 거절 무시", "감시하는 듯한 표현"],
+        safety_boundary: {
+          dependency: "사용자가 AI 관계에만 기대도록 만들지 않는다.",
+        },
+        privacy_contract: {
+          desktop_context: "화면 원문을 인용하지 않는다.",
+        },
+      },
+      personaState: null,
+      semanticMemories: [],
+      episodicContext: [],
+      sessionMessages: messages.map((message, index) => ({
+        id: message.id,
+        role: message.sender === "companion" ? "assistant" : "user",
+        content: message.text,
+        createdAtMs: index + 1,
+        clientSequence: index + 1,
+      })),
+      currentContext: null,
+    }),
   };
 }

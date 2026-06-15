@@ -3,3 +3,16 @@ export { PERSONA_IDS, PRESENCE_ICON_BY_PERSONA, normalizePersonaId } from "./typ
 export { getPersonaList, getPersonas } from "./registry";
 export { getPersonaAccent, PERSONA_ACCENT } from "./theme";
 export type { PersonaAccent } from "./theme";
+export type {
+  CloudPersonaSnapshot,
+  LocalPersonaCache,
+  PersonaCacheDecision,
+  PersonaStateJson,
+  PersonaStaticPromptJson,
+  PersonaSyncStatus,
+} from "./sourceOfTruth";
+export {
+  assertPersonaStateCannotOverwriteStaticIdentity,
+  buildLocalPersonaCache,
+  mergeRemotePersonaCache,
+} from "./sourceOfTruth";

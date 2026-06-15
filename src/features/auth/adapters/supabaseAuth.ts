@@ -80,6 +80,15 @@ async function resolveGoogleOAuthRedirectUrl(shouldUseAppDeepLink: boolean) {
   return invoke<string>("start_dev_auth_callback_server");
 }
 
+export async function ensureDevAuthCallbackServer(): Promise<void> {
+  if (!isTauriRuntime()) return;
+
+  const redirectUrl = getGoogleOAuthRedirectUrl(true);
+  if (redirectUrl !== AMADEUS_DEV_AUTH_CALLBACK_URL) return;
+
+  await invoke<string>("start_dev_auth_callback_server");
+}
+
 export function extractAuthCallbackCode(callbackUrl: string): string | null {
   let parsed: URL;
   try {
@@ -119,7 +128,7 @@ function isLocalDevOrigin(origin: string) {
       parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost";
 
     if (isLoopbackHost) {
-      return parsed.port === "1420" || parsed.port === "";
+      return parsed.port === "1420" || parsed.port === "1421" || parsed.port === "";
     }
 
     return parsed.hostname === "tauri.localhost";

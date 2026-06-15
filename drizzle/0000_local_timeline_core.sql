@@ -39,11 +39,15 @@ CREATE TABLE IF NOT EXISTS local_personas (
   id TEXT PRIMARY KEY NOT NULL,
   remote_persona_id TEXT NOT NULL,
   name TEXT NOT NULL,
-  tone TEXT NOT NULL,
-  personality_json TEXT NOT NULL,
-  system_prompt TEXT NOT NULL,
+  base_tone TEXT NOT NULL,
+  relationship_type TEXT NOT NULL,
+  world_type TEXT NOT NULL,
+  static_prompt_json TEXT NOT NULL,
+  persona_state_json TEXT,
   remote_version INTEGER NOT NULL CHECK (remote_version >= 1),
-  sync_status TEXT NOT NULL CHECK (sync_status IN ('synced', 'pending', 'conflict')),
+  last_pulled_version INTEGER NOT NULL CHECK (last_pulled_version >= 1),
+  pending_mutation_id TEXT,
+  sync_status TEXT NOT NULL CHECK (sync_status IN ('synced', 'pending', 'conflicted', 'deleted')),
   updated_at_ms INTEGER NOT NULL
 );
 
@@ -71,6 +75,32 @@ CREATE TABLE IF NOT EXISTS work_sessions (
   created_at_ms INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS conversation_sessions (
+  id TEXT PRIMARY KEY NOT NULL,
+  cloud_conversation_id TEXT NOT NULL,
+  persona_id TEXT NOT NULL,
+  source TEXT NOT NULL CHECK (source IN ('app', 'web_mirror')),
+  sync_status TEXT NOT NULL CHECK (sync_status IN ('pending', 'retrying', 'synced', 'error', 'conflicted', 'deleted')),
+  last_synced_message_at_ms INTEGER,
+  created_at_ms INTEGER NOT NULL,
+  updated_at_ms INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS conversation_messages (
+  id TEXT PRIMARY KEY NOT NULL,
+  cloud_message_id TEXT,
+  session_id TEXT NOT NULL,
+  role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system_summary')),
+  content TEXT NOT NULL,
+  provider TEXT,
+  sync_status TEXT NOT NULL CHECK (sync_status IN ('pending', 'retrying', 'synced', 'error', 'conflicted', 'deleted')),
+  idempotency_key TEXT NOT NULL,
+  client_sequence INTEGER NOT NULL CHECK (client_sequence >= 1),
+  created_at_ms INTEGER NOT NULL,
+  server_received_at_ms INTEGER,
+  FOREIGN KEY (session_id) REFERENCES conversation_sessions(id)
+);
+
 CREATE TABLE IF NOT EXISTS sync_queue (
   id TEXT PRIMARY KEY NOT NULL,
   event_type TEXT NOT NULL,
@@ -91,6 +121,15 @@ CREATE INDEX IF NOT EXISTS local_memories_updated_at_idx
 
 CREATE INDEX IF NOT EXISTS work_sessions_started_at_idx
   ON work_sessions (started_at_ms DESC);
+
+CREATE INDEX IF NOT EXISTS conversation_sessions_cloud_id_idx
+  ON conversation_sessions (cloud_conversation_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS conversation_messages_session_idempotency_idx
+  ON conversation_messages (session_id, idempotency_key);
+
+CREATE INDEX IF NOT EXISTS conversation_messages_session_order_idx
+  ON conversation_messages (session_id, created_at_ms ASC, client_sequence ASC);
 
 CREATE INDEX IF NOT EXISTS sync_queue_status_idx
   ON sync_queue (status, updated_at_ms ASC);

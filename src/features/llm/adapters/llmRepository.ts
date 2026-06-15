@@ -22,6 +22,7 @@ export async function generateChatReply(
     locale: settings.locale,
     personaId: persona.id,
     nickname: settings.nickname,
+    persona,
   });
 
   if (settings.modelRoute === "api-first") {

@@ -13,6 +13,19 @@ export const auth: AuthMessages = {
     logout: "Log out",
     loggingOut: "Signing out…",
   },
+  logout: {
+    preparing: {
+      eyebrow: "One moment",
+      title: "Stepping back for a moment",
+      subtitle: "Tidying things up beside you.",
+    },
+    complete: {
+      eyebrow: "All set",
+      title: "See you soon",
+      subtitle: "I'll be here when you return.",
+      hint: "Back to sign-in in a moment.",
+    },
+  },
   profile: {
     eyebrow: "Profile",
     title: "Your account",

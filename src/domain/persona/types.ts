@@ -2,7 +2,10 @@ export type PersonaId =
   | "warm_friend"
   | "loving_partner"
   | "steady_ally"
-  | "soft_care";
+  | "soft_care"
+  | "seoyeon-modern-senior"
+  | "eiren-fantasy-guardian"
+  | "makise-kurisu";
 
 export type PresenceIconKind =
   | "bubble"
@@ -22,6 +25,9 @@ export type Persona = {
 };
 
 export const PERSONA_IDS = [
+  "seoyeon-modern-senior",
+  "eiren-fantasy-guardian",
+  "makise-kurisu",
   "warm_friend",
   "loving_partner",
   "steady_ally",
@@ -29,6 +35,9 @@ export const PERSONA_IDS = [
 ] as const satisfies readonly PersonaId[];
 
 export const PRESENCE_ICON_BY_PERSONA: Record<PersonaId, PresenceIconKind> = {
+  "seoyeon-modern-senior": "letter",
+  "eiren-fantasy-guardian": "star",
+  "makise-kurisu": "line",
   warm_friend: "bubble",
   loving_partner: "letter",
   steady_ally: "star",

@@ -12,18 +12,25 @@ import {
   completeSupabaseAuthCallback,
   extractAuthCallbackCode,
   getCurrentSupabaseUser,
+  ensureDevAuthCallbackServer,
   signInWithGoogle,
   signOutSupabase,
 } from "../adapters/supabaseAuth";
-import type { AuthSnapshot, AuthUser } from "../types";
+import type { AuthSnapshot, AuthUser, LogoutPhase } from "../types";
+
+import {
+  ONBOARDING_COMPLETE_DELAY_MS,
+  ONBOARDING_PREPARE_DELAY_MS,
+  sleep,
+} from "../../onboarding/lib/transitionTiming";
 
 const AUTH_STORAGE_KEY = "amadeus:auth-session";
-const ONBOARDING_UI_SETTLE_MS = 400;
 
 const authStore = createExternalStore<AuthSnapshot>({
   user: null,
   hydrated: false,
   logoutTransitioning: false,
+  logoutPhase: null,
 });
 
 let hydratePromise: Promise<AuthUser | null> | null = null;
@@ -44,8 +51,9 @@ function replaceSnapshot(
   user: AuthUser | null,
   hydrated = authStore.getSnapshot().hydrated,
   logoutTransitioning = authStore.getSnapshot().logoutTransitioning,
+  logoutPhase = authStore.getSnapshot().logoutPhase,
 ) {
-  authStore.setSnapshot({ user, hydrated, logoutTransitioning });
+  authStore.setSnapshot({ user, hydrated, logoutTransitioning, logoutPhase });
 }
 
 function applyAuthenticatedUser(user: AuthUser) {
@@ -104,12 +112,14 @@ export function hydrateAuth() {
 
   if (!hydratePromise) {
     startDeepLinkAuthListener();
-    hydratePromise = getCurrentSupabaseUser().then((supabaseUser) => {
-      const user = supabaseUser ?? readStoredUser();
-      replaceSnapshot(user, true);
-      writeStoredUser(user);
-      return user;
-    });
+    hydratePromise = ensureDevAuthCallbackServer()
+      .then(() => getCurrentSupabaseUser())
+      .then((supabaseUser) => {
+        const user = supabaseUser ?? readStoredUser();
+        replaceSnapshot(user, true);
+        writeStoredUser(user);
+        return user;
+      });
   }
 
   return hydratePromise;
@@ -120,7 +130,12 @@ function bootstrapAuth() {
   if (typeof window === "undefined" || snapshot.hydrated) return;
   startDeepLinkAuthListener();
   authStore.setSnapshot(
-    { user: readStoredUser(), hydrated: true, logoutTransitioning: false },
+    {
+      user: readStoredUser(),
+      hydrated: true,
+      logoutTransitioning: false,
+      logoutPhase: null,
+    },
     { notify: false },
   );
 }
@@ -204,6 +219,16 @@ export function signOut() {
     user: null,
     hydrated: true,
     logoutTransitioning: false,
+    logoutPhase: null,
+  });
+}
+
+function setLogoutPhase(phase: LogoutPhase) {
+  const snapshot = authStore.getSnapshot();
+  authStore.setSnapshot({
+    ...snapshot,
+    logoutTransitioning: true,
+    logoutPhase: phase,
   });
 }
 
@@ -211,13 +236,9 @@ export async function signOutWithTransition() {
   const snapshot = authStore.getSnapshot();
   if (snapshot.logoutTransitioning) return;
 
-  authStore.setSnapshot({
-    ...snapshot,
-    logoutTransitioning: true,
-  });
+  setLogoutPhase("preparing");
   resetOnboardingProgress();
 
-  // Let React paint onboarding UI before the window resize animation starts.
   await new Promise<void>((resolve) => {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => resolve());
@@ -225,19 +246,22 @@ export async function signOutWithTransition() {
   });
 
   try {
-    await Promise.all([
-      animateMainWindowToOnboarding(),
-      new Promise<void>((resolve) => setTimeout(resolve, ONBOARDING_UI_SETTLE_MS)),
-    ]);
-  } catch (error) {
-    logger.error("auth", "logout window transition failed", { error });
-  }
+    await sleep(ONBOARDING_PREPARE_DELAY_MS);
+    setLogoutPhase("complete");
+    await sleep(ONBOARDING_COMPLETE_DELAY_MS);
 
-  try {
-    await signOutSupabase();
-  } catch (error) {
-    logger.error("auth", "supabase sign out failed", { error });
-  }
+    try {
+      await animateMainWindowToOnboarding();
+    } catch (error) {
+      logger.error("auth", "logout window transition failed", { error });
+    }
 
-  signOut();
+    try {
+      await signOutSupabase();
+    } catch (error) {
+      logger.error("auth", "supabase sign out failed", { error });
+    }
+  } finally {
+    signOut();
+  }
 }

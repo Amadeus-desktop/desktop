@@ -1,0 +1,108 @@
+- generic [ref=e369]:
+  - generic [ref=e371]:
+    - button "home" [ref=e372] [cursor=pointer]:
+      - img [ref=e373]
+    - button "chatting" [ref=e375] [cursor=pointer]:
+      - img [ref=e376]
+    - button "캐릭터 만들기" [ref=e378] [cursor=pointer]:
+      - img [ref=e380]
+  - generic [ref=e383]:
+    - banner [ref=e385]:
+      - img "LoveyDovey" [ref=e387]
+      - generic [ref=e388]:
+        - generic [ref=e389]:
+          - button [ref=e390] [cursor=pointer]:
+            - img [ref=e391]
+          - button [ref=e393] [cursor=pointer]:
+            - img [ref=e394]
+        - button "profile" [ref=e397] [cursor=pointer]:
+          - img "profile" [ref=e399]
+    - generic [ref=e401]:
+      - generic [ref=e404]:
+        - button [ref=e405] [cursor=pointer]:
+          - img [ref=e406]
+        - button [ref=e408] [cursor=pointer]:
+          - img [ref=e409]
+        - button [ref=e412] [cursor=pointer]:
+          - img [ref=e413]
+      - generic [ref=e415]:
+        - generic [ref=e417]:
+          - generic [ref=e418]:
+            - generic [ref=e422]:
+              - generic [ref=e423]:
+                - img "character 1"
+              - generic [ref=e424]:
+                - img "character 2"
+              - generic [ref=e425]:
+                - img "character 3"
+              - generic [ref=e427]:
+                - img "character 4"
+                - generic:
+                  - img "locked"
+                  - paragraph: 친구 단계 달성시
+              - generic [ref=e429]:
+                - img "character 5"
+                - generic:
+                  - img "locked"
+                  - paragraph: 친구 단계 달성시
+            - generic:
+              - generic: "1"
+              - generic: / 5
+            - generic:
+              - button:
+                - img
+              - button:
+                - img
+          - generic [ref=e431]:
+            - generic [ref=e432]:
+              - generic [ref=e433]:
+                - generic [ref=e434]:
+                  - paragraph [ref=e435]: 틴
+                  - paragraph [ref=e436]: 25ㆍ축구 선수
+                - button [ref=e437] [cursor=pointer]:
+                  - img [ref=e439]
+              - generic [ref=e442]:
+                - paragraph [ref=e444]: "#친절한"
+                - paragraph [ref=e446]: "#린의 아이"
+                - paragraph [ref=e448]: "#강아지"
+                - paragraph [ref=e450]: "#축구선수"
+                - paragraph [ref=e452]: "#광적인 사랑"
+              - paragraph [ref=e454]: 누나, 왜 말 안 해줬어요... 내 아이잖아요!
+            - generic [ref=e456]:
+              - generic [ref=e457]:
+                - generic [ref=e458]:
+                  - img [ref=e459]
+                  - paragraph [ref=e461]: 좋아요
+                - paragraph [ref=e462]: "13061"
+                - generic [ref=e463]:
+                  - img [ref=e464]
+                  - paragraph [ref=e466]: 크리에이터
+                - paragraph [ref=e467]: A!R!N
+                - generic [ref=e468]:
+                  - img [ref=e469]
+                  - paragraph [ref=e471]: 캐릭터 유형
+                - paragraph [ref=e472]: 순수 창작
+                - generic [ref=e473]:
+                  - img [ref=e474]
+                  - paragraph [ref=e476]: 이용 설정
+                - paragraph [ref=e477]: 일반 등급
+              - generic [ref=e478]:
+                - button "앱에서 바로 보기" [ref=e480] [cursor=pointer]:
+                  - generic [ref=e481]: 앱에서 바로 보기
+                - button "대화 시작하기" [ref=e483] [cursor=pointer]:
+                  - generic [ref=e485]: 대화 시작하기
+                - button [ref=e486] [cursor=pointer]:
+                  - img [ref=e487]
+        - navigation [ref=e491]:
+          - list [ref=e492]:
+            - listitem [ref=e493]: 첫 장면
+            - listitem [ref=e494]: 서사
+            - listitem [ref=e495]: 소식
+            - listitem [ref=e496]: 커뮤니티
+        - generic [ref=e498]:
+          - img [ref=e499]
+          - generic [ref=e501]:
+            - paragraph [ref=e502]: 어느 한적한 공원에서
+            - generic [ref=e503]:
+              - generic [ref=e504]: "📍: 공원 ⏰: 오전 07:34 💬: ({nickname} 누나!... 맞죠? 누나 맞죠!... 그럼 그 애는...)"
+              - generic [ref=e505]: "아침 햇살이 조깅 중인 틴의 구릿빛 피부 위로 쏟아집니다. 큰 후드티와 트레이닝 팬츠 차림으로 달리던 그의 시선이 놀이터 옆 벤치에 앉아 있는 {nickname}에게 멈췄습니다. 그녀라는 것을 알아본 순간, 틴은 정신없이 그녀를 향해 달려갔습니다. \"{nickname} 누나!\" 그리움과 걱정이 뒤섞인 목소리로 틴이 그녀를 불렀습니다. '그동안 어디 있었어요?', '잘 지냈어요?', '나 보고 싶긴 했어요?' 수많은 질문이 머릿속을 스쳤지만, 그 모든 생각은 두 살배기 꼬마 '똔락'이 {nickname}의 다리에 매달려 안기는 바람에 흩어져 버렸습니다. \"아저씨, 우리 엄마 괴롭히지 마요!\" 눈앞의 남자가 친아빠라는 사실을 꿈에도 모르는 똔락이, 엄마를 지키려는 듯 서툰 발음으로 앙칼지게 외칩니다."

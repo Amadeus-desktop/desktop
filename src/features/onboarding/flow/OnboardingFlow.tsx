@@ -1,8 +1,14 @@
 import { useState } from "react";
 import { useI18n } from "../../../i18n";
 import { animateMainWindowToControlCenter } from "../../auth/lib/mainWindowLayout";
+import { LogoutTransitionStep } from "../../auth/components/LogoutTransitionStep";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { usePermissionReadiness } from "../hooks/usePermissionReadiness";
+import {
+  ONBOARDING_COMPLETE_DELAY_MS,
+  ONBOARDING_PREPARE_DELAY_MS,
+  sleep,
+} from "../lib/transitionTiming";
 import { OnboardingShell } from "../shell/OnboardingShell";
 import { LoginStep } from "../steps/LoginStep";
 import { PermissionsStep } from "../steps/PermissionsStep";
@@ -10,9 +16,6 @@ import { ModelRouteStep } from "../steps/ModelRouteStep";
 import { PreparingStep, type PreparingPhase } from "../steps/PreparingStep";
 import { SetupStep } from "../steps/SetupStep";
 import type { OnboardingStep } from "../../../domain/onboarding";
-
-const ONBOARDING_PREPARE_DELAY_MS = 2000;
-const ONBOARDING_COMPLETE_DELAY_MS = 1400;
 
 type OnboardingFlowProps = {
   currentStep: OnboardingStep;
@@ -22,12 +25,6 @@ type OnboardingFlowProps = {
   markSetupDone: () => void;
 };
 
-function sleep(ms: number) {
-  return new Promise<void>((resolve) => {
-    window.setTimeout(resolve, ms);
-  });
-}
-
 export function OnboardingFlow({
   currentStep,
   stepOrder,
@@ -36,7 +33,7 @@ export function OnboardingFlow({
   markSetupDone,
 }: OnboardingFlowProps) {
   const t = useI18n();
-  const { isAuthenticated, signInWithGoogle, logoutTransitioning } = useAuth();
+  const { isAuthenticated, signInWithGoogle, logoutTransitioning, logoutPhase } = useAuth();
   const readiness = usePermissionReadiness(
     isAuthenticated && currentStep === "permissions",
   );
@@ -45,6 +42,7 @@ export function OnboardingFlow({
 
   const stepLabels = stepOrder.map((step) => t.onboarding.steps[step]);
   const isFinishing = preparePhase !== null;
+  const isLogoutTransition = logoutTransitioning && logoutPhase !== null;
 
   async function finishOnboarding() {
     if (continuing) return;
@@ -70,18 +68,20 @@ export function OnboardingFlow({
     <OnboardingShell
       step={currentStep}
       stepLabels={stepLabels}
-      hideProgress={isFinishing}
+      hideProgress={isFinishing || isLogoutTransition}
     >
+      {isLogoutTransition ? <LogoutTransitionStep phase={logoutPhase} /> : null}
+
       {preparePhase ? <PreparingStep phase={preparePhase} /> : null}
 
-      {!isFinishing && currentStep === "login" ? (
+      {!isLogoutTransition && !isFinishing && currentStep === "login" ? (
         <LoginStep
           onGoogleSignIn={signInWithGoogle}
           loggingOut={logoutTransitioning}
         />
       ) : null}
 
-      {!isFinishing && currentStep === "permissions" ? (
+      {!isLogoutTransition && !isFinishing && currentStep === "permissions" ? (
         <PermissionsStep
           readiness={readiness}
           onRefresh={readiness.refresh}
@@ -91,14 +91,14 @@ export function OnboardingFlow({
         />
       ) : null}
 
-      {!isFinishing && currentStep === "modelRoute" ? (
+      {!isLogoutTransition && !isFinishing && currentStep === "modelRoute" ? (
         <ModelRouteStep
           onContinue={markModelRouteDone}
           continuing={continuing}
         />
       ) : null}
 
-      {!isFinishing && currentStep === "setup" ? (
+      {!isLogoutTransition && !isFinishing && currentStep === "setup" ? (
         <SetupStep
           onComplete={() => void finishOnboarding()}
           continuing={continuing}

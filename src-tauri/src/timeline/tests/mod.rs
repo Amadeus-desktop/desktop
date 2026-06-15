@@ -120,6 +120,8 @@ fn migration_prepares_phase_6_local_tables() {
         "local_personas",
         "local_memories",
         "work_sessions",
+        "conversation_sessions",
+        "conversation_messages",
         "sync_queue",
     ] {
         assert!(
@@ -127,6 +129,67 @@ fn migration_prepares_phase_6_local_tables() {
                 .table_exists(table_name)
                 .expect("schema query works"),
             "{table_name} table should exist"
+        );
+    }
+
+    let local_persona_columns = repository
+        .table_columns("local_personas")
+        .expect("schema query works");
+    for column_name in [
+        "remote_persona_id",
+        "base_tone",
+        "relationship_type",
+        "world_type",
+        "static_prompt_json",
+        "persona_state_json",
+        "remote_version",
+        "last_pulled_version",
+        "pending_mutation_id",
+        "sync_status",
+    ] {
+        assert!(
+            local_persona_columns.iter().any(|column| column == column_name),
+            "local_personas should include {column_name}"
+        );
+    }
+
+    let conversation_session_columns = repository
+        .table_columns("conversation_sessions")
+        .expect("schema query works");
+    for column_name in [
+        "cloud_conversation_id",
+        "persona_id",
+        "source",
+        "sync_status",
+        "last_synced_message_at_ms",
+    ] {
+        assert!(
+            conversation_session_columns
+                .iter()
+                .any(|column| column == column_name),
+            "conversation_sessions should include {column_name}"
+        );
+    }
+
+    let conversation_message_columns = repository
+        .table_columns("conversation_messages")
+        .expect("schema query works");
+    for column_name in [
+        "cloud_message_id",
+        "session_id",
+        "role",
+        "content",
+        "provider",
+        "sync_status",
+        "idempotency_key",
+        "client_sequence",
+        "server_received_at_ms",
+    ] {
+        assert!(
+            conversation_message_columns
+                .iter()
+                .any(|column| column == column_name),
+            "conversation_messages should include {column_name}"
         );
     }
 }
