@@ -36,6 +36,7 @@ export function LoginStep({ onGoogleSignIn, loggingOut = false }: LoginStepProps
         />
 
         <GoogleSignInButton
+          variant="link"
           label={
             loggingOut
               ? t.auth.account.loggingOut

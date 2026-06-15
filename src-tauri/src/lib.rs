@@ -19,8 +19,8 @@ use llm::{
 use macos_context::{get_current_context_snapshot, ContextBridgeState};
 use macos_window::{
     configure_macos_companion_window, configure_macos_main_window, position_companion_window,
-    restore_companion_window_on_active_space, watch_macos_companion_space_changes,
-    CompanionWindowVisibility,
+    restore_companion_window_on_active_space, start_main_window_drag,
+    watch_macos_companion_space_changes, CompanionWindowVisibility,
 };
 use observability::{error as log_error, init as init_logger, LogArea};
 use ocr::{
@@ -105,6 +105,11 @@ fn tray_menu_action(menu_id: &str) -> TrayMenuAction {
 #[tauri::command]
 fn sync_companion_window_position(app: tauri::AppHandle) {
     restore_companion_window_on_active_space(&app);
+}
+
+#[tauri::command]
+fn start_main_window_drag_command(app: tauri::AppHandle) -> Result<(), String> {
+    start_main_window_drag(&app)
 }
 
 #[tauri::command]
@@ -762,6 +767,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             sync_companion_window_position,
+            start_main_window_drag_command,
             get_current_context_snapshot,
             get_screen_capture_permission_status,
             request_screen_capture_permission,

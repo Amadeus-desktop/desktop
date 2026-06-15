@@ -34,6 +34,7 @@ export type PersonaStateJson = {
 
 export type CloudPersonaSnapshot = {
   remotePersonaId: string;
+  slug: string;
   name: string;
   baseTone: string;
   relationshipType: string;
@@ -54,6 +55,7 @@ export type PersonaSyncStatus =
 export type LocalPersonaCache = {
   id: string;
   remotePersonaId: string;
+  slug: string;
   name: string;
   baseTone: string;
   relationshipType: string;
@@ -84,6 +86,7 @@ export function buildLocalPersonaCache(
   return {
     id: remote.remotePersonaId,
     remotePersonaId: remote.remotePersonaId,
+    slug: remote.slug,
     name: remote.name,
     baseTone: remote.baseTone,
     relationshipType: remote.relationshipType,

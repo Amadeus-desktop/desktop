@@ -9,6 +9,8 @@ import {
   useOnboarding,
 } from "../features/onboarding";
 import { ensureSettingsSync } from "../features/settings";
+import { ensureMainWebviewTransparency } from "../lib/tauri/mainWindowChrome";
+import { isTauriRuntime } from "../lib/tauri/runtime";
 import { useShellTheme } from "../ui";
 
 function App() {
@@ -33,6 +35,11 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (!isTauriRuntime()) return;
+    void ensureMainWebviewTransparency();
+  }, []);
+
+  useEffect(() => {
     if (isAuthenticated) {
       ensureSettingsSync();
     }
@@ -41,14 +48,14 @@ function App() {
   return (
     <main
       className={cn(
-        "relative flex h-dvh w-dvw overflow-hidden bg-transparent text-white",
+        "pointer-events-none relative flex h-dvh w-dvw overflow-hidden bg-transparent text-white",
         showOnboardingShell ? "p-0" : "p-3 max-sm:p-2.5",
       )}
     >
       <div
         className={cn(
-          "relative z-10 h-full min-h-0 w-full",
-          !showOnboardingShell && "app-no-drag",
+          "pointer-events-auto relative z-10 h-full min-h-0 w-full",
+          !showOnboardingShell && "tauri-no-drag",
         )}
       >
         {showOnboardingShell ? (

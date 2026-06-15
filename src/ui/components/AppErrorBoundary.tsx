@@ -1,7 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { cn } from "../../lib/utils/cn";
 import { Button } from "./Button";
-import { glassStyles, shellText } from "../lib/glassStyles";
+import { glassStyles, shellText } from "../theme/shellStyles";
 
 type AppErrorBoundaryProps = {
   children: ReactNode;

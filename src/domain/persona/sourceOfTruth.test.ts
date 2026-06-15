@@ -28,6 +28,7 @@ const personaState: PersonaStateJson = {
 function remotePersona(version: number): CloudPersonaSnapshot {
   return {
     remotePersonaId: "persona-1",
+    slug: "seoyeon-modern-senior",
     name: "한서연",
     baseTone: "restrained_warm",
     relationshipType: "ex_lover_senior",

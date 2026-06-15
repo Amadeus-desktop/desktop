@@ -5,6 +5,7 @@ describe("normalizePersonaRow", () => {
   it("maps a Supabase persona row into a cloud persona snapshot", () => {
     const snapshot = normalizePersonaRow({
       id: "persona-1",
+      slug: "seoyeon-modern-senior",
       name: "한서연",
       base_tone: "restrained_warm",
       relationship_type: "ex_lover_senior",
@@ -34,6 +35,7 @@ describe("normalizePersonaRow", () => {
 
     expect(snapshot).toMatchObject({
       remotePersonaId: "persona-1",
+      slug: "seoyeon-modern-senior",
       name: "한서연",
       baseTone: "restrained_warm",
       relationshipType: "ex_lover_senior",

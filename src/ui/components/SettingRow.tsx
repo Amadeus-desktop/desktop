@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "../../lib/utils/cn";
-import { glassStyles, shellText } from "../lib/glassStyles";
+import { glassStyles, shellText } from "../theme/shellStyles";
 import { useSettingsGroup } from "./SettingsGroup";
 
 export type SettingRowVariant = "primary" | "default" | "nested";

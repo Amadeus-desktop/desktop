@@ -33,7 +33,7 @@ function OnboardingStepPanel({
   children: ReactNode;
 }) {
   return (
-    <div key={stepKey} className="onboarding-step-enter w-full">
+    <div key={stepKey} className="motion-safe-animate animate-onboarding-step-enter w-full">
       {children}
     </div>
   );

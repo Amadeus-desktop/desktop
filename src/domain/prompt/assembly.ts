@@ -63,17 +63,7 @@ export type CompanionPromptEnvelope = {
   mode: PromptMode;
   locale: string;
   sectionOrder: string[];
-  personaStatic: Pick<
-    PersonaStaticPromptJson,
-    | "identity"
-    | "backstory"
-    | "speech_style"
-    | "relationship_boundary"
-    | "forbidden_claims"
-    | "negative_behavior"
-    | "safety_boundary"
-    | "privacy_contract"
-  >;
+  personaStatic: PersonaStaticPromptJson;
   characterScenario: {
     scenario: unknown;
     worldLore: unknown;
@@ -160,16 +150,7 @@ export function buildCompanionPromptEnvelope(
     mode: input.mode,
     locale: input.locale,
     sectionOrder: SECTION_ORDER,
-    personaStatic: {
-      identity: personaStatic.identity,
-      backstory: personaStatic.backstory,
-      speech_style: personaStatic.speech_style,
-      relationship_boundary: personaStatic.relationship_boundary,
-      forbidden_claims: personaStatic.forbidden_claims,
-      negative_behavior: personaStatic.negative_behavior,
-      safety_boundary: personaStatic.safety_boundary,
-      privacy_contract: personaStatic.privacy_contract,
-    },
+    personaStatic,
     characterScenario: {
       scenario: personaStatic.scenario,
       worldLore: personaStatic.world_lore,

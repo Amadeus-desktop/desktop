@@ -38,11 +38,22 @@ pub(crate) fn apply_local_schema(
     environment: LocalSchemaEnvironment,
 ) -> Result<(), TimelineError> {
     connection.execute_batch(local_schema_sql_for_environment(environment))?;
+    ensure_local_persona_columns(connection)?;
     ensure_local_memory_card_columns(connection)?;
     connection.execute_batch(
         "CREATE INDEX IF NOT EXISTS local_memories_persona_scope_idx
           ON local_memories (persona_id, scope, memory_category, confidence DESC, updated_at_ms DESC)
           WHERE deleted_at_ms IS NULL;",
+    )?;
+    Ok(())
+}
+
+fn ensure_local_persona_columns(connection: &Connection) -> Result<(), TimelineError> {
+    add_column_if_missing(
+        connection,
+        "local_personas",
+        "slug",
+        "slug TEXT NOT NULL DEFAULT 'unknown-persona'",
     )?;
     Ok(())
 }

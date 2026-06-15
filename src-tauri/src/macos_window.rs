@@ -74,11 +74,23 @@ pub fn configure_macos_main_window(window: &WebviewWindow) {
     };
 
     unsafe {
-        use objc2_app_kit::{NSWindow, NSWindowCollectionBehavior};
+        use objc2_app_kit::{NSColor, NSWindow, NSWindowCollectionBehavior};
 
         let ns_window: &NSWindow = &*(ptr as *const NSWindow);
         ns_window.setCollectionBehavior(NSWindowCollectionBehavior::Managed);
+        ns_window.setOpaque(false);
+        ns_window.setBackgroundColor(Some(&NSColor::clearColor()));
     }
+}
+
+pub fn start_main_window_drag(app: &AppHandle) -> Result<(), String> {
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| "start_main_window_drag: main window missing".to_string())?;
+    window
+        .start_dragging()
+        .map_err(|error| format!("start_main_window_drag: {error}"))?;
+    Ok(())
 }
 
 /// Configure the companion overlay as a floating HUD that follows the active Space.

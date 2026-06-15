@@ -147,6 +147,7 @@ fn migration_prepares_phase_6_local_tables() {
         .expect("schema query works");
     for column_name in [
         "remote_persona_id",
+        "slug",
         "base_tone",
         "relationship_type",
         "world_type",

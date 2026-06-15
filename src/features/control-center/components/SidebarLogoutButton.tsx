@@ -29,7 +29,7 @@ export function SidebarLogoutButton({ className }: SidebarLogoutButtonProps) {
       disabled={loggingOut}
       onClick={() => void handleLogout()}
       className={cn(
-        "app-no-drag flex w-full items-center gap-2 rounded-xl border border-transparent px-2.5 py-2 text-left text-xs font-medium text-[color:var(--shell-ink-muted)] transition hover:border-[color:var(--shell-border-subtle)] hover:bg-[color:var(--shell-row-hover)] hover:text-[color:var(--shell-ink)] disabled:cursor-not-allowed disabled:opacity-50",
+        "tauri-no-drag flex w-full items-center gap-2 rounded-xl border border-transparent px-2.5 py-2 text-left text-xs font-medium text-[color:var(--shell-ink-muted)] transition hover:border-[color:var(--shell-border-subtle)] hover:bg-[color:var(--shell-row-hover)] hover:text-[color:var(--shell-ink)] disabled:cursor-not-allowed disabled:opacity-50",
         className,
       )}
     >

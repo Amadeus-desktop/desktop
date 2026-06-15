@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { glassStyles } from "../lib/glassStyles";
+import { glassStyles } from "../theme/shellStyles";
 import { WindowControls } from "./WindowControls";
 import { WindowDragStrip } from "./WindowDragStrip";
 
@@ -12,7 +12,7 @@ type SidebarProps = {
 export function Sidebar({ brand, children, footer }: SidebarProps) {
   return (
     <aside
-      className={`app-no-drag flex h-full w-full min-w-0 flex-col gap-0.5 px-2 py-3 max-sm:border-b max-sm:border-white/8 max-sm:py-2 ${glassStyles.sidebar}`}
+      className={`tauri-no-drag flex h-full w-full min-w-0 flex-col gap-0.5 px-2 py-3 max-sm:border-b max-sm:border-white/8 max-sm:py-2 ${glassStyles.sidebar}`}
     >
       <div className="flex w-full items-center pb-2">
         <WindowControls />
@@ -23,7 +23,7 @@ export function Sidebar({ brand, children, footer }: SidebarProps) {
       </nav>
       <WindowDragStrip className="mt-1 min-h-4 flex-1" />
       {footer ? (
-        <div className="app-no-drag relative z-10 mt-auto shrink-0 pt-2">
+        <div className="tauri-no-drag relative z-10 mt-auto shrink-0 pt-2">
           {footer}
         </div>
       ) : null}

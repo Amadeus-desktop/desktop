@@ -1,5 +1,5 @@
 import { cn } from "../../lib/utils/cn";
-import { glassStyles, shellText } from "../lib/glassStyles";
+import { glassStyles, shellText } from "../theme/shellStyles";
 
 type PanelHeaderProps = {
   eyebrow: string;

@@ -231,7 +231,7 @@ first_copy: "그 결론은 너무 성급해. ...그래도 네가 막힌 건 사�
   ],
   "last_major_event": "late_lab_argument",
   "boundary_overrides": {},
-  "state_source": "system_seed"
+  "state_source": "system"
 }
 ```
 

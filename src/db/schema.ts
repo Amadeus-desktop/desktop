@@ -31,6 +31,7 @@ export const userReactions = sqliteTable("user_reactions", {
 export const localPersonas = sqliteTable("local_personas", {
   id: text("id").primaryKey(),
   remotePersonaId: text("remote_persona_id").notNull(),
+  slug: text("slug").notNull(),
   name: text("name").notNull(),
   baseTone: text("base_tone").notNull(),
   relationshipType: text("relationship_type").notNull(),

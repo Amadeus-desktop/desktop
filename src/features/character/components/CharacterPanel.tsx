@@ -21,7 +21,7 @@ export function CharacterPanel() {
     characters[0];
 
   return (
-    <section className="tab-panel-enter space-y-5">
+    <section className="motion-safe-animate animate-tab-panel-enter space-y-5">
       <PanelHeader
         eyebrow={t.character.eyebrow}
         title={t.character.title}

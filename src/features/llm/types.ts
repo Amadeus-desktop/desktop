@@ -6,6 +6,10 @@ import {
 import type { PersonaId } from "../../domain/persona/types";
 import type { Persona } from "../../domain/persona/types";
 import {
+  getPersonaStateSeed,
+  getPersonaStaticPrompt,
+} from "../../domain/persona/cards";
+import {
   buildCompanionPromptEnvelope,
   type CompanionPromptEnvelope,
   type PromptCurrentContext,
@@ -65,6 +69,8 @@ export function toLlmChatRequest(
       provider: "local_qwen",
     }),
   );
+  const personaStatic = getPersonaStaticPrompt(context.persona);
+  const personaState = getPersonaStateSeed(context.persona);
 
   return {
     messages: llmMessages,
@@ -76,32 +82,8 @@ export function toLlmChatRequest(
       mode: context.mode ?? "deep",
       locale: context.locale,
       isConversationStart: messages.length === 0,
-      personaStatic: {
-        identity: {
-          id: context.persona.id,
-          name: context.persona.name,
-          shortLabel: context.persona.shortLabel,
-          description: context.persona.description,
-        },
-        scenario: {
-          relationship_hook: context.persona.shortLabel,
-        },
-        relationship_boundary: {
-          not_allowed: ["claim_hidden_context", "force_dependency"],
-        },
-        forbidden_claims: [
-          "나는 네 화면 전체를 실시간으로 보고 있다",
-          "너는 내 말대로 해야 한다",
-        ],
-        negative_behavior: ["사용자 거절 무시", "감시하는 듯한 표현"],
-        safety_boundary: {
-          dependency: "사용자가 AI 관계에만 기대도록 만들지 않는다.",
-        },
-        privacy_contract: {
-          desktop_context: "화면 원문을 인용하지 않는다.",
-        },
-      },
-      personaState: null,
+      personaStatic,
+      personaState,
       semanticMemories: promptMemoryContext.semanticMemories,
       episodicContext: promptMemoryContext.episodicContext,
       sessionMessages: messages.map((message, index) => ({

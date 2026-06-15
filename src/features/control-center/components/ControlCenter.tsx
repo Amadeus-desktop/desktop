@@ -69,7 +69,7 @@ export function ControlCenter() {
         <div
           className="scrollbar-hide h-full min-h-0 flex-col overflow-y-auto px-6 py-5 max-sm:px-4 max-sm:py-4"
         >
-          <div className="app-no-drag min-h-0 shrink-0">
+          <div className="tauri-no-drag min-h-0 shrink-0">
             {renderPanel(activeTab, () => selectTab("settings"))}
           </div>
           <WindowDragStrip className="mt-4 min-h-10 flex-1" />

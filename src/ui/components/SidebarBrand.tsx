@@ -45,7 +45,7 @@ export function SidebarBrand({
         type="button"
         onClick={onClick}
         className={cn(
-          "app-no-drag flex w-full items-center gap-2.5 rounded-xl border px-2 py-2 text-left transition",
+          "tauri-no-drag flex w-full items-center gap-2.5 rounded-xl border px-2 py-2 text-left transition",
           active
             ? "border-[color:rgb(var(--accent-rgb)/0.42)] bg-[color:rgb(var(--accent-rgb)/0.1)]"
             : "border-transparent hover:border-[color:var(--shell-border-subtle)] hover:bg-[color:var(--shell-row-hover)]",

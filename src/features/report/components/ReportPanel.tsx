@@ -13,7 +13,7 @@ export function ReportPanel() {
   const insight = buildDailyCareInsight(events, t);
 
   return (
-    <section className="tab-panel-enter">
+    <section className="motion-safe-animate animate-tab-panel-enter">
       <PanelHeader
         eyebrow={t.report.eyebrow}
         title={t.report.title}

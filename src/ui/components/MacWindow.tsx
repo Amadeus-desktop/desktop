@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "../../lib/utils/cn";
-import { glassStyles } from "../lib/glassStyles";
+import { glassStyles } from "../theme/shellStyles";
 import {
   controlCenterWindowPolicy,
   onboardingWindowPolicy,
@@ -30,10 +30,11 @@ export function MacWindow({ children, variant = "control-center" }: MacWindowPro
   return (
     <section
       className={cn(
-        "animate-window-appear flex h-full w-full min-h-0 overflow-hidden text-white",
+        "flex h-full w-full min-h-0 overflow-hidden text-white",
         glassStyles.shell,
         glassStyles.radiusWindow,
-        variant === "control-center" && "app-shell",
+        variant === "control-center" && "tauri-no-drag motion-safe-animate animate-window-appear",
+        variant === "onboarding" && "motion-safe-animate animate-window-fade-in",
       )}
       style={{
         minWidth: minSize.minWidth,

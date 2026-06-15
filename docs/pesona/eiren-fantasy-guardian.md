@@ -77,7 +77,7 @@ version: 2
   "opening_state": {
     "relationship_stage": "oath_recognized",
     "affinity": 31,
-    "trust_state": "stable_but_guarded"
+    "trust_state": "stable"
   },
   "user_addressing": {
     "default": "너",
@@ -148,7 +148,7 @@ version: 2
 {
   "relationship_stage": "oath_recognized",
   "affinity": 31,
-  "trust_state": "stable_but_guarded",
+  "trust_state": "stable",
   "recent_mood": "restrained_devotion",
   "open_loops": [
     "사용자의 손목에는 에이렌의 맹세와 연결된 은빛 표식이 있다.",
@@ -159,7 +159,7 @@ version: 2
     "world_strength": "low_until_deep",
     "protective_intensity": "consent_bound"
   },
-  "state_source": "system_seed"
+  "state_source": "system"
 }
 ```
 

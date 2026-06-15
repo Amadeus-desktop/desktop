@@ -19,8 +19,7 @@ export function OnboardingStepFrame({
 }: OnboardingStepFrameProps) {
   return (
     <div
-      className="select-text flex w-full max-w-[19.5rem] flex-col items-center text-center"
-      data-no-drag
+      className="select-text relative z-10 flex w-full max-w-[19.5rem] flex-col items-center text-center"
     >
       <header className={cn(compact ? "mb-4 space-y-1.5" : "mb-6 space-y-2.5")}>
         <p

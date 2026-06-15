@@ -39,6 +39,34 @@ describe("toLlmChatRequest", () => {
     expect(request.promptEnvelope.characterScenario.firstMessage).toBeNull();
   });
 
+  it("uses the persona card static prompt instead of a compact UI summary", () => {
+    const request = toLlmChatRequest([], {
+      locale: "ko",
+      personaId: "seoyeon-modern-senior",
+      nickname: "작업자",
+      persona: {
+        id: "seoyeon-modern-senior",
+        name: "한서연",
+        shortLabel: "현대 재회",
+        description: "헤어진 뒤에도 리듬을 기억하는 낮은 압력의 현대 로맨스.",
+        icon: "letter",
+      },
+    });
+
+    expect(request.promptEnvelope.personaStatic.identity).toMatchObject({
+      name: "한서연",
+      role: expect.stringContaining("현실적인 선배"),
+    });
+    expect(request.promptEnvelope.characterScenario.firstMessage).toBe(
+      "헤어진 사람한테 이런 말 하는 거 웃긴데, 늦은 시간이네. 물 한 모금 마실래?",
+    );
+    expect(request.promptEnvelope.characterScenario.exampleDialogues.length).toBeGreaterThan(0);
+    expect(request.promptEnvelope.personaState).toMatchObject({
+      relationship_stage: "unresolved_reunion",
+      affinity: 34,
+    });
+  });
+
   it("injects ranked memory cards into prompt sections", () => {
     const request = toLlmChatRequest([], {
       locale: "ko",
@@ -154,5 +182,23 @@ describe("toLlmChatRequest", () => {
       "assistant",
       "user",
     ]);
+  });
+
+  it("preserves persona-card-specific prompt fields in the envelope", () => {
+    const request = toLlmChatRequest([], {
+      locale: "ko",
+      personaId: "makise-kurisu",
+      nickname: "작업자",
+      persona: {
+        id: "makise-kurisu",
+        name: "마키세 크리스",
+        shortLabel: "연구실 파트너",
+        description: "논리와 반박으로 곁을 지키는 과학자형 연구실 파트너.",
+        icon: "line",
+      },
+    });
+
+    expect(request.promptEnvelope.personaStatic.canon_anchor).toBeTruthy();
+    expect(request.promptEnvelope.personaStatic.scientific_boundary).toBeTruthy();
   });
 });

@@ -38,6 +38,7 @@ CREATE INDEX IF NOT EXISTS user_reactions_occurred_at_idx
 CREATE TABLE IF NOT EXISTS local_personas (
   id TEXT PRIMARY KEY NOT NULL,
   remote_persona_id TEXT NOT NULL,
+  slug TEXT NOT NULL,
   name TEXT NOT NULL,
   base_tone TEXT NOT NULL,
   relationship_type TEXT NOT NULL,

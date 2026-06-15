@@ -7,6 +7,7 @@ import { getSupabaseClient } from "../../../lib/supabase/client";
 
 type PersonaRow = {
   id: string;
+  slug: string;
   name: string;
   base_tone: string;
   relationship_type: string;
@@ -33,6 +34,7 @@ type PersonaStateRow = {
 
 const PERSONA_SELECT = [
   "id",
+  "slug",
   "name",
   "base_tone",
   "relationship_type",
@@ -61,6 +63,7 @@ export async function pullCloudPersonas(): Promise<CloudPersonaSnapshot[]> {
 
 export async function updateCloudPersonaWithVersion(input: {
   personaId: string;
+  slug?: string;
   expectedVersion: number;
   name: string;
   baseTone: string;
@@ -83,6 +86,7 @@ export async function updateCloudPersonaWithVersion(input: {
     p_relationship_type: input.relationshipType,
     p_world_type: input.worldType,
     p_static_prompt_json: input.staticPromptJson,
+    p_slug: "slug" in input ? input.slug : null,
   });
 
   if (error) {
@@ -99,6 +103,7 @@ export function normalizePersonaRow(row: PersonaRow): CloudPersonaSnapshot {
 
   return {
     remotePersonaId: row.id,
+    slug: row.slug,
     name: row.name,
     baseTone: row.base_tone,
     relationshipType: row.relationship_type,

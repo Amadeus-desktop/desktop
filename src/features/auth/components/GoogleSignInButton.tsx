@@ -1,4 +1,7 @@
+import { useState } from "react";
 import { cn } from "../../../lib/utils/cn";
+
+type GoogleSignInButtonVariant = "button" | "link";
 
 type GoogleSignInButtonProps = {
   label: string;
@@ -6,6 +9,7 @@ type GoogleSignInButtonProps = {
   disabled?: boolean;
   onClick: () => void;
   className?: string;
+  variant?: GoogleSignInButtonVariant;
 };
 
 function GoogleMark() {
@@ -37,11 +41,48 @@ export function GoogleSignInButton({
   disabled = false,
   onClick,
   className,
+  variant = "button",
 }: GoogleSignInButtonProps) {
+  const busy = loading || disabled;
+  const [hovered, setHovered] = useState(false);
+  const [pressed, setPressed] = useState(false);
+
+  if (variant === "link") {
+    return (
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => {
+          if (busy) return;
+          onClick();
+        }}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => {
+          setHovered(false);
+          setPressed(false);
+        }}
+        onMouseDown={() => !busy && setPressed(true)}
+        onMouseUp={() => setPressed(false)}
+        className={cn(
+          "tauri-interactive inline-flex w-full items-center justify-center gap-2.5 rounded-lg px-2 py-2.5 text-[13px] font-medium underline-offset-4 transition-[color,text-decoration-color] duration-150",
+          hovered && !busy
+            ? "text-[color:var(--accent)] underline"
+            : "text-[color:var(--accent-soft)]",
+          pressed && !busy && "text-[color:rgb(var(--accent-rgb)/0.88)]",
+          busy && "cursor-default opacity-50",
+          className,
+        )}
+      >
+        <GoogleMark />
+        <span>{loading ? "…" : label}</span>
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
-      disabled={loading || disabled}
+      disabled={busy}
       onClick={onClick}
       className={cn(
         "inline-flex h-11 w-full items-center justify-center gap-2.5 rounded-[12px] border border-white/10 bg-white/[0.97] px-4 text-[13px] font-medium text-[#1a1a1a] shadow-[0_1px_0_rgb(255_255_255/0.06)_inset,0_8px_24px_rgb(0_0_0/0.18)] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-55",

@@ -1,4 +1,7 @@
 import type { Config } from "tailwindcss";
+import { amadeusTailwindPlugin } from "./src/ui/theme/tailwindPlugin";
+
+const motionEase = "cubic-bezier(0.2, 0.8, 0.2, 1)";
 
 export default {
   darkMode: "class",
@@ -76,10 +79,8 @@ export default {
         "glass-sm":
           "0 8px 24px rgb(0 0 0 / 0.2), inset 0 1px 0 rgb(255 255 255 / 0.06)",
         "glass-inset": "inset 0 1px 0 rgb(255 255 255 / 0.08)",
-        "chat-panel":
-          "0 12px 40px rgb(0 0 0 / 0.35)",
-        "chat-panel-dark":
-          "0 12px 40px rgb(0 0 0 / 0.35)",
+        "chat-panel": "0 12px 40px rgb(0 0 0 / 0.35)",
+        "chat-panel-dark": "0 12px 40px rgb(0 0 0 / 0.35)",
         "chat-fab": "none",
         "chat-fab-dark": "none",
         "persona-glow": "0 0 0 1px rgb(255 255 255 / 0.08)",
@@ -93,12 +94,37 @@ export default {
           "0%, 100%": { opacity: "0.45", transform: "scale(1)" },
           "50%": { opacity: "0.75", transform: "scale(1.03)" },
         },
+        "window-appear": {
+          from: { opacity: "0", transform: "translateY(10px) scale(0.985)" },
+          to: { opacity: "1", transform: "translateY(0) scale(1)" },
+        },
+        "window-fade-in": {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
+        "tab-panel-enter": {
+          from: { opacity: "0", transform: "translateY(4px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        "onboarding-enter": {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
+        "onboarding-step-enter": {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
       },
       animation: {
-        "chat-in": "chat-in 240ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards",
+        "chat-in": `chat-in 240ms ${motionEase} forwards`,
         "chat-pulse": "chat-pulse 3.2s ease-in-out infinite",
+        "window-appear": `window-appear 420ms ${motionEase}`,
+        "window-fade-in": `window-fade-in 360ms ${motionEase}`,
+        "tab-panel-enter": `tab-panel-enter 280ms ${motionEase}`,
+        "onboarding-enter": `onboarding-enter 360ms ${motionEase}`,
+        "onboarding-step-enter": `onboarding-step-enter 280ms ${motionEase}`,
       },
     },
   },
-  plugins: [],
+  plugins: [amadeusTailwindPlugin],
 } satisfies Config;

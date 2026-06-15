@@ -39,6 +39,7 @@ Final utterance decision source of truth = Rust policy engine
 policy-and-security.md
   > data-model.md
   > local-ai-ocr-llm.md
+  > persona-card-contract.md
   > schema-and-environments.md
   > local-perception-spa.md
   > sync-and-web.md
@@ -61,6 +62,7 @@ policy-and-security.md
 | [sync-and-web.md](./sync-and-web.md) | Next.js 웹, device pairing, sync queue 계약 |
 | [policy-and-security.md](./policy-and-security.md) | RLS, secret, privacy, provider input security |
 | [local-ai-ocr-llm.md](./local-ai-ocr-llm.md) | OCR, Local LLM, provider routing, prompt boundary |
+| [persona-card-contract.md](./persona-card-contract.md) | Persona JSON card, prompt source-of-truth, template slug 계약 |
 | [schema-and-environments.md](./schema-and-environments.md) | Local SQLite, Supabase, dev/prod schema 파이프라인 |
 | [local-perception-spa.md](./local-perception-spa.md) | Desktop perception SPA, score, capture/OCR gate |
 | [screen-capture-ocr-runtime.md](./screen-capture-ocr-runtime.md) | 현재 Tauri 화면 캡처/OCR command, gate, 권한 UX |

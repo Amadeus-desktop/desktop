@@ -19,14 +19,14 @@ export function OnboardingShell({
 }: OnboardingShellProps) {
   return (
     <MacWindow variant="onboarding">
-      <div className="relative h-full min-h-0 w-full overflow-hidden">
+      <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_95%_50%_at_50%_-10%,rgb(var(--accent-rgb)/0.14),transparent_62%)]"
         />
-        <div className="onboarding-enter relative flex h-full min-h-0 flex-col">
-          <OnboardingDragHandle />
-          <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden px-5 py-1">
+        <OnboardingDragHandle />
+        <div className="motion-safe-animate animate-onboarding-enter relative z-10 flex min-h-0 flex-1 flex-col">
+          <div className="tauri-interactive-zone flex min-h-0 flex-1 flex-col items-center justify-center px-5 py-2">
             {children}
           </div>
           {hideProgress ? null : (

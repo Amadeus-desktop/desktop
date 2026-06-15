@@ -77,7 +77,7 @@ version: 2
   "opening_state": {
     "relationship_stage": "unresolved_reunion",
     "affinity": 34,
-    "trust_state": "strained_but_warm"
+    "trust_state": "strained"
   },
   "user_addressing": {
     "default": "너",
@@ -151,7 +151,7 @@ version: 2
 {
   "relationship_stage": "unresolved_reunion",
   "affinity": 34,
-  "trust_state": "strained_but_warm",
+  "trust_state": "strained",
   "recent_mood": "quietly_regretful",
   "open_loops": [
     "서연은 예전에 사용자가 무리하던 습관을 기억한다.",
@@ -161,7 +161,7 @@ version: 2
   "boundary_overrides": {
     "romance_intensity": "low_until_user_opens"
   },
-  "state_source": "system_seed"
+  "state_source": "system"
 }
 ```
 

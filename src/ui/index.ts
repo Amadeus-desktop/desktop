@@ -1,7 +1,8 @@
 export { AdvancedSection } from "./components/AdvancedSection";
 export { AppErrorBoundary } from "./components/AppErrorBoundary";
 export { Button } from "./components/Button";
-export { glassStyles, shellText } from "./lib/glassStyles";
+export { glassStyles, shellText } from "./theme/shellStyles";
+export { tauriClasses } from "./theme/tauriClasses";
 export { MacSelect } from "./components/MacSelect";
 export {
   SettingsGroup,

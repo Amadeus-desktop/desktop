@@ -1,6 +1,6 @@
 import { createContext, useContext, type ReactNode } from "react";
 import { cn } from "../../lib/utils/cn";
-import { glassStyles } from "../lib/glassStyles";
+import { glassStyles } from "../theme/shellStyles";
 
 const SettingsGroupContext = createContext(false);
 
