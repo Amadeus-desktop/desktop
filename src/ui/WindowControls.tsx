@@ -1,4 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { logger } from "../observability/logger";
 
 export function WindowControls() {
   const handleClose = () => {
@@ -18,7 +19,7 @@ export function WindowControls() {
         await w.maximize();
       }
     } catch (err) {
-      console.error("Failed to toggle maximize:", err);
+      logger.error("window", "Failed to toggle maximize", { error: err });
     }
   };
 
@@ -45,4 +46,3 @@ export function WindowControls() {
     </div>
   );
 }
-

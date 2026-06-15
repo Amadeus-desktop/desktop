@@ -1,27 +1,28 @@
-import type { AuthSnapshot, AuthUser } from "./types";
+import { createExternalStore } from "../../lib/createExternalStore";
+import { logger } from "../../observability/logger";
+import { getOnboardingSnapshot, hydrateOnboardingProgress } from "../onboarding/onboardingStore";
 import { animateMainWindowToControlCenter, animateMainWindowToOnboarding } from "./mainWindowLayout";
+import type { AuthSnapshot, AuthUser } from "./types";
 
 const AUTH_STORAGE_KEY = "amadeus:auth-session";
 
-let snapshot: AuthSnapshot = {
+const authStore = createExternalStore<AuthSnapshot>({
   user: null,
   hydrated: false,
-};
+});
 
-const listeners = new Set<() => void>();
 let hydratePromise: Promise<AuthUser | null> | null = null;
 
-function notify() {
-  listeners.forEach((listener) => listener());
-}
-
-function subscribeAuth(listener: () => void) {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
-
 export function getAuthSnapshot() {
-  return snapshot;
+  return authStore.getSnapshot();
+}
+
+export function subscribeToAuth(listener: () => void) {
+  return authStore.subscribe(listener);
+}
+
+function replaceSnapshot(user: AuthUser | null, hydrated = authStore.getSnapshot().hydrated) {
+  authStore.setSnapshot({ user, hydrated });
 }
 
 function readStoredUser(): AuthUser | null {
@@ -37,11 +38,6 @@ function writeStoredUser(user: AuthUser | null) {
   } else {
     localStorage.removeItem(AUTH_STORAGE_KEY);
   }
-}
-
-function replaceSnapshot(user: AuthUser | null, hydrated = snapshot.hydrated) {
-  snapshot = { user, hydrated };
-  notify();
 }
 
 function parseStoredUser(raw: string | null): AuthUser | null {
@@ -72,6 +68,7 @@ if (typeof window !== "undefined") {
 }
 
 export function hydrateAuth() {
+  const snapshot = authStore.getSnapshot();
   if (snapshot.hydrated) {
     return Promise.resolve(snapshot.user);
   }
@@ -87,13 +84,13 @@ export function hydrateAuth() {
   return hydratePromise;
 }
 
-export function useAuthStore(): AuthSnapshot {
-  return snapshot;
+function bootstrapAuth() {
+  const snapshot = authStore.getSnapshot();
+  if (typeof window === "undefined" || snapshot.hydrated) return;
+  authStore.setSnapshot({ user: readStoredUser(), hydrated: true }, { notify: false });
 }
 
-export function subscribeToAuth(listener: () => void) {
-  return subscribeAuth(listener);
-}
+bootstrapAuth();
 
 export async function signInWithGoogleMock(): Promise<AuthUser> {
   await new Promise((resolve) => setTimeout(resolve, 650));
@@ -107,10 +104,13 @@ export async function signInWithGoogleMock(): Promise<AuthUser> {
 
   writeStoredUser(user);
   replaceSnapshot(user, true);
-  try {
-    await animateMainWindowToControlCenter();
-  } catch (error) {
-    console.error("[auth] login window transition failed", error);
+  hydrateOnboardingProgress();
+  if (getOnboardingSnapshot().progress.setupDone) {
+    try {
+      await animateMainWindowToControlCenter();
+    } catch (error) {
+      logger.error("auth", "login window transition failed", { error });
+    }
   }
   return user;
 }
@@ -124,7 +124,7 @@ export async function signOutWithTransition() {
   try {
     await animateMainWindowToOnboarding();
   } catch (error) {
-    console.error("[auth] logout window transition failed", error);
+    logger.error("auth", "logout window transition failed", { error });
   } finally {
     signOut();
   }

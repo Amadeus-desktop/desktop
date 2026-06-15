@@ -1,6 +1,7 @@
-import { useEffect, useRef } from "react";
-import { getPrivacyKeywords } from "../../../domain/settings";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { getTalkFrequencyPolicy } from "../../../domain/settings/policy";
+import { getPrivacyKeywords } from "../../../domain/settings";
+import { useLifecycleFetch } from "../../../lib/useLifecycleFetch";
 import { pollTriggerEngine } from "../../trigger/triggerRepository";
 import type { TriggerAction } from "../../trigger/types";
 import type { GeneralSettings } from "../../settings/types";
@@ -30,29 +31,25 @@ export function useCompanionTrigger({
   const onTriggerRef = useRef(onTrigger);
   onTriggerRef.current = onTrigger;
 
-  useEffect(() => {
-    if (!enabled) {
-      lastUtteranceIdRef.current = null;
-      return;
-    }
+  const pollIntervalMs = useMemo(
+    () => getTalkFrequencyPolicy(settings.talkFrequency).pollIntervalMs,
+    [settings.talkFrequency],
+  );
 
-    let cancelled = false;
-    const keywords = getPrivacyKeywords(
-      settings.privacyFilterEnabled,
-      settings.customPrivacyKeywords,
-    );
-    const pollIntervalMs = getTalkFrequencyPolicy(
-      settings.talkFrequency,
-    ).pollIntervalMs;
+  const evaluateTrigger = useCallback(
+    async (isActive: () => boolean) => {
+      if (!canPresent || !enabled) return;
 
-    async function evaluateTrigger() {
-      if (!canPresent) return;
+      const keywords = getPrivacyKeywords(
+        settings.privacyFilterEnabled,
+        settings.customPrivacyKeywords,
+      );
 
       const pollResult = await pollTriggerEngine(keywords).catch(() => null);
-      if (!pollResult) {
+      if (!pollResult || !isActive()) {
         return;
       }
-      if (cancelled || !pollResult.didEvaluate || !pollResult.runResult) {
+      if (!pollResult.didEvaluate || !pollResult.runResult) {
         return;
       }
 
@@ -75,33 +72,25 @@ export function useCompanionTrigger({
         utteranceEventId: utteranceEvent.id,
         action: evaluation.action,
       });
+    },
+    [
+      canPresent,
+      enabled,
+      settings.customPrivacyKeywords,
+      settings.privacyFilterEnabled,
+    ],
+  );
+
+  useEffect(() => {
+    if (!enabled) {
+      lastUtteranceIdRef.current = null;
     }
+  }, [enabled]);
 
-    void evaluateTrigger();
-
-    const intervalId = window.setInterval(() => {
-      if (document.hidden) return;
-      void evaluateTrigger();
-    }, pollIntervalMs);
-
-    function handleVisibilityChange() {
-      if (!document.hidden) {
-        void evaluateTrigger();
-      }
-    }
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(intervalId);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [
-    canPresent,
+  useLifecycleFetch({
     enabled,
-    settings.customPrivacyKeywords,
-    settings.privacyFilterEnabled,
-    settings.talkFrequency,
-  ]);
+    intervalMs: pollIntervalMs,
+    deps: [evaluateTrigger, pollIntervalMs],
+    fetch: evaluateTrigger,
+  });
 }

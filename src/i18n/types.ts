@@ -315,7 +315,6 @@ export type AppLocale = {
     onboarding: {
       headline: string;
       subheadline: string;
-      body: string;
       googleButton: string;
       footnote: string;
     };
@@ -324,6 +323,38 @@ export type AppLocale = {
       signedInAs: string;
       logout: string;
       loggingOut: string;
+    };
+  };
+  onboarding: {
+    steps: {
+      login: string;
+      permissions: string;
+      setup: string;
+    };
+    permissions: {
+      headline: string;
+      subheadline: string;
+      bullets: string[];
+      screenStatus: string;
+      ocrStatus: string;
+      granted: string;
+      needed: string;
+      unavailable: string;
+      checking: string;
+      openSettings: string;
+      checkAgain: string;
+      next: string;
+      skip: string;
+    };
+    setup: {
+      headline: string;
+      subheadline: string;
+      modelLabel: string;
+      modelApi: string;
+      modelLocal: string;
+      modelLocalHint: string;
+      personaLabel: string;
+      continue: string;
     };
   };
   persona: {

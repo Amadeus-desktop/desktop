@@ -19,6 +19,16 @@ function getMainWebviewWindow() {
   return webviewWindow;
 }
 
+async function ensureMainWindowVisible(
+  webviewWindow: NonNullable<ReturnType<typeof getMainWebviewWindow>>,
+) {
+  const visible = await webviewWindow.isVisible();
+  if (!visible) {
+    await webviewWindow.show();
+    await webviewWindow.setFocus();
+  }
+}
+
 export async function readMainWindowLogicalSize() {
   const webviewWindow = getMainWebviewWindow();
   if (!webviewWindow) return null;
@@ -53,6 +63,8 @@ export function clampControlCenterSize(
 export async function applyMainWindowLayoutMode(mode: MainWindowLayoutMode) {
   const webviewWindow = getMainWebviewWindow();
   if (!webviewWindow) return;
+
+  await ensureMainWindowVisible(webviewWindow);
 
   if (mode === "onboarding") {
     await webviewWindow.setMinSize(

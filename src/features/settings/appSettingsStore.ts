@@ -1,10 +1,7 @@
-import { useSyncExternalStore } from "react";
-import { setLocale, type LocaleCode } from "../../i18n";
-import { applyAccentColor } from "../../ui/theme/applyAccentColor";
-import { applyAppearance } from "../../ui/theme/applyAppearance";
+import { useCallback, useMemo, useSyncExternalStore } from "react";
+import { createExternalStore } from "../../lib/createExternalStore";
+import { type LocaleCode } from "../../i18n";
 import {
-  DEFAULT_ACCENT_COLOR,
-  DEFAULT_APPEARANCE,
   type AccentColorId,
   type AppearanceMode,
 } from "../../ui/tokens/appearance";
@@ -22,6 +19,7 @@ import {
 } from "./settingsBroadcast";
 import { loadGeneralSettings, saveGeneralSettings } from "./settingsStore";
 import type { GeneralSettings, ModelRoute, TalkFrequency } from "./types";
+import type { CharacterId } from "../character/types";
 
 type AppSettingsSnapshot = {
   settings: GeneralSettings;
@@ -29,46 +27,40 @@ type AppSettingsSnapshot = {
   revision: number;
 };
 
-let snapshot: AppSettingsSnapshot = {
+const settingsStore = createExternalStore<AppSettingsSnapshot>({
   settings: initialSettings,
   hydrated: false,
   revision: 0,
-};
-let confirmedSettings: GeneralSettings = initialSettings;
+});
 
-const listeners = new Set<() => void>();
+let confirmedSettings: GeneralSettings = initialSettings;
 let hydratePromise: Promise<GeneralSettings> | null = null;
 let persistTimer: number | null = null;
 let persistSequence = 0;
 let pendingHydrationPatch: Partial<GeneralSettings> | null = null;
 
-function notify() {
-  listeners.forEach((listener) => listener());
-}
-
-function subscribeAppSettings(listener: () => void) {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
-
 export function getAppSettingsSnapshot() {
-  return snapshot;
+  return settingsStore.getSnapshot();
 }
 
 function replaceSnapshot(
   settings: GeneralSettings,
-  options: { hydrated?: boolean; bumpRevision?: boolean } = {},
+  options: {
+    hydrated?: boolean;
+    bumpRevision?: boolean;
+    notify?: boolean;
+  } = {},
 ) {
+  const current = settingsStore.getSnapshot();
   const normalized = normalizeGeneralSettings(settings);
-  snapshot = {
-    settings: normalized,
-    hydrated: options.hydrated ?? snapshot.hydrated,
-    revision: options.bumpRevision ? snapshot.revision + 1 : snapshot.revision,
-  };
-  setLocale(normalized.locale);
-  applyAppearance(normalized.appearance ?? DEFAULT_APPEARANCE);
-  applyAccentColor(normalized.accentColor ?? DEFAULT_ACCENT_COLOR);
-  notify();
+  settingsStore.setSnapshot(
+    {
+      settings: normalized,
+      hydrated: options.hydrated ?? current.hydrated,
+      revision: options.bumpRevision ? current.revision + 1 : current.revision,
+    },
+    { notify: options.notify ?? true },
+  );
 }
 
 export function applyAppSettings(
@@ -80,18 +72,21 @@ export function applyAppSettings(
     bumpRevision: options.bumpRevision,
   });
 
-  if (options.persist === false || !snapshot.hydrated) {
+  if (options.persist === false || !settingsStore.getSnapshot().hydrated) {
     return;
   }
 
-  schedulePersist(snapshot.settings);
+  schedulePersist(settingsStore.getSnapshot().settings);
 }
 
 export function patchAppSettings(patch: Partial<GeneralSettings>) {
-  if (!snapshot.hydrated) {
+  if (!settingsStore.getSnapshot().hydrated) {
     pendingHydrationPatch = { ...pendingHydrationPatch, ...patch };
   }
-  applyAppSettings({ ...snapshot.settings, ...patch });
+  applyAppSettings({
+    ...settingsStore.getSnapshot().settings,
+    ...patch,
+  });
 }
 
 function schedulePersist(settings: GeneralSettings) {
@@ -117,6 +112,7 @@ function schedulePersist(settings: GeneralSettings) {
 }
 
 export async function hydrateAppSettings(): Promise<GeneralSettings> {
+  const snapshot = settingsStore.getSnapshot();
   if (snapshot.hydrated) {
     return snapshot.settings;
   }
@@ -135,7 +131,7 @@ export async function hydrateAppSettings(): Promise<GeneralSettings> {
           persist: !!pendingPatch,
           bumpRevision: true,
         });
-        return snapshot.settings;
+        return settingsStore.getSnapshot().settings;
       })
       .finally(() => {
         hydratePromise = null;
@@ -157,58 +153,145 @@ export function ensureSettingsSync() {
   });
 }
 
+export function subscribeAppSettings(listener: () => void) {
+  return settingsStore.subscribe(listener);
+}
+
 export function useAppSettings() {
   ensureSettingsSync();
 
-  const currentSnapshot = useSyncExternalStore(
+  return useSyncExternalStore(
     subscribeAppSettings,
     getAppSettingsSnapshot,
-    () => snapshot,
+    getAppSettingsSnapshot,
   );
-
-  return currentSnapshot;
 }
 
 export function useSettings() {
   const { settings, revision } = useAppSettings();
 
-  return {
-    ...settings,
-    settingsRevision: revision,
-    setLocale: (value: LocaleCode) => patchAppSettings({ locale: value }),
-    setAppearance: (value: AppearanceMode) =>
-      patchAppSettings({ appearance: value }),
-    setAccentColor: (value: AccentColorId) =>
-      patchAppSettings({ accentColor: value }),
-    setCompanionPersonaId: (value: GeneralSettings["companionPersonaId"]) =>
+  const setLocale = useCallback(
+    (value: LocaleCode) => patchAppSettings({ locale: value }),
+    [],
+  );
+  const setAppearance = useCallback(
+    (value: AppearanceMode) => patchAppSettings({ appearance: value }),
+    [],
+  );
+  const setAccentColor = useCallback(
+    (value: AccentColorId) => patchAppSettings({ accentColor: value }),
+    [],
+  );
+  const setCharacterId = useCallback(
+    (value: CharacterId) => patchAppSettings({ characterId: value }),
+    [],
+  );
+  const setCompanionPersonaId = useCallback(
+    (value: GeneralSettings["companionPersonaId"]) =>
       patchAppSettings({ companionPersonaId: value }),
-    setTalkFrequency: (value: TalkFrequency) =>
-      patchAppSettings({ talkFrequency: value }),
-    setModelRoute: (value: ModelRoute) => patchAppSettings({ modelRoute: value }),
-    setLocalFallbackEnabled: (value: boolean) =>
-      patchAppSettings({ localFallbackEnabled: value }),
-    setNickname: (value: string) => patchAppSettings({ nickname: value }),
-    setNightCareEnabled: (value: boolean) =>
-      patchAppSettings({ nightCareEnabled: value }),
-    setAnalysisEnabled: (value: boolean) =>
-      patchAppSettings({ analysisEnabled: value }),
-    setProactiveTriggerEnabled: (value: boolean) =>
-      patchAppSettings({ proactiveTriggerEnabled: value }),
-    setPrivacyFilterEnabled: (value: boolean) =>
-      patchAppSettings({ privacyFilterEnabled: value }),
-    setCustomPrivacyKeywords: (value: string[]) =>
-      patchAppSettings({ customPrivacyKeywords: value }),
-    setLocalModelPath: (value: string | null) =>
-      patchAppSettings({ localModelPath: value }),
-    setLlamaServerBinaryPath: (value: string | null) =>
-      patchAppSettings({ llamaServerBinaryPath: value }),
-    setLlamaServerHost: (value: string) =>
-      patchAppSettings({ llamaServerHost: value }),
-    setLlamaServerPort: (value: number) =>
-      patchAppSettings({ llamaServerPort: value }),
-    talkFrequencyOptions: getTalkFrequencyOptions,
-    modelRouteOptions: getModelRouteOptions,
-    localeOptions: getLocaleOptions,
-    appearanceOptions: getAppearanceOptions,
-  };
+    [],
+  );
+  const setTalkFrequency = useCallback(
+    (value: TalkFrequency) => patchAppSettings({ talkFrequency: value }),
+    [],
+  );
+  const setModelRoute = useCallback(
+    (value: ModelRoute) => patchAppSettings({ modelRoute: value }),
+    [],
+  );
+  const setLocalFallbackEnabled = useCallback(
+    (value: boolean) => patchAppSettings({ localFallbackEnabled: value }),
+    [],
+  );
+  const setNickname = useCallback(
+    (value: string) => patchAppSettings({ nickname: value }),
+    [],
+  );
+  const setNightCareEnabled = useCallback(
+    (value: boolean) => patchAppSettings({ nightCareEnabled: value }),
+    [],
+  );
+  const setAnalysisEnabled = useCallback(
+    (value: boolean) => patchAppSettings({ analysisEnabled: value }),
+    [],
+  );
+  const setProactiveTriggerEnabled = useCallback(
+    (value: boolean) => patchAppSettings({ proactiveTriggerEnabled: value }),
+    [],
+  );
+  const setPrivacyFilterEnabled = useCallback(
+    (value: boolean) => patchAppSettings({ privacyFilterEnabled: value }),
+    [],
+  );
+  const setCustomPrivacyKeywords = useCallback(
+    (value: string[]) => patchAppSettings({ customPrivacyKeywords: value }),
+    [],
+  );
+  const setLocalModelPath = useCallback(
+    (value: string | null) => patchAppSettings({ localModelPath: value }),
+    [],
+  );
+  const setLlamaServerBinaryPath = useCallback(
+    (value: string | null) => patchAppSettings({ llamaServerBinaryPath: value }),
+    [],
+  );
+  const setLlamaServerHost = useCallback(
+    (value: string) => patchAppSettings({ llamaServerHost: value }),
+    [],
+  );
+  const setLlamaServerPort = useCallback(
+    (value: number) => patchAppSettings({ llamaServerPort: value }),
+    [],
+  );
+
+  return useMemo(
+    () => ({
+      ...settings,
+      settingsRevision: revision,
+      setLocale,
+      setAppearance,
+      setAccentColor,
+      setCharacterId,
+      setCompanionPersonaId,
+      setTalkFrequency,
+      setModelRoute,
+      setLocalFallbackEnabled,
+      setNickname,
+      setNightCareEnabled,
+      setAnalysisEnabled,
+      setProactiveTriggerEnabled,
+      setPrivacyFilterEnabled,
+      setCustomPrivacyKeywords,
+      setLocalModelPath,
+      setLlamaServerBinaryPath,
+      setLlamaServerHost,
+      setLlamaServerPort,
+      talkFrequencyOptions: getTalkFrequencyOptions,
+      modelRouteOptions: getModelRouteOptions,
+      localeOptions: getLocaleOptions,
+      appearanceOptions: getAppearanceOptions,
+    }),
+    [
+      settings,
+      revision,
+      setLocale,
+      setAppearance,
+      setAccentColor,
+      setCharacterId,
+      setCompanionPersonaId,
+      setTalkFrequency,
+      setModelRoute,
+      setLocalFallbackEnabled,
+      setNickname,
+      setNightCareEnabled,
+      setAnalysisEnabled,
+      setProactiveTriggerEnabled,
+      setPrivacyFilterEnabled,
+      setCustomPrivacyKeywords,
+      setLocalModelPath,
+      setLlamaServerBinaryPath,
+      setLlamaServerHost,
+      setLlamaServerPort,
+    ],
+  );
 }

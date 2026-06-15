@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 pub const DEFAULT_LOCALE: &str = "ko";
+pub const DEFAULT_CHARACTER_ID: &str = "emilia";
 pub const DEFAULT_COMPANION_PERSONA_ID: &str = "warm_friend";
 pub const DEFAULT_APPEARANCE: &str = "system";
 pub const DEFAULT_ACCENT_COLOR: &str = "rose";

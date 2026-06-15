@@ -81,5 +81,6 @@ export type {
   ReportMessages,
   SettingsMessages,
   AuthMessages,
+  OnboardingMessages,
 } from "./modules";
 export { assertLocaleKeyParity, getLocaleKeyPaths } from "./parity";

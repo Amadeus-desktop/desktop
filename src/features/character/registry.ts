@@ -36,3 +36,11 @@ export const CHARACTER_VISUALS: Record<CharacterId, CharacterVisual> = {
 export function getCharacterVisual(id: CharacterId): CharacterVisual {
   return CHARACTER_VISUALS[id];
 }
+
+export function normalizeCharacterId(value: unknown): CharacterId {
+  if (value === "ruda" || value === "emilia" || value === "daon") {
+    return value;
+  }
+
+  return "emilia";
+}

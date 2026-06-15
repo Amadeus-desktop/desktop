@@ -1,4 +1,5 @@
 import type { LocaleCode } from "../../i18n/types";
+import type { CharacterId } from "../character/types";
 import type { PersonaId } from "../../domain/persona/types";
 import type { AccentColorId, AppearanceMode } from "../../ui/tokens/appearance";
 
@@ -9,6 +10,7 @@ export type GeneralSettings = {
   locale: LocaleCode;
   appearance: AppearanceMode;
   accentColor: AccentColorId;
+  characterId: CharacterId;
   companionPersonaId: PersonaId;
   talkFrequency: TalkFrequency;
   modelRoute: ModelRoute;

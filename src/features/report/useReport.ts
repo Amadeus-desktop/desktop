@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { REPORT_TIMELINE_LIMIT } from "../../domain/report";
 import { getLocale, LOCALE_TAGS, useI18n } from "../../i18n";
+import { useLifecycleFetch } from "../../lib/useLifecycleFetch";
 import { listTimelineEvents } from "../timeline/timelineRepository";
 import type { TimelineEvent, TimelineEventKind } from "../timeline/types";
 import { buildReportMetrics } from "./report";
@@ -13,38 +14,21 @@ export function useReport() {
     "loading",
   );
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadReport() {
-      const nextEvents = await listTimelineEvents(REPORT_TIMELINE_LIMIT);
-
-      if (!cancelled) {
+  useLifecycleFetch({
+    deps: [t],
+    fetch: async (isActive) => {
+      try {
+        const nextEvents = await listTimelineEvents(REPORT_TIMELINE_LIMIT);
+        if (!isActive()) return;
         setEvents(nextEvents);
         setTimelineState("ready");
-      }
-    }
-
-    void loadReport().catch(() => {
-      if (!cancelled) {
+      } catch {
+        if (!isActive()) return;
         setEvents([]);
         setTimelineState("ready");
       }
-    });
-
-    function handleVisibilityChange() {
-      if (!document.hidden) {
-        void loadReport();
-      }
-    }
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    return () => {
-      cancelled = true;
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-    };
-  }, [t]);
+    },
+  });
 
   const reportMetrics = useMemo(
     () => buildReportMetrics(events, t),

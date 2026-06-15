@@ -16,6 +16,7 @@ use llm::{
     generate_chat_reply, generate_test_utterance, get_llm_provider_health, LlmService, LlmState,
 };
 use macos_context::{get_current_context_snapshot, ContextBridgeState};
+use observability::{error as log_error, init as init_logger, warn as log_warn, LogArea};
 use ocr::{
     capture_primary_display_ocr, get_ocr_provider_status, recognize_captured_image, OcrState,
     ScreenCaptureState,
@@ -25,7 +26,9 @@ use privacy::{
     get_screen_capture_permission_status,
 };
 use settings::{get_app_settings, llama_endpoint, update_app_settings, SettingsState};
-use shared::constants::{APP_DATABASE_FILE_NAME, APP_NAME, APP_SETTINGS_FILE_NAME};
+use shared::constants::{
+    APP_DATABASE_FILE_NAME, APP_LOG_FILE_NAME, APP_NAME, APP_SETTINGS_FILE_NAME,
+};
 use tauri::{
     image::Image,
     menu::{Menu, MenuItem, PredefinedMenuItem},
@@ -91,7 +94,10 @@ fn position_companion_window(window: &tauri::WebviewWindow) {
     const MARGIN: i32 = 12;
 
     let Ok(Some(monitor)) = window.current_monitor() else {
-        eprintln!("position_companion_window: current_monitor() unavailable");
+        log_warn(
+            LogArea::Window,
+            "position_companion_window: current_monitor() unavailable",
+        );
         return;
     };
 
@@ -103,7 +109,10 @@ fn position_companion_window(window: &tauri::WebviewWindow) {
         work_area.position.y + work_area.size.height as i32 - window_size.height as i32 - MARGIN;
 
     if let Err(error) = window.set_position(PhysicalPosition::new(x, y)) {
-        eprintln!("position_companion_window: set_position failed: {error}");
+        log_error(
+            LogArea::Window,
+            format!("position_companion_window: set_position failed: {error}"),
+        );
     }
 }
 
@@ -111,7 +120,10 @@ fn position_companion_window(window: &tauri::WebviewWindow) {
 #[cfg(target_os = "macos")]
 fn configure_macos_main_window(window: &tauri::WebviewWindow) {
     let Ok(ptr) = window.ns_window() else {
-        eprintln!("configure_macos_main_window: ns_window() unavailable");
+        log_warn(
+            LogArea::Window,
+            "configure_macos_main_window: ns_window() unavailable",
+        );
         return;
     };
 
@@ -135,7 +147,10 @@ fn configure_macos_main_window(window: &tauri::WebviewWindow) {
 #[cfg(target_os = "macos")]
 fn configure_macos_companion_window(window: &tauri::WebviewWindow) {
     let Ok(ptr) = window.ns_window() else {
-        eprintln!("configure_macos_companion_window: ns_window() unavailable");
+        log_warn(
+            LogArea::Window,
+            "configure_macos_companion_window: ns_window() unavailable",
+        );
         return;
     };
 
@@ -178,7 +193,10 @@ fn watch_resident_window_close(window: &tauri::WebviewWindow) {
             if resident_window_close_action(window.label()) == ResidentWindowCloseAction::Hide {
                 api.prevent_close();
                 if let Err(error) = window.hide() {
-                    eprintln!("watch_resident_window_close: hide failed: {error}");
+                    log_error(
+                        LogArea::Window,
+                        format!("watch_resident_window_close: hide failed: {error}"),
+                    );
                 }
             }
         }
@@ -188,10 +206,16 @@ fn watch_resident_window_close(window: &tauri::WebviewWindow) {
 fn show_main_window(app: &tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         if let Err(error) = window.show() {
-            eprintln!("show_main_window: show failed: {error}");
+            log_error(
+                LogArea::Window,
+                format!("show_main_window: show failed: {error}"),
+            );
         }
         if let Err(error) = window.set_focus() {
-            eprintln!("show_main_window: set_focus failed: {error}");
+            log_error(
+                LogArea::Window,
+                format!("show_main_window: set_focus failed: {error}"),
+            );
         }
     }
 }
@@ -201,16 +225,25 @@ fn toggle_companion_window(app: &tauri::AppHandle) {
         match window.is_visible() {
             Ok(true) => {
                 if let Err(error) = window.hide() {
-                    eprintln!("toggle_companion_window: hide failed: {error}");
+                    log_error(
+                        LogArea::Window,
+                        format!("toggle_companion_window: hide failed: {error}"),
+                    );
                 }
             }
             Ok(false) => {
                 if let Err(error) = window.show() {
-                    eprintln!("toggle_companion_window: show failed: {error}");
+                    log_error(
+                        LogArea::Window,
+                        format!("toggle_companion_window: show failed: {error}"),
+                    );
                 }
                 position_companion_window(&window);
             }
-            Err(error) => eprintln!("toggle_companion_window: is_visible failed: {error}"),
+            Err(error) => log_error(
+                LogArea::Window,
+                format!("toggle_companion_window: is_visible failed: {error}"),
+            ),
         }
     }
 }
@@ -314,6 +347,9 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             let app_data_dir = app.path().app_data_dir()?;
+            if let Err(error) = init_logger(app_data_dir.join(APP_LOG_FILE_NAME)) {
+                eprintln!("[amadeus][warn][observability] logger init failed: {error}");
+            }
             let database_path = app_data_dir.join(APP_DATABASE_FILE_NAME);
             let settings_path = app_data_dir.join(APP_SETTINGS_FILE_NAME);
             let mut repository = TimelineRepository::open(database_path)?;

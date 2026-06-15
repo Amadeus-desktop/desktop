@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { setLocale } from "../../i18n";
 import { useAppSettings } from "../../features/settings/appSettingsStore";
 import { applyAccentColor } from "./applyAccentColor";
 import {
@@ -15,6 +16,7 @@ export function useShellTheme() {
   useEffect(() => {
     if (!hydrated) return;
 
+    setLocale(settings.locale);
     const appearance = settings.appearance ?? DEFAULT_APPEARANCE;
     applyAppearance(appearance);
     applyAccentColor(settings.accentColor ?? DEFAULT_ACCENT_COLOR);
@@ -28,7 +30,7 @@ export function useShellTheme() {
 
     media.addEventListener("change", handleChange);
     return () => media.removeEventListener("change", handleChange);
-  }, [hydrated, settings.accentColor, settings.appearance]);
+  }, [hydrated, settings.accentColor, settings.appearance, settings.locale]);
 }
 
 export function useResolvedAppearance(): "dark" | "light" {

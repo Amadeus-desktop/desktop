@@ -28,4 +28,12 @@ describe("normalizeGeneralSettings", () => {
 
     expect(settings.accentColor).toBe("mint");
   });
+
+  it("falls back invalid character ids to emilia", () => {
+    const settings = normalizeGeneralSettings({
+      characterId: "unknown" as typeof initialSettings.characterId,
+    });
+
+    expect(settings.characterId).toBe("emilia");
+  });
 });

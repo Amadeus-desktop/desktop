@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import { useLifecycleFetch } from "../../../lib/useLifecycleFetch";
 import { listTimelineEvents } from "../../timeline/timelineRepository";
 import type { TimelineEvent } from "../../timeline/types";
 
@@ -10,25 +11,20 @@ export function useCompanionTimeline() {
     setRevision((current) => current + 1);
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    void listTimelineEvents(30)
-      .then((nextEvents) => {
-        if (!cancelled) {
-          setEvents(nextEvents);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setEvents([]);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [revision]);
+  useLifecycleFetch({
+    refreshOnVisible: false,
+    deps: [revision],
+    fetch: async (isActive) => {
+      try {
+        const nextEvents = await listTimelineEvents(30);
+        if (!isActive()) return;
+        setEvents(nextEvents);
+      } catch {
+        if (!isActive()) return;
+        setEvents([]);
+      }
+    },
+  });
 
   return { events, refreshTimeline };
 }

@@ -9,6 +9,7 @@ import { report } from "./report";
 import { companion } from "./companion";
 import { persona } from "./persona";
 import { auth } from "./auth";
+import { onboarding } from "./onboarding";
 
 export const locale: AppLocale = {
   common,
@@ -21,4 +22,5 @@ export const locale: AppLocale = {
   companion,
   persona,
   auth,
+  onboarding,
 };

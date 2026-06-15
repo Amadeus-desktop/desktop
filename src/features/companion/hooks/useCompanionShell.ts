@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { getPersonas } from "../../../domain/persona/registry";
 import { useI18n } from "../../../i18n";
 import { generatePocketIntro } from "../../../mocks/companion";
@@ -13,16 +13,9 @@ import {
   recordTriggerReactionForScoring,
 } from "../../trigger/triggerRepository";
 import { resolveCompanionReply } from "../lib/reply";
-import {
-  getCompanionSession,
-  markCompanionSessionInitialized,
-  patchCompanionSession,
-} from "../lib/session";
-import type {
-  CompanionMessage,
-  CompanionMode,
-  PersonaId,
-} from "../types";
+import { patchCompanionSession } from "../lib/companionSessionStore";
+import type { CompanionMessage, PersonaId } from "../types";
+import { useCompanionSessionState } from "./useCompanionSessionState";
 import { useCompanionTimeline } from "./useCompanionTimeline";
 import { useCompanionTrigger } from "./useCompanionTrigger";
 
@@ -37,59 +30,42 @@ export function useCompanionShell({
   const { settings } = useAppSettings();
   const t = locale.companion;
   const personas = useMemo(() => getPersonas(locale), [locale]);
-  const initialSession = getCompanionSession();
-  const [mode, setMode] = useState<CompanionMode>(initialSession.mode);
+  const {
+    mode,
+    draft,
+    setDraft,
+    nudge,
+    messages,
+    setMessages,
+    activeUtteranceId,
+    transitionMode,
+  } = useCompanionSessionState();
   const selectedPersonaId = settings.companionPersonaId;
-  const [draft, setDraft] = useState(initialSession.draft);
-  const [nudge, setNudge] = useState(initialSession.nudge);
-  const [messages, setMessages] = useState<CompanionMessage[]>(
-    initialSession.messages,
-  );
   const [isSending, setIsSending] = useState(false);
-  const activeUtteranceIdRef = useRef<string | null>(
-    initialSession.activeUtteranceId,
-  );
   const { events: timelineEvents, refreshTimeline } = useCompanionTimeline();
 
   const selectedPersona = personas[selectedPersonaId];
   const personaList = useMemo(() => Object.values(personas), [personas]);
 
-  useEffect(() => {
-    patchCompanionSession({
-      mode,
-      nudge,
-      messages,
-      draft,
-      activeUtteranceId: activeUtteranceIdRef.current,
-    });
-  }, [draft, messages, mode, nudge]);
-
   const canPresentTrigger =
     mode === "quiet" || mode === "sleep";
-
-  const transitionMode = useCallback(async (nextMode: CompanionMode) => {
-    patchCompanionSession({ mode: nextMode });
-    setMode(nextMode);
-  }, []);
 
   const recordReaction = useCallback(
     async (reactionType: string, options?: { score?: boolean }) => {
       await createUserReaction({
         reactionType,
-        utteranceEventId: activeUtteranceIdRef.current,
+        utteranceEventId: activeUtteranceId,
       });
       if (options?.score !== false) {
         await recordTriggerReactionForScoring(reactionType);
       }
       refreshTimeline();
     },
-    [refreshTimeline],
+    [activeUtteranceId, refreshTimeline],
   );
 
   const presentNudge = useCallback(
     async (message: string, utteranceEventId: string | null) => {
-      setNudge(message);
-      activeUtteranceIdRef.current = utteranceEventId;
       patchCompanionSession({
         nudge: message,
         activeUtteranceId: utteranceEventId,
@@ -116,11 +92,6 @@ export function useCompanionShell({
     }
   }, [companionEnabled, mode, transitionMode]);
 
-  useEffect(() => {
-    if (initialSession.initialized) return;
-    markCompanionSessionInitialized();
-  }, [initialSession.initialized]);
-
   const openPocket = useCallback(async () => {
     const intro = generatePocketIntro(nudge, selectedPersona);
 
@@ -133,7 +104,7 @@ export function useCompanionShell({
     ]);
     await recordReaction("opened");
     await transitionMode("pocket");
-  }, [nudge, recordReaction, selectedPersona, transitionMode]);
+  }, [nudge, recordReaction, selectedPersona, setMessages, transitionMode]);
 
   const openIcon = useCallback(async () => {
     if (mode === "sleep") {
@@ -158,26 +129,23 @@ export function useCompanionShell({
 
   const dismissNudge = useCallback(async () => {
     await recordReaction("dismissed");
-    activeUtteranceIdRef.current = null;
     patchCompanionSession({ activeUtteranceId: null });
     await transitionMode("quiet");
   }, [recordReaction, transitionMode]);
 
   const ignoreNudge = useCallback(async () => {
     await recordReaction("ignored");
-    activeUtteranceIdRef.current = null;
     patchCompanionSession({ activeUtteranceId: null });
     await transitionMode("quiet");
   }, [recordReaction, transitionMode]);
 
   const closePocket = useCallback(async () => {
     await recordReaction("closed", { score: true });
-    activeUtteranceIdRef.current = null;
     patchCompanionSession({ activeUtteranceId: null, messages: [], draft: "" });
     setMessages([]);
     setDraft("");
     await transitionMode("quiet");
-  }, [recordReaction, transitionMode]);
+  }, [recordReaction, setDraft, setMessages, transitionMode]);
 
   const openDailyCare = useCallback(async () => {
     if (!settings.nightCareEnabled) return;
@@ -204,7 +172,7 @@ export function useCompanionShell({
         },
       ]);
     },
-    [mode, nudge, personas],
+    [mode, nudge, personas, setMessages],
   );
 
   const sendMessage = useCallback(async () => {
@@ -248,6 +216,8 @@ export function useCompanionShell({
     messages,
     recordReaction,
     selectedPersona,
+    setDraft,
+    setMessages,
     settings,
     transitionMode,
   ]);

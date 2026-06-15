@@ -1,4 +1,5 @@
 export { AdvancedSection } from "./AdvancedSection";
+export { AppErrorBoundary } from "./AppErrorBoundary";
 export { Button } from "./Button";
 export { glassStyles, shellText } from "./glassStyles";
 export { MacSelect } from "./MacSelect";

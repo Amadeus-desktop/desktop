@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 use super::{
     constants::{
         ACCENT_LAVENDER, ACCENT_MINT, ACCENT_PEACH, ACCENT_ROSE, ACCENT_SKY, APPEARANCE_DARK,
-        APPEARANCE_LIGHT, APPEARANCE_SYSTEM, DEFAULT_ACCENT_COLOR, DEFAULT_APPEARANCE,
-        DEFAULT_COMPANION_PERSONA_ID, DEFAULT_LLAMA_SERVER_HOST, DEFAULT_LLAMA_SERVER_PORT,
+        APPEARANCE_LIGHT, APPEARANCE_SYSTEM,         DEFAULT_ACCENT_COLOR, DEFAULT_APPEARANCE,
+        DEFAULT_CHARACTER_ID, DEFAULT_COMPANION_PERSONA_ID, DEFAULT_LLAMA_SERVER_HOST, DEFAULT_LLAMA_SERVER_PORT,
         DEFAULT_LOCALE, DEFAULT_NICKNAME, DEFAULT_TALK_FREQUENCY, LOCALE_EN, LOCALE_JA, LOCALE_KO,
         LOCALHOST_IPV4, LOCALHOST_NAME, PERSONA_LOVING_PARTNER, PERSONA_SOFT_CARE,
         PERSONA_STEADY_ALLY, PERSONA_WARM_FRIEND,
@@ -22,6 +22,7 @@ pub struct AppSettings {
     pub locale: String,
     pub appearance: String,
     pub accent_color: String,
+    pub character_id: String,
     pub companion_persona_id: String,
     pub talk_frequency: String,
     pub model_route: String,
@@ -44,6 +45,7 @@ impl Default for AppSettings {
             locale: DEFAULT_LOCALE.to_string(),
             appearance: DEFAULT_APPEARANCE.to_string(),
             accent_color: DEFAULT_ACCENT_COLOR.to_string(),
+            character_id: DEFAULT_CHARACTER_ID.to_string(),
             companion_persona_id: DEFAULT_COMPANION_PERSONA_ID.to_string(),
             talk_frequency: DEFAULT_TALK_FREQUENCY.to_string(),
             model_route: MODEL_ROUTE_API_FIRST.to_string(),
@@ -83,6 +85,12 @@ impl AppSettings {
             LOCALE_KO | LOCALE_EN | LOCALE_JA => {}
             other => Err(SettingsError::Validation(format!(
                 "unsupported locale '{other}'"
+            )))?,
+        }
+        match self.character_id.as_str() {
+            "ruda" | "emilia" | "daon" => {}
+            other => Err(SettingsError::Validation(format!(
+                "unsupported character '{other}'"
             )))?,
         }
         match self.companion_persona_id.as_str() {
