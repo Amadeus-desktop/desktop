@@ -4,7 +4,7 @@ export const onboarding: OnboardingMessages = {
   steps: {
     login: "Sign in",
     permissions: "Context",
-    modelRoute: "Response",
+    modelRoute: "How to speak",
     setup: "Companion",
   },
   permissions: {
@@ -17,23 +17,24 @@ export const onboarding: OnboardingMessages = {
     checking: "Checking…",
     requestAccess: "Allow access",
     settingsHint: "When Settings opens, enable Amadeus.",
+    requestFailed: "Open Privacy & Security > Screen Recording and enable Amadeus.",
     next: "Next",
     skip: "Later",
   },
   modelRoute: {
-    headline: "How should replies arrive?",
-    subheadline: "Choose cloud API or local LLM for companion responses.",
+    headline: "How should they speak to you?",
+    subheadline: "Pick what feels right. You can change it anytime.",
     continue: "Next",
-    apiHint: "Uses the cloud API when online. You can change this anytime in settings.",
-    localHint: "Runs llama.cpp on your device. Model paths live in general settings.",
+    apiHint: "When you're online, they can speak with you right away.",
+    localHint: "Only on this device. Nothing leaves your space.",
     options: {
       api: {
-        title: "Cloud API",
-        description: "Fast, reliable responses",
+        title: "Online",
+        description: "Soft and quick",
       },
       local: {
-        title: "Local LLM",
-        description: "On-device only",
+        title: "On device",
+        description: "Quiet, just for you",
       },
     },
   },
@@ -41,5 +42,14 @@ export const onboarding: OnboardingMessages = {
     headline: "Who stays with you?",
     subheadline: "Different tone, same quiet presence.",
     continue: "Keep beside me",
+  },
+  preparing: {
+    eyebrow: "One moment",
+    title: "Getting things ready",
+    subtitle: "Tuning everything to stay beside you.",
+    doneEyebrow: "All set",
+    doneTitle: "You're all set!",
+    doneSubtitle: "Ready to speak beside you now.",
+    doneHint: "Starting in a moment.",
   },
 };

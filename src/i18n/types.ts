@@ -379,6 +379,15 @@ export type AppLocale = {
         };
       };
     };
+    preparing: {
+      eyebrow: string;
+      title: string;
+      subtitle: string;
+      doneEyebrow: string;
+      doneTitle: string;
+      doneSubtitle: string;
+      doneHint: string;
+    };
   };
   persona: {
     warm_friend: {

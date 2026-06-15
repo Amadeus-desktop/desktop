@@ -4,7 +4,7 @@ export const onboarding: OnboardingMessages = {
   steps: {
     login: "サインイン",
     permissions: "文脈の許可",
-    modelRoute: "応答方式",
+    modelRoute: "話す方式",
     setup: "相棒",
   },
   permissions: {
@@ -17,24 +17,24 @@ export const onboarding: OnboardingMessages = {
     checking: "確認中…",
     requestAccess: "許可する",
     settingsHint: "設定が開いたら Amadeus をオンにしてください。",
-    requestFailed: "システム設定の「プライバシーとセキュリティ」>「画面収録」で Amadeus をオンにしてください。",
+    requestFailed: "プライバシーとセキュリティ > 画面収録で Amadeus をオンにしてください。",
     next: "次へ",
     skip: "あとで",
   },
   modelRoute: {
     headline: "どう話してほしいですか？",
-    subheadline: "クラウド API かローカル LLM から選んでください。",
+    subheadline: "心地よい方を選んでください。あとから変えられます。",
     continue: "次へ",
-    apiHint: "オンライン時はクラウド API で応答します。設定からいつでも変更できます。",
-    localHint: "端末上で llama.cpp を使います。モデルパスは一般設定で調整できます。",
+    apiHint: "ネットにつながれば、すぐ話しかけてくれます。",
+    localHint: "この端末の中だけ。外には出ません。",
     options: {
       api: {
-        title: "クラウド API",
-        description: "速くて安定した応答",
+        title: "オンライン",
+        description: "やわらかく、すぐに",
       },
       local: {
-        title: "ローカル LLM",
-        description: "端末内だけで処理",
+        title: "端末の中",
+        description: "静かに、あなただけ",
       },
     },
   },
@@ -42,5 +42,14 @@ export const onboarding: OnboardingMessages = {
     headline: "誰と一緒に過ごしますか？",
     subheadline: "口調は違っても、そばにいる気持ちは同じです。",
     continue: "そばに置く",
+  },
+  preparing: {
+    eyebrow: "少しだけ",
+    title: "設定を準備しています",
+    subtitle: "そばに合わせて整えています。",
+    doneEyebrow: "準備完了",
+    doneTitle: "完了しました！",
+    doneSubtitle: "そばで話せる準備ができました。",
+    doneHint: "まもなく始めます。",
   },
 };

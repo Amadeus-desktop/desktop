@@ -21,7 +21,7 @@ export const auth: AuthMessages = {
     displayNameHint: "동반자가 말할 때 사용하는 이름이에요.",
     emailLabel: "이메일",
     openSettings: "일반 설정",
-    modelRouteLabel: "응답 방식",
-    modelRouteHint: "클라우드 API 또는 로컬 LLM으로 동반자가 말해요.",
+    modelRouteLabel: "말하는 방식",
+    modelRouteHint: "온라인으로 말해줄지, 기기 안에서만 말해줄지 골라요.",
   },
 };

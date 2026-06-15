@@ -1,6 +1,6 @@
+import { useCompanionPresentationEnabled } from "../hooks/useCompanionPresentationEnabled";
 import { useCompanionDevTools } from "../hooks/useCompanionDevTools";
 import { useCompanionShell } from "../hooks/useCompanionShell";
-import { useAuth } from "../../auth";
 import { DailyCareNotePreview } from "../daily-care/DailyCareNotePreview";
 import { PocketChat } from "../chat/PocketChat";
 import { FloatingMessageIcon } from "../presence/FloatingMessageIcon";
@@ -9,12 +9,12 @@ import { CompanionViewport } from "./CompanionViewport";
 
 export function CompanionShell() {
   const devToolsOpen = useCompanionDevTools();
-  const { isAuthenticated } = useAuth();
-  const shell = useCompanionShell({ companionEnabled: isAuthenticated });
+  const presentationEnabled = useCompanionPresentationEnabled();
+  const shell = useCompanionShell({ companionEnabled: presentationEnabled });
 
   return (
     <CompanionViewport>
-      {isAuthenticated && shell.mode === "nudge" ? (
+      {presentationEnabled && shell.mode === "nudge" ? (
         <NudgeNote
           personaId={shell.selectedPersonaId}
           personaName={shell.selectedPersona.name}
@@ -26,7 +26,7 @@ export function CompanionShell() {
         />
       ) : null}
 
-      {isAuthenticated && (shell.mode === "pocket" || shell.mode === "deep") ? (
+      {presentationEnabled && (shell.mode === "pocket" || shell.mode === "deep") ? (
         <PocketChat
           mode={shell.mode}
           persona={shell.selectedPersona}
@@ -46,7 +46,7 @@ export function CompanionShell() {
         />
       ) : null}
 
-      {isAuthenticated && shell.mode === "daily_care" ? (
+      {presentationEnabled && shell.mode === "daily_care" ? (
         <DailyCareNotePreview
           timelineEvents={shell.timelineEvents}
           devToolsOpen={devToolsOpen}
@@ -55,7 +55,7 @@ export function CompanionShell() {
         />
       ) : null}
 
-      {isAuthenticated && shell.showPresence ? (
+      {presentationEnabled && shell.showPresence ? (
         <FloatingMessageIcon
           mode={shell.mode}
           personaId={shell.selectedPersonaId}

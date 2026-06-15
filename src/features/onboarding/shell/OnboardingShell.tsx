@@ -8,12 +8,14 @@ type OnboardingShellProps = {
   step: OnboardingStep;
   stepLabels: string[];
   children: ReactNode;
+  hideProgress?: boolean;
 };
 
 export function OnboardingShell({
   step,
   stepLabels,
   children,
+  hideProgress = false,
 }: OnboardingShellProps) {
   return (
     <MacWindow variant="onboarding">
@@ -27,7 +29,9 @@ export function OnboardingShell({
           <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden px-5 py-1">
             {children}
           </div>
-          <OnboardingProgressDots labels={stepLabels} currentStep={step} />
+          {hideProgress ? null : (
+            <OnboardingProgressDots labels={stepLabels} currentStep={step} />
+          )}
         </div>
       </div>
     </MacWindow>

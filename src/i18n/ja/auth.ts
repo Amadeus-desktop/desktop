@@ -21,7 +21,7 @@ export const auth: AuthMessages = {
     displayNameHint: "コンパニオンが話しかけるときの名前です。",
     emailLabel: "メール",
     openSettings: "一般設定",
-    modelRouteLabel: "応答方式",
-    modelRouteHint: "クラウド API かローカル LLM でコンパニオンが話します。",
+    modelRouteLabel: "話す方式",
+    modelRouteHint: "オンラインか、この端末の中だけかを選びます。",
   },
 };

@@ -21,7 +21,7 @@ export const auth: AuthMessages = {
     displayNameHint: "Your companion uses this name when speaking to you.",
     emailLabel: "Email",
     openSettings: "General settings",
-    modelRouteLabel: "Response mode",
-    modelRouteHint: "Cloud API or local LLM for companion replies.",
+    modelRouteLabel: "How they speak",
+    modelRouteHint: "Online or only on this device.",
   },
 };
