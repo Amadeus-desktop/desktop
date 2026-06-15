@@ -21,6 +21,7 @@ export const onboarding: OnboardingMessages = {
     needed: "必要",
     unavailable: "利用不可",
     checking: "確認中…",
+    requestAccess: "画面収録を許可",
     openSettings: "システム設定を開く",
     checkAgain: "再確認",
     next: "次へ",

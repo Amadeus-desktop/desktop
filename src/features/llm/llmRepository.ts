@@ -11,19 +11,30 @@ import type { CompanionMessage } from "../companion/types";
 import type { GeneralSettings } from "../settings/types";
 import type { LlmGeneration, LlmProviderHealth } from "./types";
 import { toLlmChatRequest } from "./types";
+import { generateEdgeChatReply } from "./edgeLlmRepository";
 
 export async function generateChatReply(
   messages: CompanionMessage[],
   persona: Persona,
   settings: GeneralSettings,
 ): Promise<LlmGeneration> {
+  const input = toLlmChatRequest(messages, {
+    locale: settings.locale,
+    personaId: persona.id,
+    nickname: settings.nickname,
+  });
+
+  if (settings.modelRoute === "api-first") {
+    try {
+      return await generateEdgeChatReply(input);
+    } catch {
+      // Keep the local/template fallback path available when the cloud edge route is unavailable.
+    }
+  }
+
   if (isTauriRuntime()) {
     return invoke<LlmGeneration>("generate_chat_reply", {
-      input: toLlmChatRequest(messages, {
-        locale: settings.locale,
-        personaId: persona.id,
-        nickname: settings.nickname,
-      }),
+      input,
     });
   }
 

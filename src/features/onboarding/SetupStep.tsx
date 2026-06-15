@@ -8,6 +8,7 @@ import type { ModelRoute } from "../settings/types";
 import { PersonaOptionCard } from "../settings/PersonaOptionCard";
 import { useSettings } from "../settings/useSettings";
 import { Button, SegmentedControl, shellText } from "../../ui";
+import { OnboardingStepFrame } from "./OnboardingStepFrame";
 import type { SetupModelChoice } from "./types";
 
 type SetupStepProps = {
@@ -40,20 +41,12 @@ export function SetupStep({ onComplete, continuing = false }: SetupStepProps) {
   }
 
   return (
-    <div className="relative flex w-full max-w-[17rem] flex-col items-center text-center">
-      <p className="relative text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:rgb(var(--accent-rgb)/0.85)]">
-        {t.onboarding.steps.setup}
-      </p>
-      <h1 className={cn("relative mt-1.5 text-[1.05rem] font-semibold leading-snug", shellText.primary)}>
-        {s.headline}
-      </h1>
-      <p className={cn("relative mt-1.5 text-[10.5px] leading-5", shellText.muted)}>
-        {s.subheadline}
-      </p>
-
-      <div className="relative mt-3.5 w-full space-y-3 text-left" data-no-drag>
+    <OnboardingStepFrame eyebrow={t.onboarding.steps.setup} title={s.headline} description={s.subheadline}>
+      <div className="space-y-4 text-left">
         <div className="space-y-1.5">
-          <p className={cn("text-[10px] font-medium", shellText.muted)}>{s.modelLabel}</p>
+          <p className={cn("text-[10px] font-medium uppercase tracking-wide", shellText.faint)}>
+            {s.modelLabel}
+          </p>
           <SegmentedControl
             value={modelChoice}
             options={[
@@ -63,13 +56,15 @@ export function SetupStep({ onComplete, continuing = false }: SetupStepProps) {
             onChange={setModelChoice}
           />
           {modelChoice === "local" ? (
-            <p className={cn("text-[9px] leading-4", shellText.faint)}>{s.modelLocalHint}</p>
+            <p className={cn("text-[10px] leading-4", shellText.faint)}>{s.modelLocalHint}</p>
           ) : null}
         </div>
 
         <div className="space-y-1.5">
-          <p className={cn("text-[10px] font-medium", shellText.muted)}>{s.personaLabel}</p>
-          <div className="grid grid-cols-2 gap-1.5">
+          <p className={cn("text-[10px] font-medium uppercase tracking-wide", shellText.faint)}>
+            {s.personaLabel}
+          </p>
+          <div className="grid grid-cols-2 gap-2">
             {personas.map((persona) => (
               <PersonaOptionCard
                 key={persona.id}
@@ -92,6 +87,6 @@ export function SetupStep({ onComplete, continuing = false }: SetupStepProps) {
           {s.continue}
         </Button>
       </div>
-    </div>
+    </OnboardingStepFrame>
   );
 }

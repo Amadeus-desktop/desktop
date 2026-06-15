@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import { cn } from "../lib/cn";
 import { glassStyles } from "./glassStyles";
-import { createWindowDragHandler } from "./windowDrag";
 import {
   controlCenterWindowPolicy,
   onboardingWindowPolicy,
@@ -27,11 +26,9 @@ const minSizeByVariant = {
 
 export function MacWindow({ children, variant = "control-center" }: MacWindowProps) {
   const minSize = minSizeByVariant[variant];
-  const handleDrag = variant === "onboarding" ? createWindowDragHandler() : undefined;
 
   return (
     <section
-      onPointerDown={handleDrag}
       className={cn(
         "animate-window-appear flex h-full w-full min-h-0 overflow-hidden text-white",
         glassStyles.shell,

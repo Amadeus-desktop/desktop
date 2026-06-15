@@ -1,4 +1,4 @@
-import { LogicalSize } from "@tauri-apps/api/dpi";
+import { LogicalPosition, LogicalSize } from "@tauri-apps/api/dpi";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { isTauriRuntime } from "../../lib/tauriRuntime";
 import {
@@ -9,6 +9,13 @@ import {
 } from "../../ui/layout/controlCenterPreferences";
 
 export type MainWindowLayoutMode = "control-center" | "onboarding";
+
+type LogicalRect = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
 
 function getMainWebviewWindow() {
   if (!isTauriRuntime()) return null;
@@ -29,19 +36,59 @@ async function ensureMainWindowVisible(
   }
 }
 
-export async function readMainWindowLogicalSize() {
+async function readMainWindowOuterLogicalRect(): Promise<LogicalRect | null> {
   const webviewWindow = getMainWebviewWindow();
   if (!webviewWindow) return null;
 
-  const [size, scaleFactor] = await Promise.all([
-    webviewWindow.innerSize(),
+  const [position, size, scaleFactor] = await Promise.all([
+    webviewWindow.outerPosition(),
+    webviewWindow.outerSize(),
     webviewWindow.scaleFactor(),
   ]);
 
   return {
-    width: Math.round(size.width / scaleFactor),
-    height: Math.round(size.height / scaleFactor),
+    x: position.x / scaleFactor,
+    y: position.y / scaleFactor,
+    width: size.width / scaleFactor,
+    height: size.height / scaleFactor,
   };
+}
+
+export async function readMainWindowLogicalSize() {
+  const rect = await readMainWindowOuterLogicalRect();
+  if (!rect) return null;
+
+  return {
+    width: Math.round(rect.width),
+    height: Math.round(rect.height),
+  };
+}
+
+export async function centerMainWindowOnMonitor() {
+  const webviewWindow = getMainWebviewWindow();
+  if (!webviewWindow) return;
+
+  await webviewWindow.center();
+}
+
+async function setMainWindowLogicalSizeCentered(width: number, height: number) {
+  const webviewWindow = getMainWebviewWindow();
+  if (!webviewWindow) return;
+
+  const rect = await readMainWindowOuterLogicalRect();
+  if (!rect) {
+    await webviewWindow.setSize(new LogicalSize(width, height));
+    await webviewWindow.center();
+    return;
+  }
+
+  const centerX = rect.x + rect.width / 2;
+  const centerY = rect.y + rect.height / 2;
+  const nextX = Math.round(centerX - width / 2);
+  const nextY = Math.round(centerY - height / 2);
+
+  await webviewWindow.setSize(new LogicalSize(width, height));
+  await webviewWindow.setPosition(new LogicalPosition(nextX, nextY));
 }
 
 export function clampControlCenterSize(
@@ -73,12 +120,11 @@ export async function applyMainWindowLayoutMode(mode: MainWindowLayoutMode) {
         onboardingWindowPolicy.minHeight,
       ),
     );
-    await webviewWindow.setSize(
-      new LogicalSize(
-        onboardingWindowPolicy.width,
-        onboardingWindowPolicy.height,
-      ),
+    await setMainWindowLogicalSizeCentered(
+      onboardingWindowPolicy.width,
+      onboardingWindowPolicy.height,
     );
+    await centerMainWindowOnMonitor();
     return;
   }
 
@@ -94,7 +140,8 @@ export async function applyMainWindowLayoutMode(mode: MainWindowLayoutMode) {
       controlCenterWindowPolicy.minHeight,
     ),
   );
-  await webviewWindow.setSize(new LogicalSize(next.width, next.height));
+  await setMainWindowLogicalSizeCentered(next.width, next.height);
+  await centerMainWindowOnMonitor();
 }
 
 function easeOutCubic(t: number) {
@@ -103,15 +150,13 @@ function easeOutCubic(t: number) {
 
 export async function animateMainWindowLayoutMode(
   mode: MainWindowLayoutMode,
-  durationMs = 420,
+  durationMs = 480,
 ) {
   const webviewWindow = getMainWebviewWindow();
   if (!webviewWindow) {
     await new Promise((resolve) => setTimeout(resolve, durationMs));
     return;
   }
-
-  const windowRef = webviewWindow;
 
   const start = (await readMainWindowLogicalSize()) ?? {
     width: controlCenterWindowPolicy.defaultWidth,
@@ -154,7 +199,7 @@ export async function animateMainWindowLayoutMode(
         start.height + (target.height - start.height) * progress,
       );
 
-      void windowRef.setSize(new LogicalSize(width, height));
+      void setMainWindowLogicalSizeCentered(width, height);
 
       if (progress >= 1) {
         resolve();
@@ -168,19 +213,21 @@ export async function animateMainWindowLayoutMode(
   });
 
   if (mode === "control-center") {
-    await windowRef.setMinSize(
+    await webviewWindow.setMinSize(
       new LogicalSize(
         controlCenterWindowPolicy.minWidth,
         controlCenterWindowPolicy.minHeight,
       ),
     );
   }
+
+  await centerMainWindowOnMonitor();
 }
 
-export async function animateMainWindowToOnboarding(durationMs = 420) {
+export async function animateMainWindowToOnboarding(durationMs = 480) {
   await animateMainWindowLayoutMode("onboarding", durationMs);
 }
 
-export async function animateMainWindowToControlCenter(durationMs = 420) {
+export async function animateMainWindowToControlCenter(durationMs = 480) {
   await animateMainWindowLayoutMode("control-center", durationMs);
 }

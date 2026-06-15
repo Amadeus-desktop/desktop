@@ -3,8 +3,8 @@ mod core;
 
 pub use commands::{assess_current_privacy_context, capture_privacy_checked_context_event};
 pub use core::{
-    assess_privacy, get_screen_capture_permission_status, PrivacyAssessment,
-    PrivacyCheckedContextEvent, PrivacyContext, RedactedContextSnapshot,
+    assess_privacy, get_screen_capture_permission_status, request_screen_capture_permission,
+    PrivacyAssessment, PrivacyCheckedContextEvent, PrivacyContext, RedactedContextSnapshot,
 };
 
 pub(crate) use core::CommandError;

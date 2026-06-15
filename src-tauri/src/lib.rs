@@ -23,7 +23,7 @@ use ocr::{
 };
 use privacy::{
     assess_current_privacy_context, capture_privacy_checked_context_event,
-    get_screen_capture_permission_status,
+    get_screen_capture_permission_status, request_screen_capture_permission,
 };
 use settings::{get_app_settings, llama_endpoint, update_app_settings, SettingsState};
 use shared::constants::{
@@ -412,6 +412,7 @@ pub fn run() {
             sync_companion_window_position,
             get_current_context_snapshot,
             get_screen_capture_permission_status,
+            request_screen_capture_permission,
             assess_current_privacy_context,
             capture_privacy_checked_context_event,
             create_context_event,

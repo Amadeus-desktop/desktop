@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react";
 import {
   getAuthSnapshot,
   hydrateAuth,
-  signInWithGoogleMock,
+  signInWithGoogleAuth,
   signOut,
   signOutWithTransition,
   subscribeToAuth,
@@ -20,7 +20,7 @@ export function useAuth() {
     hydrated: snapshot.hydrated,
     isAuthenticated: snapshot.user !== null,
     hydrate: hydrateAuth,
-    signInWithGoogle: signInWithGoogleMock,
+    signInWithGoogle: signInWithGoogleAuth,
     signOut,
     signOutWithTransition,
   };

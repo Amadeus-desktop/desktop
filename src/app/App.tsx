@@ -10,12 +10,10 @@ import {
 } from "../features/onboarding";
 import { ensureSettingsSync } from "../features/settings/appSettingsStore";
 import { useShellTheme } from "../ui/theme/useShellTheme";
-import { createWindowDragHandler } from "../ui/windowDrag";
 
 function App() {
   const { hydrated: authHydrated, isAuthenticated } = useAuth();
   const onboarding = useOnboarding(isAuthenticated);
-  const handleOnboardingDrag = createWindowDragHandler();
   useShellTheme();
 
   const { showOnboardingShell, isComplete } = onboarding;
@@ -36,7 +34,6 @@ function App() {
 
   return (
     <main
-      onPointerDown={showOnboardingShell ? handleOnboardingDrag : undefined}
       className={cn(
         "relative flex h-dvh w-dvw overflow-hidden bg-transparent text-white",
         showOnboardingShell ? "p-0" : "p-3 max-sm:p-2.5",

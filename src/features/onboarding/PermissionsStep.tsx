@@ -1,8 +1,11 @@
 import { Monitor, ScanText } from "lucide-react";
+import { useState } from "react";
 import { useI18n } from "../../i18n";
-import { Button, shellText } from "../../ui";
 import { cn } from "../../lib/cn";
+import { Button, glassStyles, shellText } from "../../ui";
+import { requestScreenCapturePermission } from "../context/contextRepository";
 import { openScreenRecordingSettings } from "./openScreenRecordingSettings";
+import { OnboardingStepFrame } from "./OnboardingStepFrame";
 import type { PermissionReadiness } from "./types";
 
 type PermissionsStepProps = {
@@ -22,31 +25,36 @@ export function PermissionsStep({
 }: PermissionsStepProps) {
   const t = useI18n();
   const p = t.onboarding.permissions;
+  const [requesting, setRequesting] = useState(false);
+
+  async function handleRequestAccess() {
+    if (requesting) return;
+    setRequesting(true);
+    try {
+      await requestScreenCapturePermission();
+      await onRefresh();
+    } finally {
+      setRequesting(false);
+    }
+  }
 
   return (
-    <div className="relative flex w-full max-w-[16.5rem] flex-col items-center text-center">
-      <div className="pointer-events-none absolute inset-x-0 top-1/2 h-28 -translate-y-1/2 rounded-full bg-[radial-gradient(circle_at_center,rgb(var(--accent-rgb)/0.16),transparent_70%)] blur-2xl" />
-
-      <p className="relative text-[10px] font-semibold uppercase tracking-[0.16em] text-[color:rgb(var(--accent-rgb)/0.85)]">
-        {t.onboarding.steps.permissions}
-      </p>
-      <h1 className={cn("relative mt-1.5 text-[1.1rem] font-semibold leading-snug", shellText.primary)}>
-        {p.headline}
-      </h1>
-      <p className={cn("relative mt-2 text-[11px] leading-5", shellText.muted)}>
-        {p.subheadline}
-      </p>
-
-      <ul className={cn("relative mt-3 space-y-1.5 text-left text-[10px] leading-4", shellText.faint)}>
+    <OnboardingStepFrame eyebrow={t.onboarding.steps.permissions} title={p.headline} description={p.subheadline}>
+      <ul className={cn("mb-4 space-y-2 text-left text-[11px] leading-5", shellText.muted)}>
         {p.bullets.map((bullet) => (
-          <li key={bullet} className="flex gap-2">
-            <span className="mt-[0.35rem] size-1 shrink-0 rounded-full bg-[color:rgb(var(--accent-rgb)/0.7)]" />
+          <li key={bullet} className="flex gap-2.5">
+            <span className="mt-[0.45rem] size-1.5 shrink-0 rounded-full bg-[color:rgb(var(--accent-rgb)/0.75)]" />
             <span>{bullet}</span>
           </li>
         ))}
       </ul>
 
-      <div className="relative mt-3.5 w-full space-y-1.5 rounded-[14px] border border-[color:var(--shell-border-subtle)] bg-[color:var(--shell-row)] px-3 py-2.5 text-left">
+      <div
+        className={cn(
+          "mb-4 space-y-2 rounded-[16px] border border-[color:var(--shell-border-subtle)] p-3",
+          glassStyles.panel,
+        )}
+      >
         <StatusRow
           icon={Monitor}
           label={p.screenStatus}
@@ -73,11 +81,20 @@ export function PermissionsStep({
         />
       </div>
 
-      <div className="relative mt-4 w-full space-y-2" data-no-drag>
+      <div className="space-y-2">
         {!readiness.ready ? (
           <>
             <Button
               variant="primary"
+              size="md"
+              className="w-full rounded-[12px]"
+              disabled={requesting || readiness.loading}
+              onClick={() => void handleRequestAccess()}
+            >
+              {requesting ? p.checking : p.requestAccess}
+            </Button>
+            <Button
+              variant="secondary"
               size="md"
               className="w-full rounded-[12px]"
               onClick={() => void openScreenRecordingSettings()}
@@ -96,7 +113,7 @@ export function PermissionsStep({
             <button
               type="button"
               className={cn(
-                "w-full py-1 text-[10px] transition hover:text-[color:var(--shell-ink)]",
+                "w-full py-1.5 text-[10px] transition hover:text-[color:var(--shell-ink)]",
                 shellText.faint,
               )}
               onClick={onSkip}
@@ -116,7 +133,7 @@ export function PermissionsStep({
           </Button>
         )}
       </div>
-    </div>
+    </OnboardingStepFrame>
   );
 }
 
@@ -132,9 +149,14 @@ function StatusRow({
   ok: boolean;
 }) {
   return (
-    <div className="flex items-center gap-2">
-      <Icon className="size-3.5 shrink-0 text-[color:var(--shell-ink-faint)]" strokeWidth={2} />
-      <span className="min-w-0 flex-1 truncate text-[10px] text-[color:var(--shell-ink-muted)]">
+    <div
+      className={cn(
+        "flex items-center gap-2.5 rounded-[12px] px-2.5 py-2",
+        glassStyles.row,
+      )}
+    >
+      <Icon className="size-4 shrink-0 text-[color:var(--shell-ink-faint)]" strokeWidth={2} />
+      <span className="min-w-0 flex-1 truncate text-[11px] text-[color:var(--shell-ink-muted)]">
         {label}
       </span>
       <span

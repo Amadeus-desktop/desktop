@@ -41,6 +41,16 @@ export async function getScreenCapturePermissionStatus(): Promise<ScreenCaptureP
   return mockPermissionStatus;
 }
 
+export async function requestScreenCapturePermission(): Promise<ScreenCapturePermissionStatus> {
+  if (isTauriRuntime()) {
+    return invoke<ScreenCapturePermissionStatus>(
+      "request_screen_capture_permission",
+    );
+  }
+
+  return { ...mockPermissionStatus, granted: true };
+}
+
 export async function assessCurrentPrivacyContext(
   keywords: string[] = [],
 ): Promise<PrivacyContext> {

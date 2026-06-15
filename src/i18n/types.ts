@@ -341,6 +341,7 @@ export type AppLocale = {
       needed: string;
       unavailable: string;
       checking: string;
+      requestAccess: string;
       openSettings: string;
       checkAgain: string;
       next: string;

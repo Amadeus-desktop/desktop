@@ -2,6 +2,11 @@ import { createExternalStore } from "../../lib/createExternalStore";
 import { logger } from "../../observability/logger";
 import { getOnboardingSnapshot, hydrateOnboardingProgress } from "../onboarding/onboardingStore";
 import { animateMainWindowToControlCenter, animateMainWindowToOnboarding } from "./mainWindowLayout";
+import {
+  getCurrentSupabaseUser,
+  signInWithGoogle,
+  signOutSupabase,
+} from "./supabaseAuth";
 import type { AuthSnapshot, AuthUser } from "./types";
 
 const AUTH_STORAGE_KEY = "amadeus:auth-session";
@@ -74,9 +79,10 @@ export function hydrateAuth() {
   }
 
   if (!hydratePromise) {
-    hydratePromise = Promise.resolve().then(() => {
-      const user = readStoredUser();
+    hydratePromise = getCurrentSupabaseUser().then((supabaseUser) => {
+      const user = supabaseUser ?? readStoredUser();
       replaceSnapshot(user, true);
+      writeStoredUser(user);
       return user;
     });
   }
@@ -92,15 +98,9 @@ function bootstrapAuth() {
 
 bootstrapAuth();
 
-export async function signInWithGoogleMock(): Promise<AuthUser> {
-  await new Promise((resolve) => setTimeout(resolve, 650));
-
-  const user: AuthUser = {
-    id: "google-mock-user",
-    email: "you@gmail.com",
-    name: "Amadeus User",
-    provider: "google",
-  };
+export async function signInWithGoogleAuth(): Promise<AuthUser | null> {
+  const user = await signInWithGoogle();
+  if (!user) return null;
 
   writeStoredUser(user);
   replaceSnapshot(user, true);
@@ -126,6 +126,11 @@ export async function signOutWithTransition() {
   } catch (error) {
     logger.error("auth", "logout window transition failed", { error });
   } finally {
+    try {
+      await signOutSupabase();
+    } catch (error) {
+      logger.error("auth", "supabase sign out failed", { error });
+    }
     signOut();
   }
 }

@@ -14,7 +14,7 @@ export function OnboardingProgressDots({
   const activeIndex = ONBOARDING_STEP_ORDER.indexOf(currentStep);
 
   return (
-    <div className="flex flex-col items-center gap-2 pb-4 pt-2" data-no-drag>
+    <div className="flex flex-col items-center gap-2 border-t border-[color:var(--shell-border-subtle)] px-4 pb-4 pt-3">
       <div className="flex items-center gap-2">
         {labels.map((label, index) => {
           const active = index === activeIndex;

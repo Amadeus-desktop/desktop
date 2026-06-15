@@ -21,6 +21,7 @@ export const onboarding: OnboardingMessages = {
     needed: "Required",
     unavailable: "Unavailable",
     checking: "Checking…",
+    requestAccess: "Allow screen recording",
     openSettings: "Open System Settings",
     checkAgain: "Check again",
     next: "Next",

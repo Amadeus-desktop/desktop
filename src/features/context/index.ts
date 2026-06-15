@@ -4,6 +4,7 @@ export {
   capturePrivacyCheckedContextEvent,
   getCurrentContextSnapshot,
   getScreenCapturePermissionStatus,
+  requestScreenCapturePermission,
 } from "./contextRepository";
 export { formatLiveContextStatus } from "./formatLiveContext";
 export { useContextSnapshot } from "./useContextSnapshot";

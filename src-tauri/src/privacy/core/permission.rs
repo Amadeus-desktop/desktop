@@ -5,6 +5,23 @@ pub fn get_screen_capture_permission_status() -> ScreenCapturePermissionStatus {
     screen_capture_permission_status()
 }
 
+#[tauri::command]
+pub fn request_screen_capture_permission() -> ScreenCapturePermissionStatus {
+    #[cfg(target_os = "macos")]
+    {
+        #[link(name = "CoreGraphics", kind = "framework")]
+        extern "C" {
+            fn CGRequestScreenCaptureAccess() -> bool;
+        }
+
+        unsafe {
+            CGRequestScreenCaptureAccess();
+        }
+    }
+
+    screen_capture_permission_status()
+}
+
 #[cfg(target_os = "macos")]
 fn screen_capture_permission_status() -> ScreenCapturePermissionStatus {
     #[link(name = "CoreGraphics", kind = "framework")]
