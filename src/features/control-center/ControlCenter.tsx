@@ -1,4 +1,4 @@
-import { MacWindow, Sidebar, SidebarItem } from "../../ui";
+import { MacWindow, Sidebar, SidebarBrand, SidebarItem, WindowDragStrip } from "../../ui";
 import { ResizableColumns } from "../../ui/ResizableColumns";
 import { useI18n } from "../../i18n";
 import { CharacterPanel } from "../character";
@@ -33,18 +33,14 @@ export function ControlCenter() {
     <MacWindow>
       <ResizableColumns
         sidebar={
-          <Sidebar>
-            <div
-              data-tauri-drag-region
-              className="min-w-0 px-3 py-3 max-sm:hidden"
-            >
-              <div className="truncate text-[13px] font-semibold text-white">
-                {t.common.appName}
-              </div>
-              <div className="mt-0.5 truncate text-[11px] text-white/35">
-                {t.common.activeCompanion}
-              </div>
-            </div>
+          <Sidebar
+            brand={
+              <SidebarBrand
+                appName={t.common.appName}
+                subtitle={t.common.activeCompanion}
+              />
+            }
+          >
             {tabs.map((tab) => (
               <SidebarItem
                 key={tab.id}
@@ -57,11 +53,11 @@ export function ControlCenter() {
           </Sidebar>
         }
       >
-        <div
-          data-tauri-drag-region
-          className="h-full min-h-0 overflow-y-auto px-8 py-7 max-sm:px-5 max-sm:py-5"
-        >
-          {renderPanel(activeTab)}
+        <div className="flex h-full min-h-0 flex-col overflow-y-auto px-6 py-5 max-sm:px-4 max-sm:py-4">
+          <div className="app-no-drag min-h-0 shrink-0">
+            {renderPanel(activeTab)}
+          </div>
+          <WindowDragStrip className="mt-4 min-h-10 flex-1" />
         </div>
       </ResizableColumns>
     </MacWindow>

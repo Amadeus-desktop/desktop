@@ -49,7 +49,7 @@ export function ResizableColumns({
       >
         {sidebar}
       </Panel>
-      <Separator className="w-px bg-white/10 transition hover:bg-white/20" />
+      <Separator className="app-no-drag w-px bg-white/10 transition hover:bg-white/20" />
       <Panel
         id={APP_SHELL_PANEL_IDS.main}
         minSize={mainPanelPolicy.minSize}

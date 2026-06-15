@@ -23,7 +23,7 @@ export function WindowControls() {
   };
 
   return (
-    <div className="mb-6 ml-2.5 flex gap-2">
+    <div className="mb-3 ml-2 flex gap-2">
       <button
         type="button"
         onClick={handleClose}

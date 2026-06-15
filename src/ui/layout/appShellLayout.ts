@@ -1,9 +1,11 @@
+import { CONTROL_CENTER_PANEL_LAYOUT_KEY } from "./controlCenterPreferences";
+
 export const APP_SHELL_PANEL_IDS = {
   sidebar: "sidebar",
   main: "main",
 } as const;
 
-export const APP_SHELL_LAYOUT_ID = "amadeus:control-center";
+export const APP_SHELL_LAYOUT_ID = CONTROL_CENTER_PANEL_LAYOUT_KEY;
 
 export const sidebarPanelPolicy = {
   defaultSize: "240px",

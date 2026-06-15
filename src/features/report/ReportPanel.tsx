@@ -1,4 +1,4 @@
-import { SectionHeading } from "../../ui";
+import { PanelHeader, SectionHeading } from "../../ui";
 import { useI18n } from "../../i18n";
 import { FocusSummaryGrid } from "./FocusSummaryGrid";
 import { WorkTimeline } from "./WorkTimeline";
@@ -10,15 +10,11 @@ export function ReportPanel() {
 
   return (
     <section className="tab-panel-enter">
-      <header>
-        <p className="text-xs font-medium text-[#64b5f6]">{t.report.eyebrow}</p>
-        <h1 className="mt-1 text-2xl font-semibold leading-tight text-white">
-          {t.report.title}
-        </h1>
-        <p className="mt-2 text-[13px] leading-5 text-white/45">
-          {t.report.description}
-        </p>
-      </header>
+      <PanelHeader
+        eyebrow={t.report.eyebrow}
+        title={t.report.title}
+        description={t.report.description}
+      />
 
       <SectionHeading>{t.report.sections.summary}</SectionHeading>
       <FocusSummaryGrid metrics={reportMetrics} />

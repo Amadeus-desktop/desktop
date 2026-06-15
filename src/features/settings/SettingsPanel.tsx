@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useI18n } from "../../i18n";
-import { IosSwitch, MacInput, MacSelect, SectionHeading, SettingRow } from "../../ui";
+import { IosSwitch, MacInput, MacSelect, PanelHeader, SectionHeading, SettingRow } from "../../ui";
 import { CompanionPersonaPicker } from "./CompanionPersonaPicker";
 import {
   generateTestUtterance,
@@ -104,15 +104,11 @@ export function SettingsPanel() {
 
   return (
     <section className="tab-panel-enter">
-      <header>
-        <p className="text-xs font-medium text-[#64b5f6]">{t.settings.eyebrow}</p>
-        <h1 className="mt-1 text-2xl font-semibold leading-tight text-white">
-          {t.settings.title}
-        </h1>
-        <p className="mt-2 text-[13px] leading-5 text-white/45">
-          {t.settings.description}
-        </p>
-      </header>
+      <PanelHeader
+        eyebrow={t.settings.eyebrow}
+        title={t.settings.title}
+        description={t.settings.description}
+      />
 
       <SectionHeading>{t.settings.sections.language}</SectionHeading>
       <SettingRow
@@ -186,7 +182,7 @@ export function SettingsPanel() {
         title={t.settings.modelPreset.label}
         subtitle={t.settings.modelPreset.subtitle}
       >
-        <p className="max-w-[260px] text-right text-xs leading-5 text-white/55">
+        <p className="max-w-[220px] text-right text-[11px] leading-4 text-white/55">
           {t.settings.modelPreset.recommended}
         </p>
       </SettingRow>
@@ -214,7 +210,7 @@ export function SettingsPanel() {
         title={t.settings.llamaServer.label}
         subtitle={t.settings.llamaServer.subtitle}
       >
-        <div className="grid min-w-[260px] grid-cols-[1fr_84px] gap-2">
+        <div className="grid min-w-[200px] max-w-[240px] grid-cols-[1fr_72px] gap-2">
           <MacInput
             value={llamaServerHost}
             onChange={setLlamaServerHost}
@@ -257,7 +253,7 @@ export function SettingsPanel() {
                 .join(" · ")
         }
       >
-        <div className="max-w-[260px] space-y-1 text-right text-[11px] leading-5 text-white/45">
+        <div className="max-w-[220px] space-y-1 text-right text-[10px] leading-4 text-white/45">
           {healthState === "loading"
             ? t.settings.llmHealth.checking
             : providerHealth.map((health) => (

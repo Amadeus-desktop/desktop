@@ -4,7 +4,7 @@ type SectionHeadingProps = {
 
 export function SectionHeading({ children }: SectionHeadingProps) {
   return (
-    <h3 className="mb-3 mt-6 text-[11px] font-semibold uppercase tracking-normal text-white/40">
+    <h3 className="mb-2 mt-5 text-[10px] font-semibold uppercase tracking-wide text-white/40">
       {children}
     </h3>
   );

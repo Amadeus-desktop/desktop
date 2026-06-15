@@ -1,4 +1,4 @@
-import { IosSwitch, MacInput, SectionHeading, SettingRow, StatusPill } from "../../ui";
+import { IosSwitch, MacInput, PanelHeader, SectionHeading, SettingRow, StatusPill } from "../../ui";
 import {
   formatPrivacyKeywordsInput,
   parsePrivacyKeywordsInput,
@@ -41,15 +41,11 @@ export function PerceptionPanel() {
 
   return (
     <section className="tab-panel-enter">
-      <header>
-        <p className="text-xs font-medium text-[#64b5f6]">{t.perception.eyebrow}</p>
-        <h1 className="mt-1 text-2xl font-semibold leading-tight text-white">
-          {t.perception.title}
-        </h1>
-        <p className="mt-2 text-[13px] leading-5 text-white/45">
-          {t.perception.description}
-        </p>
-      </header>
+      <PanelHeader
+        eyebrow={t.perception.eyebrow}
+        title={t.perception.title}
+        description={t.perception.description}
+      />
 
       <SectionHeading>{t.perception.sections.capture}</SectionHeading>
       <SettingRow
@@ -93,7 +89,7 @@ export function PerceptionPanel() {
               setCustomPrivacyKeywords(parsePrivacyKeywordsInput(value))
             }
             label={t.perception.privacyKeywords.inputLabel}
-            className="min-w-[260px] rounded-md border border-white/12 bg-white/8 px-2.5 py-1.5 text-left text-xs text-white outline-none transition focus:border-[#007aff]"
+            className="min-w-[160px] max-w-[220px] rounded-md border border-white/12 bg-white/8 px-2 py-1 text-left text-[11px] text-white outline-none transition focus:border-[#007aff]"
           />
         </SettingRow>
       ) : null}

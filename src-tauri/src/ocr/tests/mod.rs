@@ -117,6 +117,44 @@ fn ocr_state_blocks_expired_capture_before_adapter() {
     assert_eq!(error.to_string(), "ocr denied: capture_expired");
 }
 
+#[test]
+fn screen_ocr_workflow_captures_then_recognizes_when_gate_allows() {
+    let ocr = OcrState::new(Box::new(PlainOcrAdapter));
+    let capture = ScreenCaptureState::new(Box::new(FakeScreenCaptureAdapter));
+    let gate = CaptureGateInput {
+        privacy_risk_score: 10,
+        sensitive_context: false,
+        screen_capture_permission_granted: true,
+        user_screen_context_enabled: true,
+        known_meeting_app_frontmost: false,
+    };
+
+    let observation = capture
+        .capture_and_recognize(&ocr, gate, 2_000)
+        .expect("allowed screen capture reaches OCR");
+
+    assert_eq!(observation.text_summary_redacted, "planning document");
+}
+
+#[test]
+fn screen_ocr_workflow_blocks_capture_before_adapter_when_gate_denies() {
+    let ocr = OcrState::new(Box::new(PlainOcrAdapter));
+    let capture = ScreenCaptureState::new(Box::new(FakeScreenCaptureAdapter));
+    let gate = CaptureGateInput {
+        privacy_risk_score: 80,
+        sensitive_context: false,
+        screen_capture_permission_granted: true,
+        user_screen_context_enabled: true,
+        known_meeting_app_frontmost: false,
+    };
+
+    let error = capture
+        .capture_and_recognize(&ocr, gate, 2_000)
+        .expect_err("privacy hard-deny blocks screen capture");
+
+    assert_eq!(error.to_string(), "ocr denied: sensitive_context");
+}
+
 struct FakeOcrAdapter;
 
 impl OcrAdapter for FakeOcrAdapter {
@@ -137,5 +175,41 @@ impl OcrAdapter for FakeOcrAdapter {
             "token=abc123 /Users/user/private.pdf",
             0.9,
         ))
+    }
+}
+
+struct PlainOcrAdapter;
+
+impl OcrAdapter for PlainOcrAdapter {
+    fn id(&self) -> &'static str {
+        "plain"
+    }
+
+    fn status(&self) -> OcrProviderStatus {
+        OcrProviderStatus {
+            provider: self.id().to_string(),
+            available: true,
+            detail: "plain adapter".to_string(),
+        }
+    }
+
+    fn recognize_image_bytes(&self, _image_bytes: Vec<u8>) -> Result<OcrObservation, OcrError> {
+        Ok(redacted_observation_from_adapter_text("planning document", 0.9))
+    }
+}
+
+struct FakeScreenCaptureAdapter;
+
+impl ScreenCaptureAdapter for FakeScreenCaptureAdapter {
+    fn capture_primary_display(&self, now_ms: u128) -> Result<CapturedImage, OcrError> {
+        Ok(CapturedImage {
+            image_bytes: vec![1, 2, 3],
+            metadata: CaptureMetadata {
+                approved: true,
+                captured_at_ms: now_ms,
+                ttl_ms: 1_000,
+                sensitive_marker: false,
+            },
+        })
     }
 }

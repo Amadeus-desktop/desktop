@@ -17,7 +17,7 @@ export function SidebarItem({
     <button
       type="button"
       onClick={onClick}
-      className={`flex min-w-0 items-center gap-2.5 rounded-md px-3 py-2 text-left text-[13px] font-medium transition max-sm:shrink-0 ${
+      className={`flex min-w-0 items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-xs font-medium transition max-sm:shrink-0 ${
         active
           ? "bg-[#007aff] text-white"
           : "text-white/65 hover:bg-white/6 hover:text-white"

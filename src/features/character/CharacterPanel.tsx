@@ -1,4 +1,4 @@
-import { SectionHeading, StatusPill } from "../../ui";
+import { PanelHeader, SectionHeading, StatusPill } from "../../ui";
 import { useI18n } from "../../i18n";
 import { CharacterCard } from "./CharacterCard";
 import { CHARACTER_IDS, characterAssets } from "./characters";
@@ -19,15 +19,11 @@ export function CharacterPanel() {
 
   return (
     <section className="tab-panel-enter">
-      <header>
-        <p className="text-xs font-medium text-[#64b5f6]">{t.character.eyebrow}</p>
-        <h1 className="mt-1 text-2xl font-semibold leading-tight text-white">
-          {t.character.title}
-        </h1>
-        <p className="mt-2 text-[13px] leading-5 text-white/45">
-          {t.character.description}
-        </p>
-      </header>
+      <PanelHeader
+        eyebrow={t.character.eyebrow}
+        title={t.character.title}
+        description={t.character.description}
+      />
 
       <SectionHeading>{t.character.section}</SectionHeading>
       <div className="grid grid-cols-3 gap-3 max-sm:grid-cols-1">
