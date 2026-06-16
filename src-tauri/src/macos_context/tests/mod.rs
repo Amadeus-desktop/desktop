@@ -97,3 +97,26 @@ fn classifies_unknown_apps() {
         AppCategory::Unknown
     );
 }
+
+#[test]
+fn classifies_browser_urls_without_relying_on_site_allowlist_for_unknowns() {
+    assert_eq!(
+        classify_browser_url("https://github.com/user/repo/pull/1"),
+        (Some("github.com".to_string()), BrowserUrlClass::Work)
+    );
+    assert_eq!(
+        classify_browser_url("https://www.youtube.com/watch?v=abc"),
+        (Some("youtube.com".to_string()), BrowserUrlClass::Video)
+    );
+    assert_eq!(
+        classify_browser_url("https://example.invalid/watch/episode-1"),
+        (Some("example.invalid".to_string()), BrowserUrlClass::Video)
+    );
+    assert_eq!(
+        classify_browser_url("https://anilife.example/title"),
+        (
+            Some("anilife.example".to_string()),
+            BrowserUrlClass::Unknown
+        )
+    );
+}

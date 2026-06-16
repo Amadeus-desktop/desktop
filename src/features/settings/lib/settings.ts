@@ -44,6 +44,9 @@ export function normalizeGeneralSettings(
     appearance: isAppearance(merged.appearance)
       ? merged.appearance
       : initialSettings.appearance,
+    talkFrequency: isTalkFrequency(merged.talkFrequency)
+      ? merged.talkFrequency
+      : initialSettings.talkFrequency,
   };
 }
 
@@ -59,6 +62,15 @@ function isAccentColor(value: unknown): value is AccentColorId {
 
 function isAppearance(value: unknown): value is AppearanceMode {
   return value === "dark" || value === "light" || value === "system";
+}
+
+function isTalkFrequency(value: unknown): value is TalkFrequency {
+  return (
+    value === "quiet" ||
+    value === "balanced" ||
+    value === "active" ||
+    value === "test"
+  );
 }
 
 export function getTalkFrequencyOptions(locale: AppLocale) {

@@ -40,6 +40,12 @@ pub fn capture_privacy_checked_context_event(
         "idleSeconds": snapshot.idle_seconds,
         "category": snapshot.category,
         "frontmostDurationMs": snapshot.frontmost_duration_ms,
+        "browserContext": snapshot.browser_context.as_ref().map(|context| serde_json::json!({
+            "browserName": context.browser_name,
+            "urlHost": context.url_host,
+            "urlClass": context.url_class,
+            "source": context.source,
+        })),
         "privacy": {
             "isSensitive": assessment.is_sensitive,
             "reason": assessment.reason,

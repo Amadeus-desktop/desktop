@@ -2,7 +2,10 @@ use super::*;
 use crate::ocr::OcrContextClass;
 use crate::trigger::core::{evaluate_trigger_with_ocr, evaluate_trigger_with_ocr_context};
 use crate::trigger::scoring::apply_ocr_signal_to_evaluation;
-use crate::{macos_context::AppCategory, settings::AppSettings};
+use crate::{
+    macos_context::{AppCategory, BrowserTabContext, BrowserUrlClass},
+    settings::AppSettings,
+};
 
 #[test]
 fn suppresses_sensitive_privacy_context() {
@@ -255,6 +258,75 @@ fn unknown_video_ocr_after_work_history_can_create_drift() {
     let candidate = evaluation.candidate.expect("video drift candidate");
     assert_eq!(candidate.trigger_type, TriggerType::Drift);
     assert_eq!(candidate.reason, "unknown_video_ocr_after_work");
+    assert_eq!(evaluation.action, TriggerAction::Bubble);
+    assert!(evaluation.should_persist);
+}
+
+#[test]
+fn unknown_browser_video_url_after_work_history_can_create_drift_without_ocr() {
+    let mut settings = AppSettings::default();
+    settings.talk_frequency = "active".to_string();
+    let mut history = ProcessHistoryWindow::default();
+    history.work_cluster_duration_ms = 5 * 60 * 1000;
+    history.app_switch_count = 1;
+    let mut current = snapshot(AppCategory::Unknown, 46.0, 1);
+    current.browser_context = Some(BrowserTabContext {
+        browser_name: "Google Chrome".to_string(),
+        url_host: Some("youtube.com".to_string()),
+        url_class: BrowserUrlClass::Video,
+        source: "chrome_apple_script".to_string(),
+    });
+
+    let evaluation = evaluate_trigger_with_ocr_context(
+        TriggerInput {
+            snapshot: current,
+            privacy: normal_privacy("Google Chrome"),
+            history: Some(history),
+            recent_utterance_minutes_ago: None,
+            repeated_app_utterance_blocked: false,
+            work_session_duration_ms: 0,
+            dismissed_recent_count: 0,
+            utterances_today: 0,
+        },
+        &settings,
+        None,
+        None,
+    );
+
+    let candidate = evaluation.candidate.expect("browser video drift");
+    assert_eq!(candidate.trigger_type, TriggerType::Drift);
+    assert_eq!(candidate.reason, "unknown_video_ocr_after_work");
+}
+
+#[test]
+fn test_frequency_creates_non_work_drift_after_short_video_duration() {
+    let mut settings = AppSettings::default();
+    settings.talk_frequency = "test".to_string();
+    let mut current = snapshot(AppCategory::NonWork, 0.0, 30_000);
+    current.browser_context = Some(BrowserTabContext {
+        browser_name: "Google Chrome".to_string(),
+        url_host: Some("youtube.com".to_string()),
+        url_class: BrowserUrlClass::Video,
+        source: "chrome_apple_script".to_string(),
+    });
+
+    let evaluation = evaluate_trigger(
+        TriggerInput {
+            snapshot: current,
+            privacy: normal_privacy("Google Chrome"),
+            history: None,
+            recent_utterance_minutes_ago: None,
+            repeated_app_utterance_blocked: false,
+            work_session_duration_ms: 0,
+            dismissed_recent_count: 0,
+            utterances_today: 0,
+        },
+        &settings,
+    );
+
+    let candidate = evaluation.candidate.expect("test video drift");
+    assert_eq!(candidate.trigger_type, TriggerType::Drift);
+    assert_eq!(candidate.reason, "non_work_duration_detected");
     assert_eq!(evaluation.action, TriggerAction::Bubble);
     assert!(evaluation.should_persist);
 }

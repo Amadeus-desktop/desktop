@@ -11,7 +11,11 @@ use crate::{
 const DEFAULT_MAIN_WINDOW_ANIMATION_DURATION_MS: u64 = 680;
 
 #[tauri::command]
-pub fn sync_companion_window_position(app: tauri::AppHandle, width: Option<f64>, height: Option<f64>) {
+pub fn sync_companion_window_position(
+    app: tauri::AppHandle,
+    width: Option<f64>,
+    height: Option<f64>,
+) {
     // After a resize, the frontend passes the logical size it just applied so the
     // window is anchored against the intended size rather than a stale `outer_size()`
     // (macOS applies programmatic resizes asynchronously). Position-only syncs omit

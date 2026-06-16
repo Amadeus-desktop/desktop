@@ -4,7 +4,7 @@ import type { MateIconKind } from "../../domain/mate";
 import type { PersonaId } from "../../domain/persona/types";
 import type { AccentColorId, AppearanceMode } from "../../ui/tokens/appearance";
 
-export type TalkFrequency = "quiet" | "balanced" | "active";
+export type TalkFrequency = "quiet" | "balanced" | "active" | "test";
 export type ModelRoute = "api-first" | "local-first" | "template";
 
 export type GeneralSettings = {

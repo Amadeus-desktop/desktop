@@ -16,7 +16,10 @@ use core_graphics::{
 use objc2_app_kit::NSWorkspace;
 use std::time::Instant;
 
-use super::{classify_app, ContextBridge, MacosContextError, MacosContextSnapshot};
+use super::{
+    browser::read_browser_tab_context, classify_app, BrowserUrlClass, ContextBridge,
+    MacosContextError, MacosContextSnapshot,
+};
 
 const K_CG_ANY_INPUT_EVENT_TYPE: u32 = u32::MAX;
 const K_CG_EVENT_SOURCE_COMBINED_SESSION_STATE: i32 = 0;
@@ -58,12 +61,21 @@ impl ContextBridge for NativeMacosContextBridge {
         let is_fullscreen = window
             .and_then(|window| window.bounds)
             .is_some_and(is_fullscreen_window);
-        let category = classify_app(
+        let browser_context = read_browser_tab_context(&app.app_name, &app.bundle_identifier);
+        let mut category = classify_app(
             &app.bundle_identifier,
             &format!("{} {window_title}", app.app_name),
         );
+        if let Some(context) = browser_context.as_ref() {
+            category = match context.url_class {
+                BrowserUrlClass::Work => super::AppCategory::Work,
+                BrowserUrlClass::Video => super::AppCategory::NonWork,
+                BrowserUrlClass::Unknown => category,
+            };
+        }
 
         Ok(MacosContextSnapshot {
+            browser_context,
             app_name: app.app_name,
             bundle_identifier: app.bundle_identifier,
             process_id: app.process_id,

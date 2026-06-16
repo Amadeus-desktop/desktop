@@ -12,6 +12,8 @@ export const mockContextSnapshot: MacosContextSnapshot = {
   idleSeconds: 183,
   category: "work",
   frontmostDurationMs: 1000 * 60 * 12,
+  isFullscreen: false,
+  browserContext: null,
 };
 
 export const mockPrivacyAssessment: PrivacyAssessment = {

@@ -1,4 +1,12 @@
 export type AppCategory = "work" | "non_work" | "unknown";
+export type BrowserUrlClass = "work" | "video" | "unknown";
+
+export type BrowserTabContext = {
+  browserName: string;
+  urlHost: string | null;
+  urlClass: BrowserUrlClass;
+  source: string;
+};
 
 export type MacosContextSnapshot = {
   appName: string;
@@ -8,6 +16,8 @@ export type MacosContextSnapshot = {
   idleSeconds: number;
   category: AppCategory;
   frontmostDurationMs: number;
+  isFullscreen: boolean;
+  browserContext: BrowserTabContext | null;
 };
 
 export type RedactedContextSnapshot = MacosContextSnapshot;

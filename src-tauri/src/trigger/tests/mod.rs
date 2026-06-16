@@ -23,6 +23,7 @@ fn snapshot(
         category,
         frontmost_duration_ms,
         is_fullscreen: false,
+        browser_context: None,
     }
 }
 

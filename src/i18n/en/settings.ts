@@ -29,6 +29,7 @@ export const settings: SettingsMessages = {
       quiet: "Quiet and subtle",
       balanced: "Balanced and gentle",
       active: "Energetic and proactive",
+      test: "Test mode",
     },
   },
   nickname: {

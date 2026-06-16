@@ -66,5 +66,6 @@ fn snapshot(app_name: &str, bundle_identifier: &str, window_title: &str) -> Maco
         category: AppCategory::Work,
         frontmost_duration_ms: 1000,
         is_fullscreen: false,
+        browser_context: None,
     }
 }

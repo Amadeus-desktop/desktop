@@ -29,6 +29,7 @@ export const settings: SettingsMessages = {
       quiet: "静かに控えめに",
       balanced: "ほどよくやさしく",
       active: "元気に積極的に",
+      test: "テスト用",
     },
   },
   nickname: {

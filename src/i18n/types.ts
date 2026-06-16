@@ -40,7 +40,7 @@ export type AppLocale = {
     talkFrequency: {
       label: string;
       subtitle: string;
-      options: Record<"quiet" | "balanced" | "active", string>;
+      options: Record<"quiet" | "balanced" | "active" | "test", string>;
     };
     nickname: {
       label: string;

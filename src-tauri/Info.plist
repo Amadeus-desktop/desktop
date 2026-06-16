@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+  <key>NSAppleEventsUsageDescription</key>
+  <string>현재 보고 있는 브라우저 탭의 주소만 읽어 작업 맥락을 파악합니다. 주소 원문은 저장하거나 외부로 보내지 않습니다.</string>
   <key>CFBundleURLTypes</key>
   <array>
     <dict>

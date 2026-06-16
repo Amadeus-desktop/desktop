@@ -34,12 +34,16 @@ pub const LOCALHOST_NAME: &str = "localhost";
 
 pub const TALK_FREQUENCY_QUIET: &str = "quiet";
 pub const TALK_FREQUENCY_ACTIVE: &str = "active";
+pub const TALK_FREQUENCY_TEST: &str = "test";
 pub const QUIET_COOLDOWN_MINUTES: i64 = 45;
 pub const BALANCED_COOLDOWN_MINUTES: i64 = 30;
 pub const ACTIVE_COOLDOWN_MINUTES: i64 = 15;
+pub const TEST_COOLDOWN_MINUTES: i64 = 1;
 pub const QUIET_POLL_INTERVAL: Duration = Duration::from_secs(120);
 pub const BALANCED_POLL_INTERVAL: Duration = Duration::from_secs(60);
 pub const ACTIVE_POLL_INTERVAL: Duration = Duration::from_secs(20);
+pub const TEST_POLL_INTERVAL: Duration = Duration::from_secs(5);
 pub const QUIET_DAILY_UTTERANCE_LIMIT: i64 = 6;
 pub const BALANCED_DAILY_UTTERANCE_LIMIT: i64 = 12;
 pub const ACTIVE_DAILY_UTTERANCE_LIMIT: i64 = 18;
+pub const TEST_DAILY_UTTERANCE_LIMIT: i64 = 99;

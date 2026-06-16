@@ -9,6 +9,7 @@ use super::{
         DEFAULT_TALK_FREQUENCY, LOCALE_EN, LOCALE_JA, LOCALE_KO, LOCALHOST_IPV4, LOCALHOST_NAME,
         MATE_ICON_BUBBLE, MATE_ICON_LETTER, MATE_ICON_ORB, MATE_ICON_STAR,
         PERSONA_EIREN_FANTASY_GUARDIAN, PERSONA_MAKISE_KURISU, PERSONA_SEOYEON_MODERN_SENIOR,
+        TALK_FREQUENCY_ACTIVE, TALK_FREQUENCY_QUIET, TALK_FREQUENCY_TEST,
     },
     SettingsError,
 };
@@ -138,6 +139,12 @@ impl AppSettings {
             MODEL_ROUTE_API_FIRST | MODEL_ROUTE_LOCAL_FIRST | MODEL_ROUTE_TEMPLATE => {}
             other => Err(SettingsError::Validation(format!(
                 "unsupported model route '{other}'"
+            )))?,
+        }
+        match self.talk_frequency.as_str() {
+            TALK_FREQUENCY_QUIET | "balanced" | TALK_FREQUENCY_ACTIVE | TALK_FREQUENCY_TEST => {}
+            other => Err(SettingsError::Validation(format!(
+                "unsupported talk frequency '{other}'"
             )))?,
         }
         match self.llama_server_host.as_str() {

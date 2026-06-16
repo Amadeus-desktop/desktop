@@ -1,6 +1,6 @@
 use crate::{
     llm::{LlmInputEnvelope, PolicyScoreSummary, ProviderInputGrade},
-    macos_context::{AppCategory, MacosContextSnapshot},
+    macos_context::{AppCategory, BrowserUrlClass, MacosContextSnapshot},
     ocr::OcrContextClass,
     policy::{LlmGateDecision, PolicyScores},
     privacy::PrivacyAssessment,
@@ -19,7 +19,6 @@ const DEEP_PAUSE_MIN_WORK_CLUSTER_SWITCHES: u32 = 3;
 const MILESTONE_MAX_IDLE_SECONDS: f64 = 600.0;
 const ACTIVE_INPUT_MAX_IDLE_SECONDS: f64 = 5.0;
 const AWAY_IDLE_MIN_SECONDS: f64 = 600.0;
-const DRIFT_MIN_FRONTMOST_MS: u128 = 10 * MINUTE_MS;
 
 pub(crate) fn llm_gate_for_trigger(
     snapshot: &MacosContextSnapshot,
@@ -162,13 +161,13 @@ pub(crate) fn select_unknown_ocr_candidate(
     history: Option<&ProcessHistoryWindow>,
     sensitivity: TriggerSensitivityPolicy,
 ) -> Option<TriggerCandidate> {
-    let context_class = context_class?;
     if let Some(candidate) =
         select_unknown_video_drift_candidate(snapshot, context_class, history, sensitivity)
     {
         return Some(candidate);
     }
 
+    let context_class = context_class?;
     if snapshot.category != AppCategory::Unknown
         || !context_class.can_promote_unknown_to_work_like()
         || snapshot.frontmost_duration_ms < sensitivity.deep_pause_min_frontmost
@@ -201,13 +200,18 @@ pub(crate) fn select_unknown_ocr_candidate(
 
 fn select_unknown_video_drift_candidate(
     snapshot: &MacosContextSnapshot,
-    context_class: OcrContextClass,
+    context_class: Option<OcrContextClass>,
     history: Option<&ProcessHistoryWindow>,
     sensitivity: TriggerSensitivityPolicy,
 ) -> Option<TriggerCandidate> {
     let history = history?;
+    let browser_video = snapshot
+        .browser_context
+        .as_ref()
+        .is_some_and(|context| context.url_class == BrowserUrlClass::Video);
+    let ocr_video = context_class == Some(OcrContextClass::VideoPlayer);
     if snapshot.category != AppCategory::Unknown
-        || context_class != OcrContextClass::VideoPlayer
+        || (!browser_video && !ocr_video)
         || history.work_cluster_duration_ms < sensitivity.deep_pause_min_frontmost
         || history.app_switch_count == 0
         || (snapshot.idle_seconds < sensitivity.deep_pause_min_idle_seconds
@@ -278,7 +282,7 @@ pub(super) fn select_candidate(
     }
 
     if snapshot.category == AppCategory::NonWork
-        && snapshot.frontmost_duration_ms >= DRIFT_MIN_FRONTMOST_MS
+        && snapshot.frontmost_duration_ms >= sensitivity.drift_min_frontmost
     {
         return Some(TriggerCandidate {
             trigger_type: TriggerType::Drift,

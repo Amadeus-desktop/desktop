@@ -1,7 +1,7 @@
 use serde::Serialize;
 
 use crate::{
-    macos_context::{AppCategory, MacosContextSnapshot},
+    macos_context::{AppCategory, BrowserTabContext, MacosContextSnapshot},
     timeline::ContextEvent,
 };
 
@@ -46,6 +46,8 @@ pub struct RedactedContextSnapshot {
     pub idle_seconds: f64,
     pub category: AppCategory,
     pub frontmost_duration_ms: u128,
+    pub is_fullscreen: bool,
+    pub browser_context: Option<BrowserTabContext>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -78,6 +80,8 @@ impl RedactedContextSnapshot {
             idle_seconds: snapshot.idle_seconds,
             category: snapshot.category,
             frontmost_duration_ms: snapshot.frontmost_duration_ms,
+            is_fullscreen: snapshot.is_fullscreen,
+            browser_context: snapshot.browser_context.clone(),
         }
     }
 }

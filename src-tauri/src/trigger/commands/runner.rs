@@ -48,12 +48,22 @@ pub fn run_trigger_engine_once(
     log_info(
         LogArea::Trigger,
         format!(
-            "trigger snapshot read: app={} pid={} category={:?} idle_seconds={:.1} frontmost_ms={} sensitive={} capture_suppressed={}",
+            "trigger snapshot read: app={} pid={} category={:?} idle_seconds={:.1} frontmost_ms={} browser_url_class={} browser_host={} sensitive={} capture_suppressed={}",
             snapshot.app_name,
             snapshot.process_id,
             snapshot.category,
             snapshot.idle_seconds,
             snapshot.frontmost_duration_ms,
+            snapshot
+                .browser_context
+                .as_ref()
+                .map(|context| format!("{:?}", context.url_class))
+                .unwrap_or_else(|| "none".to_string()),
+            snapshot
+                .browser_context
+                .as_ref()
+                .and_then(|context| context.url_host.as_deref())
+                .unwrap_or("none"),
             privacy.is_sensitive,
             privacy.should_suppress_capture
         ),
