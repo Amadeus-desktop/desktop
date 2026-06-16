@@ -43,6 +43,7 @@ Deno.serve(async (request) => {
   }
 
   try {
+    input = await enrichWithCloudMemoryRag(input, authHeader);
     const provider = selectedProvider();
     const message =
       provider === "gemini"
@@ -209,6 +210,218 @@ function systemPrompt(input: LlmChatRequest): string {
     "Use this structured prompt context as source-of-truth persona and memory input.",
     promptContext,
   ].join("\n");
+}
+
+async function enrichWithCloudMemoryRag(
+  input: LlmChatRequest,
+  authHeader: string,
+): Promise<LlmChatRequest> {
+  if (!input.promptEnvelope || typeof input.promptEnvelope !== "object") {
+    return input;
+  }
+
+  try {
+    const query = ragQueryText(input);
+    if (!query) return input;
+    const embeddingModel = Deno.env.get("GEMINI_EMBEDDING_MODEL") ||
+      "gemini-embedding-001";
+    const embedding = await generateGeminiEmbedding(query, embeddingModel);
+    const personaUuid = await resolvePersonaUuid(input.personaId, authHeader);
+    if (!personaUuid) return input;
+    const matches = await matchCloudMemories({
+      authHeader,
+      personaUuid,
+      embedding,
+      embeddingModel,
+    });
+    if (matches.length === 0) return input;
+
+    return {
+      ...input,
+      promptEnvelope: mergeRagMatchesIntoEnvelope(
+        input.promptEnvelope as Record<string, unknown>,
+        matches,
+      ),
+    };
+  } catch {
+    return input;
+  }
+}
+
+function ragQueryText(input: LlmChatRequest): string {
+  const latestUser = [...input.messages]
+    .reverse()
+    .find((message) => message.role === "user")?.content;
+  const envelope = input.promptEnvelope as
+    | { currentContext?: { summary?: unknown } | null }
+    | null;
+  const currentContext =
+    typeof envelope?.currentContext?.summary === "string"
+      ? envelope.currentContext.summary
+      : "";
+  return [latestUser, currentContext]
+    .filter((part): part is string => Boolean(part?.trim()))
+    .join("\n")
+    .slice(0, 2_000);
+}
+
+async function generateGeminiEmbedding(
+  query: string,
+  embeddingModel: string,
+): Promise<number[]> {
+  const apiKey = requiredEnv("GEMINI_API_KEY");
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${embeddingModel}:embedContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        content: {
+          parts: [{ text: query }],
+        },
+        taskType: "RETRIEVAL_QUERY",
+        outputDimensionality: 1536,
+      }),
+    },
+  );
+  if (!response.ok) {
+    throw new Error(`gemini_embedding_failed_${response.status}`);
+  }
+  const json = await response.json();
+  const values = json?.embedding?.values ?? json?.embeddings?.[0]?.values;
+  if (!Array.isArray(values)) throw new Error("gemini_embedding_empty");
+  return values.map(Number).filter(Number.isFinite);
+}
+
+async function resolvePersonaUuid(
+  personaIdOrSlug: string,
+  authHeader: string,
+): Promise<string | null> {
+  if (isUuid(personaIdOrSlug)) return personaIdOrSlug;
+  const supabaseUrl = requiredSupabaseUrl();
+  const anonKey = requiredSupabaseAnonKey();
+  const url = new URL(`${supabaseUrl}/rest/v1/personas`);
+  url.searchParams.set("select", "id");
+  url.searchParams.set("slug", `eq.${personaIdOrSlug}`);
+  url.searchParams.set("limit", "1");
+  const response = await fetch(url, {
+    headers: {
+      apikey: anonKey,
+      authorization: authHeader,
+    },
+  });
+  if (!response.ok) throw new Error(`persona_lookup_failed_${response.status}`);
+  const rows = await response.json();
+  const id = Array.isArray(rows) ? rows[0]?.id : null;
+  return typeof id === "string" ? id : null;
+}
+
+type CloudMemoryMatch = {
+  id: string;
+  memory_category: string;
+  content: string;
+  confidence: number;
+  created_at: string;
+};
+
+async function matchCloudMemories(input: {
+  authHeader: string;
+  personaUuid: string;
+  embedding: number[];
+  embeddingModel: string;
+}): Promise<CloudMemoryMatch[]> {
+  const supabaseUrl = requiredSupabaseUrl();
+  const anonKey = requiredSupabaseAnonKey();
+  const response = await fetch(
+    `${supabaseUrl}/rest/v1/rpc/match_cloud_memories`,
+    {
+      method: "POST",
+      headers: {
+        apikey: anonKey,
+        authorization: input.authHeader,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        query_embedding: input.embedding,
+        match_persona_id: input.personaUuid,
+        match_memory_types: null,
+        match_threshold: 0.74,
+        match_count: 8,
+        match_embedding_model: input.embeddingModel,
+      }),
+    },
+  );
+  if (!response.ok) throw new Error(`memory_match_failed_${response.status}`);
+  const rows = await response.json();
+  return Array.isArray(rows) ? rows as CloudMemoryMatch[] : [];
+}
+
+function mergeRagMatchesIntoEnvelope(
+  envelope: Record<string, unknown>,
+  matches: CloudMemoryMatch[],
+): Record<string, unknown> {
+  const semanticMemories = Array.isArray(envelope.semanticMemories)
+    ? [...envelope.semanticMemories]
+    : [];
+  const episodicContext = Array.isArray(envelope.episodicContext)
+    ? [...envelope.episodicContext]
+    : [];
+  const seen = new Set(
+    [...semanticMemories, ...episodicContext]
+      .map((item) =>
+        item && typeof item === "object" ? (item as { id?: unknown }).id : null
+      )
+      .filter((id): id is string => typeof id === "string"),
+  );
+
+  for (const match of matches) {
+    if (seen.has(match.id)) continue;
+    seen.add(match.id);
+    if (match.memory_category === "episodic") {
+      episodicContext.push({
+        id: match.id,
+        summary: match.content,
+        createdAtMs: Date.parse(match.created_at) || Date.now(),
+        scope: "cloud_safe",
+      });
+    } else {
+      semanticMemories.push({
+        id: match.id,
+        content: match.content,
+        confidence: Number(match.confidence) || 0,
+        scope: "cloud_safe",
+      });
+    }
+  }
+
+  return {
+    ...envelope,
+    semanticMemories: semanticMemories.slice(0, 8),
+    episodicContext: episodicContext.slice(0, 8),
+  };
+}
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value,
+  );
+}
+
+function requiredSupabaseUrl(): string {
+  return (
+    Deno.env.get("SUPABASE_URL") ||
+    Deno.env.get("PUBLIC_SUPABASE_URL") ||
+    requiredEnv("SUPABASE_URL")
+  );
+}
+
+function requiredSupabaseAnonKey(): string {
+  return (
+    Deno.env.get("SUPABASE_ANON_KEY") ||
+    Deno.env.get("PUBLIC_SUPABASE_ANON_KEY") ||
+    Deno.env.get("PUBLIC_SUPABASE_PUBLISHABLE_KEY") ||
+    requiredEnv("SUPABASE_ANON_KEY")
+  );
 }
 
 function requiredEnv(name: string): string {
