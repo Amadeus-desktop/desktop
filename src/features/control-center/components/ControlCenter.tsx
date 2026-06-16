@@ -1,4 +1,5 @@
-import { MacWindow, Sidebar, SidebarBrand, SidebarItem, WindowDragStrip } from "../../../ui";
+import { MacWindow, Sidebar, SidebarBrand, SidebarItem } from "../../../ui";
+import { cn } from "../../../lib/utils/cn";
 import { ResizableColumns } from "../../../ui";
 import { useI18n } from "../../../i18n";
 import { ProfilePanel } from "../../auth/components/ProfilePanel";
@@ -66,13 +67,15 @@ export function ControlCenter() {
           </Sidebar>
         }
       >
-        <div
-          className="scrollbar-hide h-full min-h-0 flex-col overflow-y-auto px-6 py-5 max-sm:px-4 max-sm:py-4"
-        >
-          <div className="tauri-no-drag min-h-0 shrink-0">
+        <div className="scrollbar-hide h-full min-h-0 flex-col overflow-y-auto px-6 py-5 max-sm:px-4 max-sm:py-4">
+          <div
+            className={cn(
+              "min-h-0 shrink-0",
+              activeTab !== "report" && "tauri-no-drag",
+            )}
+          >
             {renderPanel(activeTab, () => selectTab("settings"))}
           </div>
-          <WindowDragStrip className="mt-4 min-h-10 flex-1" />
         </div>
       </ResizableColumns>
     </MacWindow>

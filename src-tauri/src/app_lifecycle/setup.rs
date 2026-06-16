@@ -1,11 +1,11 @@
-#[cfg(not(target_os = "macos"))]
-use crate::macos_window::position_companion_window;
 #[cfg(target_os = "macos")]
 use crate::macos_window::{
-    configure_macos_companion_window, configure_macos_main_window,
+    center_main_window_at_startup, configure_macos_companion_window, configure_macos_main_window,
     restore_companion_window_on_active_space, schedule_macos_webview_layer_refresh,
     watch_macos_companion_space_changes,
 };
+#[cfg(not(target_os = "macos"))]
+use crate::macos_window::{center_main_window_at_startup, position_companion_window};
 use crate::{
     app_lifecycle::{
         auth_callback::start_dev_auth_callback_server,
@@ -102,6 +102,7 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
         let phase = StartupPhaseTimer::start("macos_window_configure");
         if let Some(win) = app.get_webview_window("main") {
             configure_macos_main_window(&win);
+            center_main_window_at_startup(&win);
             watch_resident_window_close(&win);
             schedule_macos_webview_layer_refresh(app.handle().clone(), "main");
         }
@@ -119,6 +120,7 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
     {
         let phase = StartupPhaseTimer::start("window_configure");
         if let Some(win) = app.get_webview_window("main") {
+            center_main_window_at_startup(&win);
             watch_resident_window_close(&win);
         }
         if let Some(win) = app.get_webview_window("companion") {

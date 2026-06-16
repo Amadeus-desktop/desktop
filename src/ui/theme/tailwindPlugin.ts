@@ -103,6 +103,9 @@ export const amadeusTailwindPlugin = plugin(({ addBase, addUtilities }) => {
       zIndex: "1300",
       pointerEvents: "auto",
     },
+    "html[data-daily-care-overlay='open'] .main-window-overlay-root": {
+      pointerEvents: "auto",
+    },
   });
 
   addUtilities({

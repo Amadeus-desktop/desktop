@@ -277,6 +277,29 @@ pub fn set_main_window_logical_size(
     Ok(())
 }
 
+/// Center the main window using its current logical size. Called during startup so
+/// the window is monitor-centered before the frontend applies saved layout sizes.
+pub fn center_main_window_at_startup(window: &WebviewWindow) {
+    let Ok(physical) = window.inner_size() else {
+        log_warn(
+            LogArea::Window,
+            "center_main_window_at_startup: inner_size unavailable",
+        );
+        return;
+    };
+
+    let scale = window.scale_factor().unwrap_or(1.0);
+    let width = physical.width as f64 / scale;
+    let height = physical.height as f64 / scale;
+
+    if let Err(error) = center_main_window_with_logical_size(window, width, height) {
+        log_warn(
+            LogArea::Window,
+            format!("center_main_window_at_startup failed: {error}"),
+        );
+    }
+}
+
 /// Center the window using the *known* target logical size instead of querying
 /// `outer_size()`. On macOS `set_size` is async, so reading `outer_size()`
 /// immediately afterwards can return the previous size and center the window

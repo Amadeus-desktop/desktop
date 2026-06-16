@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import type { MateIconKind } from "../../../../domain/mate";
 import type { Persona } from "../../../../domain/persona/types";
-import { Button, MAIN_WINDOW_OVERLAY_ROOT_ID } from "../../../../ui";
+import { Button, MAIN_WINDOW_OVERLAY_ROOT_ID, MainWindowTitlebarDragHandle } from "../../../../ui";
 import { cn } from "../../../../lib/utils/cn";
 import { useMatchMedia } from "../../../../lib/hooks/useMatchMedia";
 import { PersonaPresenceIcon } from "../../../companion/ui/PersonaPresenceIcon";
@@ -95,6 +95,7 @@ function DailyCareSummaryOverlayContent({
           !prefersReducedMotion && (closing ? dailyCareStyles.sheetExit : dailyCareStyles.sheetEnter),
         )}
       >
+        <MainWindowTitlebarDragHandle className={dailyCareStyles.titlebarDrag} />
         <div className={dailyCareStyles.messageShell}>
           <header className={dailyCareStyles.messageHeader}>
             <div className={dailyCareStyles.messageAvatar}>

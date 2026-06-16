@@ -51,7 +51,7 @@ export function MacWindow({ children, variant = "control-center" }: MacWindowPro
       {children}
       <div
         id={MAIN_WINDOW_OVERLAY_ROOT_ID}
-        className="pointer-events-none absolute inset-0 z-daily-care-overlay overflow-hidden"
+        className="main-window-overlay-root pointer-events-none absolute inset-0 z-daily-care-overlay overflow-hidden"
         aria-hidden="true"
       />
       {variant === "control-center" ? (

@@ -48,6 +48,7 @@ export function ReportPanel() {
         eyebrow={t.report.eyebrow}
         title={t.report.title}
         description={t.report.description}
+        enableWindowDrag
       />
 
       <DailyCareHero prompt={insight.heroPrompt} onOpenSummary={openSummary} />

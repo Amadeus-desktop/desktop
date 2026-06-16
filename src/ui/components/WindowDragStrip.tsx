@@ -1,11 +1,9 @@
 import { cn } from "../../lib/utils/cn";
-import { createWindowDragHandler } from "../lib/windowDrag";
+import { windowDragRegionProps } from "../lib/windowDrag";
 
 type WindowDragStripProps = {
   className?: string;
 };
-
-const handleWindowDragMouseDown = createWindowDragHandler();
 
 /**
  * Leaf-only drag handle. Routes through `start_main_window_drag_command` instead
@@ -15,9 +13,12 @@ const handleWindowDragMouseDown = createWindowDragHandler();
 export function WindowDragStrip({ className }: WindowDragStripProps) {
   return (
     <div
-      onMouseDown={handleWindowDragMouseDown}
+      {...windowDragRegionProps}
       aria-hidden="true"
-      className={cn("min-h-0 shrink-0 cursor-default select-none touch-none", className)}
+      className={cn(
+        "min-h-0 shrink-0 cursor-default select-none touch-none [&_*]:select-none",
+        className,
+      )}
     />
   );
 }

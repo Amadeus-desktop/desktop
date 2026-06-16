@@ -5,9 +5,6 @@ export const dailyCareMotion = {
   exitMs: 640,
 } as const;
 
-/** Matches onboarding drag handle / native traffic-light safe area (`h-11`). */
-export const dailyCareTitlebarClass = "top-11 h-11";
-
 export const dailyCareStyles = {
   overlay:
     "pointer-events-none absolute inset-0 overflow-hidden text-[color:var(--shell-ink)]",
@@ -26,10 +23,14 @@ export const dailyCareStyles = {
   ].join(" "),
   sheetEnter: "animate-daily-care-sheet-rise",
   sheetExit: "animate-daily-care-sheet-fall",
+  titlebarDrag: [
+    "shrink-0 border-b border-white/[0.06]",
+    "bg-[#151214]",
+  ].join(" "),
   messageShell: "relative flex min-h-0 flex-1 flex-col bg-[#181416]",
   messageHeader: [
     "flex shrink-0 items-center gap-2.5 border-b border-white/[0.06]",
-    "bg-[#151214] px-4 pb-3 pt-12",
+    "bg-[#151214] px-4 py-3",
   ].join(" "),
   messageAvatar:
     "flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.05]",

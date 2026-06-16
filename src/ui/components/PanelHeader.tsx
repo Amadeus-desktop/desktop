@@ -1,20 +1,30 @@
 import { cn } from "../../lib/utils/cn";
-import { createWindowDragHandler } from "../lib/windowDrag";
+import { windowDragRegionProps } from "../lib/windowDrag";
 import { glassStyles, shellText } from "../theme/shellStyles";
 
 type PanelHeaderProps = {
   eyebrow: string;
   title: string;
   description: string;
+  enableWindowDrag?: boolean;
 };
 
-const handleWindowDragMouseDown = createWindowDragHandler();
-
-export function PanelHeader({ eyebrow, title, description }: PanelHeaderProps) {
+export function PanelHeader({
+  eyebrow,
+  title,
+  description,
+  enableWindowDrag = false,
+}: PanelHeaderProps) {
   return (
     <header
-      onMouseDown={handleWindowDragMouseDown}
-      className={`mb-4 select-none border-b border-[color:var(--shell-border-subtle)] pb-4 ${glassStyles.panel} ${glassStyles.radiusCard} px-4 py-3`}
+      {...(enableWindowDrag ? windowDragRegionProps : {})}
+      className={cn(
+        "mb-4 select-none border-b border-[color:var(--shell-border-subtle)] pb-4",
+        glassStyles.panel,
+        glassStyles.radiusCard,
+        "px-4 py-3",
+        enableWindowDrag && "cursor-default touch-none [&_*]:select-none",
+      )}
     >
       <p className="text-[10px] font-medium uppercase tracking-wide text-[color:rgb(var(--accent-rgb)/0.85)]">
         {eyebrow}
