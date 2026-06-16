@@ -24,6 +24,8 @@ export const companion: CompanionMessages = {
     placeholder: "一言だけでも大丈夫",
     placeholderDeep: "続けても大丈夫",
     dailyCareLink: "今日を一緒に閉じる？",
+    you: "自分",
+    typing: "入力中",
   },
   dailyCare: {
     subtitle: "今日の小さな記録",

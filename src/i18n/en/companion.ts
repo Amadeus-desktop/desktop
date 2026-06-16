@@ -24,6 +24,8 @@ export const companion: CompanionMessages = {
     placeholder: "One line is enough",
     placeholderDeep: "You can keep going",
     dailyCareLink: "Fold today together?",
+    you: "You",
+    typing: "Typing",
   },
   dailyCare: {
     subtitle: "Today's small record",

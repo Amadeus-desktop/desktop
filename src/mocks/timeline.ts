@@ -1,10 +1,14 @@
 import type {
+  AppendConversationMessageInput,
+  ConversationMessage,
+  ConversationSession,
   ContextEvent,
   CreateContextEventInput,
   CreateLocalMemoryInput,
   CreateUserReactionInput,
   CreateUtteranceEventInput,
   EnqueueSyncPayloadInput,
+  GetOrCreateConversationSessionInput,
   LocalMemory,
   SyncPayloadEnvelope,
   SyncQueueRow,
@@ -14,6 +18,8 @@ import type {
 } from "../features/timeline/types";
 
 const events: TimelineEvent[] = [];
+const conversationSessions: ConversationSession[] = [];
+const conversationMessages: ConversationMessage[] = [];
 let sequence = 0;
 
 export function createMockContextEvent(
@@ -95,6 +101,56 @@ export function createMockLocalMemory(
     createdAtMs: nextMockOccurredAt(),
     updatedAtMs: nextMockOccurredAt(),
   };
+}
+
+export function getOrCreateMockConversationSession(
+  input: GetOrCreateConversationSessionInput,
+): ConversationSession {
+  const existing = conversationSessions.find(
+    (session) => session.personaId === input.personaId && session.source === "app",
+  );
+  if (existing) return existing;
+
+  const now = nextMockOccurredAt();
+  const session: ConversationSession = {
+    id: nextMockId("conv"),
+    cloudConversationId: `local-${input.personaId}-${now}`,
+    personaId: input.personaId,
+    source: "app",
+    syncStatus: "pending",
+    lastSyncedMessageAtMs: null,
+    createdAtMs: now,
+    updatedAtMs: now,
+  };
+  conversationSessions.push(session);
+  return session;
+}
+
+export function appendMockConversationMessage(
+  input: AppendConversationMessageInput,
+): ConversationMessage {
+  const existing = conversationMessages.find(
+    (message) =>
+      message.sessionId === input.sessionId &&
+      message.idempotencyKey === input.idempotencyKey,
+  );
+  if (existing) return existing;
+
+  const clientSequence =
+    conversationMessages.filter((message) => message.sessionId === input.sessionId)
+      .length + 1;
+  const message: ConversationMessage = {
+    ...input,
+    provider: input.provider ?? null,
+    id: nextMockId("msg"),
+    cloudMessageId: null,
+    syncStatus: "pending",
+    clientSequence,
+    createdAtMs: nextMockOccurredAt(),
+    serverReceivedAtMs: null,
+  };
+  conversationMessages.push(message);
+  return message;
 }
 
 export function enqueueMockSyncPayload(

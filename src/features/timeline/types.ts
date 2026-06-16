@@ -27,6 +27,18 @@ export type CreateLocalMemoryInput = {
   syncable: boolean;
 };
 
+export type GetOrCreateConversationSessionInput = {
+  personaId: string;
+};
+
+export type AppendConversationMessageInput = {
+  sessionId: string;
+  role: "user" | "assistant" | "system_summary";
+  content: string;
+  provider?: string | null;
+  idempotencyKey: string;
+};
+
 export type EnqueueSyncPayloadInput = {
   eventType: string;
   payloadJson: string;
@@ -52,6 +64,25 @@ export type LocalMemory = Omit<CreateLocalMemoryInput, "syncable"> & {
   id: string;
   createdAtMs: number;
   updatedAtMs: number;
+};
+
+export type ConversationSession = GetOrCreateConversationSessionInput & {
+  id: string;
+  cloudConversationId: string;
+  source: string;
+  syncStatus: string;
+  lastSyncedMessageAtMs?: number | null;
+  createdAtMs: number;
+  updatedAtMs: number;
+};
+
+export type ConversationMessage = AppendConversationMessageInput & {
+  id: string;
+  cloudMessageId?: string | null;
+  syncStatus: string;
+  clientSequence: number;
+  createdAtMs: number;
+  serverReceivedAtMs?: number | null;
 };
 
 export type SyncQueueRow = EnqueueSyncPayloadInput & {

@@ -4,6 +4,7 @@ export type LogArea =
   | "auth"
   | "settings"
   | "context"
+  | "llm"
   | "startup"
   | "trigger"
   | "window"

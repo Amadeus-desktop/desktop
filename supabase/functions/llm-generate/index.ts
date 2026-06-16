@@ -114,8 +114,8 @@ async function verifySupabaseJwt(authHeader: string): Promise<string | null> {
 function selectedProvider(): "openai" | "gemini" {
   const configured = Deno.env.get("LLM_PROVIDER")?.toLowerCase();
   if (configured === "gemini" || configured === "openai") return configured;
-  if (Deno.env.get("OPENAI_API_KEY")) return "openai";
   if (Deno.env.get("GEMINI_API_KEY")) return "gemini";
+  if (Deno.env.get("OPENAI_API_KEY")) return "openai";
   throw new Error("llm_provider_not_configured");
 }
 

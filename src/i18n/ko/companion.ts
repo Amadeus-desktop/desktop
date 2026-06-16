@@ -24,6 +24,8 @@ export const companion: CompanionMessages = {
     placeholder: "한마디만 남겨도 괜찮아",
     placeholderDeep: "계속 말해도 괜찮아",
     dailyCareLink: "오늘 같이 접어볼까?",
+    you: "나",
+    typing: "입력 중",
   },
   dailyCare: {
     subtitle: "오늘의 작은 기록",

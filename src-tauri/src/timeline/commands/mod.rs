@@ -1,9 +1,11 @@
 use tauri::State;
 
 use super::{
-    CommandError, ContextEvent, CreateContextEventInput, CreateLocalMemoryInput,
-    CreateUserReactionInput, CreateUtteranceEventInput, EnqueueSyncPayloadInput, LocalMemory,
-    SyncQueueRow, TimelineError, TimelineEvent, TimelineState, UserReaction, UtteranceEvent,
+    AppendConversationMessageInput, CommandError, ContextEvent, ConversationMessage,
+    ConversationSession, CreateContextEventInput, CreateLocalMemoryInput, CreateUserReactionInput,
+    CreateUtteranceEventInput, EnqueueSyncPayloadInput, GetOrCreateConversationSessionInput,
+    LocalMemory, SyncQueueRow, TimelineError, TimelineEvent, TimelineState, UserReaction,
+    UtteranceEvent,
 };
 
 #[tauri::command]
@@ -38,6 +40,26 @@ pub fn create_local_memory(
     input: CreateLocalMemoryInput,
 ) -> Result<LocalMemory, CommandError> {
     with_repository(&state, |repository| repository.create_local_memory(input))
+}
+
+#[tauri::command]
+pub fn get_or_create_conversation_session(
+    state: State<'_, TimelineState>,
+    input: GetOrCreateConversationSessionInput,
+) -> Result<ConversationSession, CommandError> {
+    with_repository(&state, |repository| {
+        repository.get_or_create_conversation_session(input)
+    })
+}
+
+#[tauri::command]
+pub fn append_conversation_message(
+    state: State<'_, TimelineState>,
+    input: AppendConversationMessageInput,
+) -> Result<ConversationMessage, CommandError> {
+    with_repository(&state, |repository| {
+        repository.append_conversation_message(input)
+    })
 }
 
 #[tauri::command]

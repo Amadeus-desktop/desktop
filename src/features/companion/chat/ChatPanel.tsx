@@ -4,7 +4,6 @@ import type { CompanionLocale } from "../../../i18n";
 import { Button } from "../../../ui";
 import type { CompanionMateId } from "../../../domain/mate";
 import { DeepChatView } from "./DeepChatView";
-import { ChatBubble } from "./components/ChatBubble";
 import { useChatAutoScroll } from "./hooks/useChatAutoScroll";
 import { MateSwitcher } from "../dev/MateSwitcher";
 import { LocalTimeline } from "../dev/LocalTimeline";
@@ -30,6 +29,7 @@ type ChatPanelProps = {
   devToolsOpen: boolean;
   nightCareEnabled: boolean;
   isSending: boolean;
+  userName: string;
   labels: CompanionLocale;
   onSend: (text: string) => void;
   onClose: () => void;
@@ -48,6 +48,7 @@ export const ChatPanel = memo(function ChatPanel({
   devToolsOpen,
   nightCareEnabled,
   isSending,
+  userName,
   labels,
   onSend,
   onClose,
@@ -56,6 +57,7 @@ export const ChatPanel = memo(function ChatPanel({
 }: ChatPanelProps) {
   const [draft, setDraft] = useState("");
   const deep = mode === "deep";
+  const showThread = mode === "pocket" || mode === "deep";
   const bodyRef = useChatAutoScroll(messages.length + (isSending ? 1 : 0));
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -108,25 +110,16 @@ export const ChatPanel = memo(function ChatPanel({
           </div>
         ) : null}
 
-        {deep ? (
+        {showThread ? (
           <DeepChatView
             messages={messages}
             personaName={persona.name}
-            personaId={persona.id}
+            mateIcon={mateIcon}
+            userName={userName}
             isSending={isSending}
+            labels={labels}
           />
-        ) : (
-          <div className="space-y-3">
-            {messages[0] ? (
-              <ChatBubble sender="companion" showAvatar={false}>
-                {messages[0].text}
-              </ChatBubble>
-            ) : null}
-            <p className="px-1 text-[11px] text-[color:var(--shell-ink-faint)]">
-              {labels.chat.waiting}
-            </p>
-          </div>
-        )}
+        ) : null}
       </div>
 
       {devToolsOpen ? (

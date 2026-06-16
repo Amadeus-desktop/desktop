@@ -6,10 +6,11 @@ use std::{
 
 use super::{
     migrations::{apply_local_schema, local_schema_environment_from_env},
-    validate_local_memory_input, validate_sync_payload_envelope, ContextEvent,
-    CreateContextEventInput, CreateLocalMemoryInput, CreateUserReactionInput,
-    CreateUtteranceEventInput, EnqueueSyncPayloadInput, LocalMemory, SyncQueueRow, TimelineError,
-    TimelineEvent, UserReaction, UtteranceEvent,
+    validate_local_memory_input, validate_sync_payload_envelope, AppendConversationMessageInput,
+    ContextEvent, ConversationMessage, ConversationSession, CreateContextEventInput,
+    CreateLocalMemoryInput, CreateUserReactionInput, CreateUtteranceEventInput,
+    EnqueueSyncPayloadInput, GetOrCreateConversationSessionInput, LocalMemory, SyncQueueRow,
+    TimelineError, TimelineEvent, UserReaction, UtteranceEvent,
 };
 
 pub struct TimelineRepository {
@@ -154,6 +155,114 @@ impl TimelineRepository {
         Ok(memory)
     }
 
+    pub fn get_or_create_conversation_session(
+        &mut self,
+        input: GetOrCreateConversationSessionInput,
+    ) -> Result<ConversationSession, TimelineError> {
+        let persona_id = input.persona_id.trim();
+        if persona_id.is_empty() {
+            return Err(TimelineError::Validation(
+                "conversation persona_id is required".to_string(),
+            ));
+        }
+
+        if let Some(session) = self.find_conversation_session_for_persona(persona_id)? {
+            return Ok(session);
+        }
+
+        let (id, created_at_ms) = self.next_marker("conv")?;
+        let session = ConversationSession {
+            cloud_conversation_id: format!("local-{id}"),
+            id,
+            persona_id: persona_id.to_string(),
+            source: "app".to_string(),
+            sync_status: "pending".to_string(),
+            last_synced_message_at_ms: None,
+            created_at_ms,
+            updated_at_ms: created_at_ms,
+        };
+        self.connection.execute(
+            "INSERT INTO conversation_sessions (id, cloud_conversation_id, persona_id, source, sync_status, last_synced_message_at_ms, created_at_ms, updated_at_ms) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            params![
+                session.id,
+                session.cloud_conversation_id,
+                session.persona_id,
+                session.source,
+                session.sync_status,
+                session.last_synced_message_at_ms,
+                session.created_at_ms,
+                session.updated_at_ms
+            ],
+        )?;
+        Ok(session)
+    }
+
+    pub fn append_conversation_message(
+        &mut self,
+        input: AppendConversationMessageInput,
+    ) -> Result<ConversationMessage, TimelineError> {
+        validate_conversation_message_input(&input)?;
+
+        if let Some(message) = self
+            .find_conversation_message_by_idempotency(&input.session_id, &input.idempotency_key)?
+        {
+            return Ok(message);
+        }
+
+        let session_exists: i64 = self.connection.query_row(
+            "SELECT COUNT(*) FROM conversation_sessions WHERE id = ?1",
+            params![input.session_id],
+            |row| row.get(0),
+        )?;
+        if session_exists == 0 {
+            return Err(TimelineError::Validation(format!(
+                "conversation session '{}' does not exist",
+                input.session_id
+            )));
+        }
+
+        let client_sequence: i64 = self.connection.query_row(
+            "SELECT COALESCE(MAX(client_sequence), 0) + 1 FROM conversation_messages WHERE session_id = ?1",
+            params![input.session_id],
+            |row| row.get(0),
+        )?;
+        let (id, created_at_ms) = self.next_marker("msg")?;
+        let message = ConversationMessage {
+            id,
+            cloud_message_id: None,
+            session_id: input.session_id,
+            role: input.role,
+            content: input.content,
+            provider: input.provider,
+            sync_status: "pending".to_string(),
+            idempotency_key: input.idempotency_key,
+            client_sequence,
+            created_at_ms,
+            server_received_at_ms: None,
+        };
+        self.connection.execute(
+            "INSERT INTO conversation_messages (id, cloud_message_id, session_id, role, content, provider, sync_status, idempotency_key, client_sequence, created_at_ms, server_received_at_ms) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+            params![
+                message.id,
+                message.cloud_message_id,
+                message.session_id,
+                message.role,
+                message.content,
+                message.provider,
+                message.sync_status,
+                message.idempotency_key,
+                message.client_sequence,
+                message.created_at_ms,
+                message.server_received_at_ms
+            ],
+        )?;
+        self.connection.execute(
+            "UPDATE conversation_sessions SET updated_at_ms = ?1, sync_status = 'pending' WHERE id = ?2",
+            params![message.created_at_ms, message.session_id],
+        )?;
+        Ok(message)
+    }
+
     pub fn enqueue_sync_payload(
         &mut self,
         input: EnqueueSyncPayloadInput,
@@ -179,6 +288,39 @@ impl TimelineRepository {
             params![row.id, row.event_type, row.payload_json, row.idempotency_key, row.safety_grade, row.redaction_level, row.retention_policy, row.status, row.retry_count, row.last_error, row.created_at_ms, row.updated_at_ms],
         )?;
         Ok(row)
+    }
+
+    fn find_conversation_session_for_persona(
+        &self,
+        persona_id: &str,
+    ) -> Result<Option<ConversationSession>, TimelineError> {
+        let mut statement = self.connection.prepare(
+            "SELECT id, cloud_conversation_id, persona_id, source, sync_status, last_synced_message_at_ms, created_at_ms, updated_at_ms
+             FROM conversation_sessions
+             WHERE persona_id = ?1 AND source = 'app' AND sync_status != 'deleted'
+             ORDER BY updated_at_ms DESC
+             LIMIT 1",
+        )?;
+        let mut rows = statement.query_map(params![persona_id], conversation_session_from_row)?;
+        rows.next().transpose().map_err(TimelineError::from)
+    }
+
+    fn find_conversation_message_by_idempotency(
+        &self,
+        session_id: &str,
+        idempotency_key: &str,
+    ) -> Result<Option<ConversationMessage>, TimelineError> {
+        let mut statement = self.connection.prepare(
+            "SELECT id, cloud_message_id, session_id, role, content, provider, sync_status, idempotency_key, client_sequence, created_at_ms, server_received_at_ms
+             FROM conversation_messages
+             WHERE session_id = ?1 AND idempotency_key = ?2
+             LIMIT 1",
+        )?;
+        let mut rows = statement.query_map(
+            params![session_id, idempotency_key],
+            conversation_message_from_row,
+        )?;
+        rows.next().transpose().map_err(TimelineError::from)
     }
 
     pub fn list_timeline_events(&self, limit: i64) -> Result<Vec<TimelineEvent>, TimelineError> {
@@ -233,6 +375,66 @@ impl TimelineRepository {
             self.last_occurred_at,
         ))
     }
+}
+
+fn conversation_session_from_row(
+    row: &rusqlite::Row<'_>,
+) -> Result<ConversationSession, rusqlite::Error> {
+    Ok(ConversationSession {
+        id: row.get(0)?,
+        cloud_conversation_id: row.get(1)?,
+        persona_id: row.get(2)?,
+        source: row.get(3)?,
+        sync_status: row.get(4)?,
+        last_synced_message_at_ms: row.get(5)?,
+        created_at_ms: row.get(6)?,
+        updated_at_ms: row.get(7)?,
+    })
+}
+
+fn conversation_message_from_row(
+    row: &rusqlite::Row<'_>,
+) -> Result<ConversationMessage, rusqlite::Error> {
+    Ok(ConversationMessage {
+        id: row.get(0)?,
+        cloud_message_id: row.get(1)?,
+        session_id: row.get(2)?,
+        role: row.get(3)?,
+        content: row.get(4)?,
+        provider: row.get(5)?,
+        sync_status: row.get(6)?,
+        idempotency_key: row.get(7)?,
+        client_sequence: row.get(8)?,
+        created_at_ms: row.get(9)?,
+        server_received_at_ms: row.get(10)?,
+    })
+}
+
+fn validate_conversation_message_input(
+    input: &AppendConversationMessageInput,
+) -> Result<(), TimelineError> {
+    if input.session_id.trim().is_empty() {
+        return Err(TimelineError::Validation(
+            "conversation message session_id is required".to_string(),
+        ));
+    }
+    if !matches!(input.role.as_str(), "user" | "assistant" | "system_summary") {
+        return Err(TimelineError::Validation(format!(
+            "unsupported conversation message role '{}'",
+            input.role
+        )));
+    }
+    if input.content.trim().is_empty() {
+        return Err(TimelineError::Validation(
+            "conversation message content is required".to_string(),
+        ));
+    }
+    if input.idempotency_key.trim().is_empty() {
+        return Err(TimelineError::Validation(
+            "conversation message idempotency_key is required".to_string(),
+        ));
+    }
+    Ok(())
 }
 
 fn current_time_ms() -> Result<i64, TimelineError> {

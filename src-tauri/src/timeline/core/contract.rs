@@ -39,6 +39,22 @@ pub struct CreateLocalMemoryInput {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct GetOrCreateConversationSessionInput {
+    pub persona_id: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppendConversationMessageInput {
+    pub session_id: String,
+    pub role: String,
+    pub content: String,
+    pub provider: Option<String>,
+    pub idempotency_key: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct EnqueueSyncPayloadInput {
     pub event_type: String,
     pub payload_json: String,
@@ -88,6 +104,35 @@ pub struct LocalMemory {
     pub confidence: i64,
     pub created_at_ms: i64,
     pub updated_at_ms: i64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConversationSession {
+    pub id: String,
+    pub cloud_conversation_id: String,
+    pub persona_id: String,
+    pub source: String,
+    pub sync_status: String,
+    pub last_synced_message_at_ms: Option<i64>,
+    pub created_at_ms: i64,
+    pub updated_at_ms: i64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConversationMessage {
+    pub id: String,
+    pub cloud_message_id: Option<String>,
+    pub session_id: String,
+    pub role: String,
+    pub content: String,
+    pub provider: Option<String>,
+    pub sync_status: String,
+    pub idempotency_key: String,
+    pub client_sequence: i64,
+    pub created_at_ms: i64,
+    pub server_received_at_ms: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize)]

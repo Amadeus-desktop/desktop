@@ -291,6 +291,8 @@ export type AppLocale = {
       placeholder: string;
       placeholderDeep: string;
       dailyCareLink: string;
+      you: string;
+      typing: string;
     };
     dailyCare: {
       subtitle: string;

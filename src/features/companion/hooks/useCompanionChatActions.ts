@@ -4,6 +4,7 @@ import { patchAppSettings } from "../../settings";
 import type { GeneralSettings } from "../../settings/types";
 import { recordTriggerReactionForScoring } from "../../trigger";
 import { generatePocketIntro } from "../lib/pocketIntro";
+import { persistCompanionExchange } from "../lib/conversationPersistence";
 import { patchCompanionSession } from "../lib/companionSessionStore";
 import { resolveCompanionReply } from "../lib/reply";
 import type { CompanionMateId } from "../../../domain/mate";
@@ -139,11 +140,15 @@ export function useCompanionChatActions({
     };
     const nextMessages = [...messages, userMessage];
 
-    setIsSending(true);
     setMessages(nextMessages);
+    if (mode !== "deep") {
+      void transitionMode("deep");
+    }
+    setIsSending(true);
+
+    void recordReaction("user_input", { score: false }).catch(() => undefined);
 
     try {
-      await recordReaction("user_input", { score: false });
       const generation = await resolveCompanionReply(
         nextMessages,
         selectedPersona,
@@ -165,11 +170,16 @@ export function useCompanionChatActions({
       };
 
       setMessages((currentMessages) => [...currentMessages, replyMessage]);
+      void persistCompanionExchange({
+        personaId: selectedPersona.id,
+        userMessage,
+        replyMessage,
+        provider: generation.provider,
+      }).catch((error) => {
+        logger.warn("ui", "conversation persistence failed", { error });
+      });
       await recordReaction("deep_reply", { score: false });
       await recordTriggerReactionForScoring("replied");
-      if (mode !== "deep") {
-        await transitionMode("deep");
-      }
     } finally {
       setIsSending(false);
     }

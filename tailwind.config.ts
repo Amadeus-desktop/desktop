@@ -114,10 +114,15 @@ export default {
           from: { opacity: "0.001" },
           to: { opacity: "1" },
         },
+        "chat-typing": {
+          "0%, 100%": { opacity: "0.35", transform: "translateY(0)" },
+          "50%": { opacity: "1", transform: "translateY(-2px)" },
+        },
       },
       animation: {
         "chat-in": `chat-in 240ms ${motionEase} forwards`,
         "chat-pulse": "chat-pulse 3.2s ease-in-out infinite",
+        "chat-typing": "chat-typing 1.2s ease-in-out infinite",
         "window-appear": `window-appear 420ms ${motionEase}`,
         "window-fade-in": `window-fade-in 360ms ${motionEase}`,
         "tab-panel-enter": `tab-panel-enter 280ms ${motionEase}`,

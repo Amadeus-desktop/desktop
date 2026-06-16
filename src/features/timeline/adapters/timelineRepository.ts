@@ -1,20 +1,26 @@
 import { invoke } from "@tauri-apps/api/core";
 import {
+  appendMockConversationMessage,
   createMockContextEvent,
   createMockLocalMemory,
   createMockUserReaction,
   createMockUtteranceEvent,
   enqueueMockSyncPayload,
+  getOrCreateMockConversationSession,
   listMockTimelineEvents,
 } from "../../../mocks/timeline";
 import { isTauriRuntime } from "../../../lib/tauri/runtime";
 import type {
   ContextEvent,
+  AppendConversationMessageInput,
+  ConversationMessage,
+  ConversationSession,
   CreateLocalMemoryInput,
   CreateContextEventInput,
   CreateUserReactionInput,
   CreateUtteranceEventInput,
   EnqueueSyncPayloadInput,
+  GetOrCreateConversationSessionInput,
   LocalMemory,
   SyncQueueRow,
   TimelineEvent,
@@ -60,6 +66,28 @@ export async function createLocalMemory(
   }
 
   return createMockLocalMemory(input);
+}
+
+export async function getOrCreateConversationSession(
+  input: GetOrCreateConversationSessionInput,
+): Promise<ConversationSession> {
+  if (isTauriRuntime()) {
+    return invoke<ConversationSession>("get_or_create_conversation_session", {
+      input,
+    });
+  }
+
+  return getOrCreateMockConversationSession(input);
+}
+
+export async function appendConversationMessage(
+  input: AppendConversationMessageInput,
+): Promise<ConversationMessage> {
+  if (isTauriRuntime()) {
+    return invoke<ConversationMessage>("append_conversation_message", { input });
+  }
+
+  return appendMockConversationMessage(input);
 }
 
 export async function enqueueSyncPayload(

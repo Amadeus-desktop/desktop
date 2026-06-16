@@ -234,6 +234,66 @@ fn migration_prepares_phase_6_local_tables() {
 }
 
 #[test]
+fn stores_conversation_sessions_per_persona_and_messages_idempotently() {
+    let mut repository = TimelineRepository::open_in_memory().expect("in-memory db opens");
+    repository.migrate().expect("migration succeeds");
+
+    let seoyeon = repository
+        .get_or_create_conversation_session(GetOrCreateConversationSessionInput {
+            persona_id: "seoyeon-modern-senior".to_string(),
+        })
+        .expect("seoyeon session is stored");
+    let same_seoyeon = repository
+        .get_or_create_conversation_session(GetOrCreateConversationSessionInput {
+            persona_id: "seoyeon-modern-senior".to_string(),
+        })
+        .expect("same persona session is reused");
+    let makise = repository
+        .get_or_create_conversation_session(GetOrCreateConversationSessionInput {
+            persona_id: "makise-kurisu".to_string(),
+        })
+        .expect("makise session is stored separately");
+
+    assert_eq!(seoyeon.id, same_seoyeon.id);
+    assert_ne!(seoyeon.id, makise.id);
+    assert_eq!(seoyeon.persona_id, "seoyeon-modern-senior");
+    assert_eq!(makise.persona_id, "makise-kurisu");
+
+    let user_message = repository
+        .append_conversation_message(AppendConversationMessageInput {
+            session_id: seoyeon.id.clone(),
+            role: "user".to_string(),
+            content: "오늘 힘들어.".to_string(),
+            provider: None,
+            idempotency_key: "user-message-1".to_string(),
+        })
+        .expect("user message is stored");
+    let duplicate = repository
+        .append_conversation_message(AppendConversationMessageInput {
+            session_id: seoyeon.id.clone(),
+            role: "user".to_string(),
+            content: "오늘 힘들어.".to_string(),
+            provider: None,
+            idempotency_key: "user-message-1".to_string(),
+        })
+        .expect("duplicate message is returned");
+    let reply = repository
+        .append_conversation_message(AppendConversationMessageInput {
+            session_id: seoyeon.id.clone(),
+            role: "assistant".to_string(),
+            content: "여기 있어.".to_string(),
+            provider: Some("edge:openai".to_string()),
+            idempotency_key: "assistant-message-1".to_string(),
+        })
+        .expect("assistant message is stored");
+
+    assert_eq!(user_message.id, duplicate.id);
+    assert_eq!(user_message.client_sequence, 1);
+    assert_eq!(reply.client_sequence, 2);
+    assert_eq!(reply.provider.as_deref(), Some("edge:openai"));
+}
+
+#[test]
 fn migration_upgrades_legacy_local_memories_table() {
     let mut repository = TimelineRepository::open_in_memory().expect("in-memory db opens");
     repository

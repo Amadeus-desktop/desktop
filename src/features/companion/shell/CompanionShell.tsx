@@ -48,6 +48,7 @@ export function CompanionShell() {
           devToolsOpen={devToolsOpen}
           nightCareEnabled={shell.nightCareEnabled}
           isSending={shell.isSending}
+          userName={shell.userName}
           labels={shell.t}
           onSend={(text) => void shell.sendMessage(text)}
           onClose={() => void shell.closePocket()}

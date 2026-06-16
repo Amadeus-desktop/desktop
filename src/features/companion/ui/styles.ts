@@ -26,20 +26,29 @@ export const companionStyles = {
   chatStatus: "truncate text-[11px] leading-4 text-[color:var(--shell-ink-faint)]",
 
   chatBody:
-    "min-h-0 flex-1 overflow-y-auto bg-gradient-to-b from-white/[0.03] to-transparent px-3 py-3",
+    "min-h-0 flex-1 overflow-y-auto bg-[#181416] px-3.5 py-3.5",
 
-  chatInputBar: "shrink-0 px-3 pb-3 pt-2",
+  chatThread: "flex flex-col gap-3.5",
+  chatEmpty: "px-1 text-center text-[12px] leading-relaxed text-[color:var(--shell-ink-faint)]",
+
+  chatInputBar: "shrink-0 border-t border-white/[0.06] bg-[#151214] px-3.5 pb-3.5 pt-3",
   chatInputWrap:
     "flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-3 py-1.5 shadow-[inset_0_1px_0_rgb(255_255_255/0.04)]",
   chatInput:
     "min-w-0 flex-1 bg-transparent px-1 py-1.5 text-[13px] text-[color:var(--shell-ink)] outline-none placeholder:text-[color:var(--shell-ink-faint)]",
 
-  bubbleRow: "flex items-end gap-2",
+  bubbleRow: "flex items-end gap-2.5",
   bubbleRowUser: "flex justify-end",
   bubbleCompanion:
-    "max-w-[86%] rounded-[18px] rounded-bl-[6px] border border-white/[0.08] bg-[#3a3438]/95 px-3.5 py-2.5 text-[13px] leading-relaxed text-[color:#f7f2ef]",
+    "rounded-[20px] rounded-bl-[8px] border border-white/[0.07] bg-[#342f33] px-3.5 py-2.5 text-[13px] leading-[1.55] text-[#f8f3f0] shadow-[0_2px_10px_rgb(0_0_0/0.18)]",
   bubbleUser:
-    "max-w-[86%] rounded-[18px] rounded-br-[6px] border border-[color:rgb(var(--accent-rgb)/0.22)] bg-[color:rgb(var(--accent-rgb)/0.18)] px-3.5 py-2.5 text-[13px] leading-relaxed text-[color:var(--accent-soft)]",
+    "rounded-[20px] rounded-br-[8px] border border-[color:rgb(var(--accent-rgb)/0.35)] bg-[color:rgb(var(--accent-rgb)/0.24)] px-3.5 py-2.5 text-[13px] leading-[1.55] text-[#fff8f4] shadow-[0_2px_10px_rgb(0_0_0/0.16)]",
+  senderCompanion:
+    "mb-1 px-1 text-[11px] font-semibold text-[color:rgb(var(--accent-rgb)/0.82)]",
+  senderUser:
+    "px-1 text-[11px] font-medium text-[color:var(--shell-ink-muted)]",
+  typingBubble:
+    "inline-flex min-h-[2.5rem] min-w-[3.5rem] items-center rounded-[20px] rounded-bl-[8px] border border-white/[0.07] bg-[#342f33] px-3.5 py-2.5",
   sender: "mb-1 text-[10px] font-medium text-[color:var(--shell-ink-faint)]",
 
   iconButton:

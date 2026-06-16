@@ -1,8 +1,10 @@
 import type { CompanionLocale } from "../../../i18n";
+import { useI18n } from "../../../i18n";
 import { companionStyles } from "../ui/styles";
 import { CloseIcon } from "../ui/icons";
 import { LocalTimeline } from "../dev/LocalTimeline";
 import type { TimelineEvent } from "../../timeline/types";
+import { buildDailyCareStats } from "./dailyCareStats";
 
 type DailyCareNotePreviewProps = {
   timelineEvents: TimelineEvent[];
@@ -17,6 +19,9 @@ export function DailyCareNotePreview({
   labels,
   onClose,
 }: DailyCareNotePreviewProps) {
+  const locale = useI18n();
+  const stats = buildDailyCareStats(timelineEvents, locale);
+
   return (
     <section className={companionStyles.chatPanel}>
       <header className={companionStyles.chatHeader}>
@@ -43,11 +48,11 @@ export function DailyCareNotePreview({
           <div className="grid grid-cols-2 gap-3">
             <CareStat
               label={labels.dailyCare.togetherTime}
-              value={labels.dailyCare.togetherTimeValue}
+              value={stats.togetherTimeValue}
             />
             <CareStat
               label={labels.dailyCare.noteCount}
-              value={labels.dailyCare.noteCountValue}
+              value={stats.noteCountValue}
             />
           </div>
 

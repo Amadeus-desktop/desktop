@@ -1,41 +1,52 @@
 import type { ReactNode } from "react";
-import type { PersonaId } from "../../../../domain/persona/types";
+import type { MateIconKind } from "../../../../domain/mate";
+import { PersonaPresenceIcon } from "../../ui/PersonaPresenceIcon";
 import { companionStyles } from "../../ui/styles";
-import { ChatAvatar } from "./ChatAvatar";
 
 type ChatBubbleProps = {
   sender: "companion" | "user";
   senderName?: string;
-  personaId?: PersonaId;
-  showAvatar?: boolean;
+  showSenderName?: boolean;
+  mateIcon?: MateIconKind;
   children: ReactNode;
 };
 
 export function ChatBubble({
   sender,
   senderName,
-  personaId,
-  showAvatar = true,
+  showSenderName = false,
+  mateIcon,
   children,
 }: ChatBubbleProps) {
   if (sender === "user") {
     return (
       <div className={companionStyles.bubbleRowUser}>
-        <div className={companionStyles.bubbleUser}>{children}</div>
+        <div className="flex max-w-[88%] flex-col items-end gap-1">
+          {showSenderName && senderName ? (
+            <p className={companionStyles.senderUser}>{senderName}</p>
+          ) : null}
+          <div className={companionStyles.bubbleUser}>{children}</div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className={companionStyles.bubbleRow}>
-      {showAvatar && personaId ? (
-        <ChatAvatar personaId={personaId} />
+      {mateIcon ? (
+        <PersonaPresenceIcon
+          kind={mateIcon}
+          accentSource="settings"
+          size="sm"
+          variant="filled"
+          className="shrink-0"
+        />
       ) : (
         <div className="size-chat-avatar shrink-0" />
       )}
-      <div className="min-w-0">
-        {senderName && showAvatar ? (
-          <p className={companionStyles.sender}>{senderName}</p>
+      <div className="min-w-0 max-w-[88%]">
+        {showSenderName && senderName ? (
+          <p className={companionStyles.senderCompanion}>{senderName}</p>
         ) : null}
         <div className={companionStyles.bubbleCompanion}>{children}</div>
       </div>

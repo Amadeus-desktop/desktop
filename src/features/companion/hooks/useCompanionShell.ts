@@ -103,6 +103,7 @@ export function useCompanionShell({
     mateIcon: settings.companionMateIcon,
     nightCareEnabled: settings.nightCareEnabled,
     nickname: settings.nickname,
+    userName: settings.nickname.trim() || t.chat.you,
     ...chatActions,
   };
 }

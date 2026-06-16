@@ -6,6 +6,7 @@ import {
 } from "../../../mocks/llm";
 import { getAppLocale } from "../../../i18n";
 import { isTauriRuntime } from "../../../lib/tauri/runtime";
+import { logger } from "../../../observability/logger";
 import type { Persona } from "../../../domain/persona/types";
 import type { MemoryCard } from "../../../domain/memory/cards";
 import type {
@@ -41,7 +42,13 @@ export async function generateChatReply(
   if (settings.modelRoute === "api-first") {
     try {
       return await generateEdgeChatReply(input);
-    } catch {
+    } catch (error) {
+      logger.warn("llm", "edge llm fallback activated", {
+        personaId: persona.id,
+        route: settings.modelRoute,
+        fallbackEnabled: settings.localFallbackEnabled,
+        error: error instanceof Error ? error.message : String(error),
+      });
       // Keep the local/template fallback path available when the cloud edge route is unavailable.
     }
   }
