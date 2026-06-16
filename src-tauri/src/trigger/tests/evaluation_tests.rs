@@ -1,4 +1,6 @@
 use super::*;
+use crate::trigger::core::evaluate_trigger_with_ocr;
+use crate::trigger::scoring::apply_ocr_signal_to_evaluation;
 use crate::{macos_context::AppCategory, settings::AppSettings};
 
 #[test]
@@ -38,6 +40,77 @@ fn creates_deep_pause_bubble_for_work_idle() {
     assert_eq!(candidate.trigger_type, TriggerType::DeepPause);
     assert_eq!(evaluation.action, TriggerAction::Bubble);
     assert_eq!(evaluation.speakability_score, 72);
+    assert!(evaluation.should_persist);
+}
+
+#[test]
+fn ocr_blocked_signal_can_promote_deep_pause_to_conversation() {
+    let evaluation = evaluate_trigger(
+        TriggerInput {
+            snapshot: snapshot(AppCategory::Work, 180.0, 12 * 60 * 1000),
+            privacy: normal_privacy("main.rs"),
+            history: None,
+            recent_utterance_minutes_ago: None,
+            dismissed_recent_count: 0,
+            utterances_today: 0,
+        },
+        &AppSettings::default(),
+    );
+
+    let promoted = apply_ocr_signal_to_evaluation(
+        evaluation,
+        Some("compile error failed cannot resolve module"),
+    );
+
+    assert_eq!(promoted.action, TriggerAction::Conversation);
+    assert_eq!(promoted.speakability_score, 80);
+    assert!(promoted.should_persist);
+}
+
+#[test]
+fn neutral_ocr_summary_does_not_change_trigger_score() {
+    let evaluation = evaluate_trigger(
+        TriggerInput {
+            snapshot: snapshot(AppCategory::Work, 180.0, 12 * 60 * 1000),
+            privacy: normal_privacy("main.rs"),
+            history: None,
+            recent_utterance_minutes_ago: None,
+            dismissed_recent_count: 0,
+            utterances_today: 0,
+        },
+        &AppSettings::default(),
+    );
+
+    let unchanged = apply_ocr_signal_to_evaluation(
+        evaluation.clone(),
+        Some("planning document next steps notes"),
+    );
+
+    assert_eq!(unchanged.speakability_score, evaluation.speakability_score);
+    assert_eq!(unchanged.action, evaluation.action);
+    assert_eq!(unchanged.should_persist, evaluation.should_persist);
+}
+
+#[test]
+fn ocr_blocked_signal_can_create_deep_pause_candidate_before_idle_threshold() {
+    let evaluation = evaluate_trigger_with_ocr(
+        TriggerInput {
+            snapshot: snapshot(AppCategory::Work, 70.0, 6 * 60 * 1000),
+            privacy: normal_privacy("main.rs"),
+            history: None,
+            recent_utterance_minutes_ago: None,
+            dismissed_recent_count: 0,
+            utterances_today: 0,
+        },
+        &AppSettings::default(),
+        Some("compile error failed cannot resolve module"),
+    );
+
+    let candidate = evaluation.candidate.expect("ocr deep pause candidate");
+    assert_eq!(candidate.trigger_type, TriggerType::DeepPause);
+    assert_eq!(candidate.reason, "ocr_blocked_signal_after_sustained_work");
+    assert_eq!(evaluation.action, TriggerAction::Conversation);
+    assert_eq!(evaluation.speakability_score, 80);
     assert!(evaluation.should_persist);
 }
 

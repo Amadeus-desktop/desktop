@@ -13,7 +13,15 @@ import {
 
 export type MainWindowLayoutMode = "control-center" | "onboarding";
 const enqueueMainWindowLayout = createSerializedAsyncQueue();
-export const MAIN_WINDOW_ANIMATION_DURATION_MS = 420;
+export const MAIN_WINDOW_ANIMATION_DURATION_MS = 680;
+
+export function waitForMainWindowAnimation(
+  durationMs = MAIN_WINDOW_ANIMATION_DURATION_MS,
+) {
+  return new Promise<void>((resolve) => {
+    window.setTimeout(resolve, durationMs);
+  });
+}
 
 function getMainWebviewWindow() {
   if (!isTauriRuntime()) return null;
@@ -165,7 +173,7 @@ export async function animateMainWindowLayoutMode(
     durationMs,
     width: target.width,
     height: target.height,
-    policy: "center-anchored-native",
+    policy: "monitor-centered-native",
   });
 
   await invoke("animate_main_window_logical_size_command", {

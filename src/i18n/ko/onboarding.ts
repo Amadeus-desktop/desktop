@@ -46,7 +46,7 @@ export const onboarding: OnboardingMessages = {
     },
   preparing: {
     eyebrow: "잠깐만",
-    title: "설정 준비 중이에요",
+    title: "설정을 완료 중이에요",
     subtitle: "곁에 맞게 살짝 정리하고 있어요.",
     doneEyebrow: "준비 끝",
     doneTitle: "완료했어요!",

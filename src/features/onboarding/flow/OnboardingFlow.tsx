@@ -3,12 +3,13 @@ import { useI18n } from "../../../i18n";
 import { cn } from "../../../lib/utils/cn";
 import { isTauriRuntime } from "../../../lib/tauri/runtime";
 import { requestMainWindowLayout } from "../../lifecycle";
-import { MAIN_WINDOW_ANIMATION_DURATION_MS } from "../../auth/lib/mainWindowLayout";
+import { MAIN_WINDOW_ANIMATION_DURATION_MS, waitForMainWindowAnimation } from "../../auth/lib/mainWindowLayout";
 import { LogoutTransitionStep } from "../../auth/components/LogoutTransitionStep";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { logger } from "../../../observability/logger";
 import { usePermissionReadiness } from "../hooks/usePermissionReadiness";
 import {
+  ONBOARDING_COMPLETE_DELAY_MS,
   ONBOARDING_PREPARE_DELAY_MS,
   sleep,
 } from "../lib/transitionTiming";
@@ -75,9 +76,12 @@ export function OnboardingFlow({
     setContinuing(true);
     setPreparePhase("preparing");
     try {
+      // 1) Show the "설정을 완료 중이에요" → "완료했어요!" steps in the small window.
       await sleep(ONBOARDING_PREPARE_DELAY_MS);
       setPreparePhase("complete");
+      await sleep(ONBOARDING_COMPLETE_DELAY_MS);
 
+      // 2) Only after the completion step, grow the window into control-center.
       await completeOnboardingWindowTransition({
         animateToControlCenter: () =>
           requestMainWindowLayout({
@@ -95,7 +99,7 @@ export function OnboardingFlow({
           }),
         logError: (message, context) => logger.error("window", message, context),
       });
-      await sleep(MAIN_WINDOW_ANIMATION_DURATION_MS);
+      await waitForMainWindowAnimation();
       markSetupDone();
     } finally {
       setPreparePhase(null);

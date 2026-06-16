@@ -3,15 +3,22 @@ use tauri::State;
 use crate::{
     llm::LlmState,
     macos_context::{read_current_snapshot, ContextBridgeState},
-    privacy::assess_privacy,
+    observability::{info as log_info, warn as log_warn, LogArea},
+    ocr::{capture_gate_input_for_command, OcrState, ScreenCaptureState},
+    privacy::{assess_privacy, get_screen_capture_permission_status},
     settings::{privacy_keywords_for, talk_frequency_poll_interval, SettingsState},
     timeline::TimelineState,
 };
 
 use super::{persistence::persist_trigger_events, CommandError};
 use crate::trigger::{
-    evaluate_trigger, scoring::suppressed, TriggerEngineState, TriggerPollDecision,
-    TriggerPollResult, TriggerRunResult, TriggerRuntimeSnapshot,
+    core::evaluate_trigger_with_ocr,
+    scoring::{
+        apply_ocr_signal_to_evaluation, should_capture_ocr_for_trigger,
+        should_probe_ocr_for_candidate, suppressed,
+    },
+    TriggerEngineState, TriggerPollDecision, TriggerPollResult, TriggerRunResult,
+    TriggerRuntimeSnapshot,
 };
 
 #[tauri::command]
@@ -19,6 +26,8 @@ pub fn run_trigger_engine_once(
     context_state: State<'_, ContextBridgeState>,
     timeline_state: State<'_, TimelineState>,
     llm_state: State<'_, LlmState>,
+    ocr_state: State<'_, OcrState>,
+    capture_state: State<'_, ScreenCaptureState>,
     trigger_state: State<'_, TriggerEngineState>,
     settings_state: State<'_, SettingsState>,
     keywords: Vec<String>,
@@ -49,8 +58,29 @@ pub fn run_trigger_engine_once(
         .lock()
         .map_err(|_| CommandError::from("trigger runtime lock was poisoned".to_string()))?
         .input_for(snapshot.clone(), privacy.clone());
-    let evaluation = evaluate_trigger(trigger_input, &settings);
+    let mut redacted_ocr_summary = should_probe_ocr_for_candidate(&snapshot, &privacy)
+        .then(|| {
+            capture_trigger_ocr_summary(&ocr_state, &capture_state, &settings, &snapshot, &privacy)
+        })
+        .flatten();
+    let mut evaluation =
+        evaluate_trigger_with_ocr(trigger_input, &settings, redacted_ocr_summary.as_deref());
     let (context_event, utterance_event) = if evaluation.should_persist {
+        let captured_after_evaluation =
+            redacted_ocr_summary.is_none() && should_capture_ocr_for_trigger(&privacy, &evaluation);
+        if captured_after_evaluation {
+            redacted_ocr_summary = capture_trigger_ocr_summary(
+                &ocr_state,
+                &capture_state,
+                &settings,
+                &snapshot,
+                &privacy,
+            );
+        }
+        if captured_after_evaluation {
+            evaluation =
+                apply_ocr_signal_to_evaluation(evaluation, redacted_ocr_summary.as_deref());
+        }
         persist_trigger_events(
             &timeline_state,
             &llm_state,
@@ -58,6 +88,7 @@ pub fn run_trigger_engine_once(
             &snapshot,
             &privacy,
             &evaluation,
+            redacted_ocr_summary.as_deref(),
         )?
     } else {
         (None, None)
@@ -85,6 +116,8 @@ pub fn poll_trigger_engine(
     context_state: State<'_, ContextBridgeState>,
     timeline_state: State<'_, TimelineState>,
     llm_state: State<'_, LlmState>,
+    ocr_state: State<'_, OcrState>,
+    capture_state: State<'_, ScreenCaptureState>,
     trigger_state: State<'_, TriggerEngineState>,
     settings_state: State<'_, SettingsState>,
     keywords: Vec<String>,
@@ -130,6 +163,8 @@ pub fn poll_trigger_engine(
         context_state,
         timeline_state,
         llm_state,
+        ocr_state,
+        capture_state,
         trigger_state,
         settings_state,
         keywords,
@@ -140,6 +175,53 @@ pub fn poll_trigger_engine(
         decision,
         run_result: Some(run_result),
     })
+}
+
+fn capture_trigger_ocr_summary(
+    ocr_state: &State<'_, OcrState>,
+    capture_state: &State<'_, ScreenCaptureState>,
+    settings: &crate::settings::AppSettings,
+    snapshot: &crate::macos_context::MacosContextSnapshot,
+    privacy: &crate::privacy::PrivacyAssessment,
+) -> Option<String> {
+    if privacy.should_suppress_capture || privacy.is_sensitive {
+        log_info(LogArea::Ocr, "trigger OCR skipped: sensitive context");
+        return None;
+    }
+
+    let permission = get_screen_capture_permission_status();
+    let gate_input = capture_gate_input_for_command(
+        10,
+        false,
+        permission.granted,
+        settings.analysis_enabled,
+        &snapshot.app_name,
+    );
+    let now_ms = current_time_ms();
+    match capture_state.capture_and_recognize(ocr_state, gate_input, now_ms) {
+        Ok(observation) => {
+            log_info(
+                LogArea::Ocr,
+                format!(
+                    "trigger OCR summary captured: classes={} confidence={:.2}",
+                    observation.visible_text_classes.len(),
+                    observation.confidence
+                ),
+            );
+            Some(observation.text_summary_redacted)
+        }
+        Err(error) => {
+            log_warn(LogArea::Ocr, format!("trigger OCR skipped: {error}"));
+            None
+        }
+    }
+}
+
+fn current_time_ms() -> u128 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_millis())
+        .unwrap_or(0)
 }
 
 #[tauri::command]

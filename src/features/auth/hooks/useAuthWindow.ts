@@ -12,7 +12,9 @@ export function useAuthWindow(
 
   useEffect(() => {
     if (!hydrated || !isTauriRuntime()) {
-      previousShowOnboardingShell.current = showOnboardingShell;
+      // Do NOT seed previousShowOnboardingShell here. Seeding it before the
+      // first hydrated run would poison the `previous === null` initial-layout
+      // branch below, leaving the window at its tauri.conf default size.
       previousSkipInstantLayout.current = skipInstantLayout;
       return;
     }

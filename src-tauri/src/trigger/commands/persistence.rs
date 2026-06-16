@@ -24,6 +24,7 @@ pub(super) fn persist_trigger_events(
     snapshot: &MacosContextSnapshot,
     privacy: &PrivacyAssessment,
     evaluation: &TriggerEvaluation,
+    redacted_ocr_summary: Option<&str>,
 ) -> Result<(Option<ContextEvent>, Option<UtteranceEvent>), CommandError> {
     let candidate = evaluation
         .candidate
@@ -49,7 +50,12 @@ pub(super) fn persist_trigger_events(
 
     let generation = llm_state
         .generate_utterance(&llm_request_for_trigger(
-            snapshot, privacy, evaluation, candidate, settings,
+            snapshot,
+            privacy,
+            evaluation,
+            candidate,
+            settings,
+            redacted_ocr_summary,
         ))
         .map_err(|error| CommandError::from(error.to_string()))?;
     let utterance_event = repository

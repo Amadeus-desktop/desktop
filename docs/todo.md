@@ -31,8 +31,8 @@
 
 ### [ ] 제네릭 Persona 4종 제거 — Persona/Mate 분리
 
-**문제:** `PERSONA_IDS`에 `warm_friend`, `loving_partner`, `steady_ally`, `soft_care` 포함  
-**파일:** `src/domain/persona/types.ts`, `src/domain/persona/registry.ts`  
+**문제:** `PERSONA_IDS`에 `warm_friend`, `loving_partner`, `steady_ally`, `soft_care` 포함
+**파일:** `src/domain/persona/types.ts`, `src/domain/persona/registry.ts`
 **결과:** Persona 선택 UI에 실체 없는 캐릭터가 노출됨. JSON 카드, system prompt 없음.
 
 할 일:
@@ -44,22 +44,26 @@
 
 ---
 
-### [ ] LLM 라우트 설정 (기본값이 Template)
+### [ ] LLM 라우트/Provider 연결 정리
 
-**문제:** `LlmService::default()` → `route: LlmProviderRoute::Template`  
-**파일:** `src-tauri/src/llm/core/service.rs:42`  
-**결과:** NudgeNote / DeepChat 전부 hardcoded template 문자열 반환. LLM 없음.
+**확인됨:** `LlmService::default()` 자체는 `route: LlmProviderRoute::Template`.
+**확인됨:** startup에서 `SettingsState::current()`를 읽고 `llm_state.set_route(&settings.model_route, ...)`를 호출함.
+**확인됨:** `AppSettings::default()`의 `model_route`는 `api-first`.
+**문제:** Rust `ApiLlmProvider`는 현재 `available: false`이고 `generate_*`가 항상 `api provider unconfigured`로 실패함.
+**결과:** frontend DeepChat은 `api-first`일 때 Edge Function을 먼저 호출하지만, Rust trigger/Nudge 쪽 API provider는 미연결이라 fallback에 의존함.
+**파일:** `src-tauri/src/app_lifecycle/setup.rs`, `src-tauri/src/settings/core/model.rs`, `src-tauri/src/llm/providers/api.rs`, `src/features/llm/adapters/llmRepository.ts`
 
 할 일:
-- `settings`에서 `model_route` 읽어 startup 시 `LlmState.set_route()` 호출 확인/수정
-- 기본값을 `api-first` 또는 `local-first`로 변경
-- Supabase Edge Function `llm-generate` 배포 여부 확인
+- Rust `ApiLlmProvider`가 Supabase Edge Function 또는 별도 cloud endpoint를 호출할지 결정
+- NudgeNote/Trigger는 local-first로 둘지, API fallback을 실제 연결할지 결정
+- frontend DeepChat의 Edge Function route와 Rust LLM route 계약 통일
+- failure 시 Template fallback 로그를 사용자가 구분 가능하게 표시
 
 ---
 
 ### [ ] llama.cpp 바이너리 번들
 
-**문제:** `src-tauri/binaries/` 디렉토리 없음  
+**문제:** `src-tauri/binaries/` 디렉토리 없음
 **결과:** `LocalLlamaProvider` 항상 실패 → Template fallback → 실제 LLM 응답 없음
 
 할 일:
@@ -72,13 +76,14 @@
 
 ### [ ] Supabase Edge Function `llm-generate` 배포 확인
 
-**문제:** `llmRepository.ts:43` → `supabase.functions.invoke("llm-generate")` 호출하는데 배포 여부 미확인  
-**결과:** `api-first` 라우트 설정해도 edge function 없으면 실패 → Template fallback
+**확인됨:** 로컬 repo에 `supabase/functions/llm-generate/index.ts` 존재.
+**미확인:** Supabase 원격 프로젝트에 실제 배포됐는지, env(`OPENAI_API_KEY`/`GEMINI_API_KEY`)가 설정됐는지, 실호출이 성공하는지.
+**결과:** frontend `api-first` route에서 edge function 호출 실패 시 Tauri/template fallback으로 내려감.
 
 할 일:
-- `supabase/functions/llm-generate/` 존재 확인
 - 배포 상태 확인 (`supabase functions list`)
 - 페르소나 system prompt 조립 로직이 edge function에서 동작하는지 검증
+- 실제 로그인 세션으로 DeepChat smoke test
 
 ---
 
@@ -86,8 +91,8 @@
 
 ### [ ] 페르소나 소스 — Supabase pull을 UI에 연결
 
-**문제:** `useCompanionShell` → `getPersonas(locale)` → i18n hardcoded 값만 표시  
-**파일:** `src/features/companion/hooks/useCompanionShell.ts`, `src/domain/persona/registry.ts:9`  
+**문제:** `useCompanionShell` → `getCompanionMates(locale)` → `getPersonas(locale)` → i18n hardcoded 값만 표시
+**파일:** `src/features/companion/hooks/useCompanionShell.ts`, `src/domain/mate/companionMates.ts`, `src/domain/persona/registry.ts`
 **결과:** `pullCloudPersonas` 구현됐지만 shell에 미연결.
 
 할 일:
@@ -125,8 +130,9 @@
 
 ### [ ] 우려1: 페르소나 잘 못 따름 → 확인됨, 페르소나 정보가 LLM에 거의 안 들어감
 
-**근거:** `src-tauri/src/llm/prompt/persona.rs` `persona_summary()` → LLM에 넘기는 persona = 닉네임 한 줄("OO 곁의 조용한 companion")뿐. 캐릭터 말투/세계관/system prompt 없음.
+**근거:** Rust trigger/Nudge 경로의 `src-tauri/src/llm/prompt/persona.rs` `persona_summary()` → LLM에 넘기는 persona = 닉네임 한 줄("OO 곁의 조용한 companion")뿐. 캐릭터 말투/세계관/system prompt 없음.
 **근거:** `src-tauri/src/trigger/core/scoring.rs` `llm_request_for_trigger()` → `safe_memory_summary: None`, `redacted_ocr_summary: None`. JSON 카드의 `static_prompt_json`이 envelope에 안 실림.
+**참고:** frontend DeepChat Edge 경로는 `promptEnvelope`를 전송하고 edge function은 이를 system prompt context로 포함함. 문제의 핵심은 Rust trigger/Nudge 경로와 frontend/persona source가 분리되어 있다는 점.
 
 할 일:
 - persona JSON 카드(`static_prompt_json`) → `LlmInputEnvelope`에 주입하는 경로 추가
@@ -212,7 +218,7 @@
 
 ---
 
-### [ ] 우려6: OCR + 화면녹화 시너지 → 가장 큰 갭. 현재 OCR이 trigger에 전혀 안 쓰임
+### [ ] 우려6: OCR + 화면녹화 시너지 → 기본 후보 생성 구현, 반복성 고도화 남음
 
 **현재 "작업 인지" 실제 방식** (`src-tauri/src/macos_context/core/native_macos.rs`):
 - 어떤 앱: `NSWorkspace.frontmostApplication()`
@@ -221,19 +227,22 @@
 - 앱 지속 시간: `Instant::elapsed()`
 - 작업/비작업: `classify_app(bundle_id)`
 
-**현재 트리거 규칙** (`scoring.rs select_candidate`): DeepPause(Work+10분+idle120초↑) / Milestone(Work+60분+idle600초미만) / Drift(NonWork+10분↑). → **전부 앱종류 + idle 시간 기반. 화면 내용(OCR) 0.**
+**현재 트리거 후보 규칙** (`scoring.rs select_candidate`): DeepPause(Work+10분+idle120초↑) / Milestone(Work+60분+idle600초미만) / Drift(NonWork+10분↑).
+**추가 OCR 후보 규칙:** Work 앱에서 5분 이상 머물고 idle 60초 이상이며 OCR redacted summary에 blocked signal(error/failed/cannot/오류/실패 등)이 있으면 `ocr_blocked_signal_after_sustained_work` DeepPause 후보를 생성함.
 
-**근거:** `TriggerInput`에 OCR 필드 없음(`types.rs`), `scoring.rs`는 `redacted_ocr_summary: None`. OCR 명령(`capture_primary_display_ocr`)은 별도 수동 경로, trigger와 미연결.
+**해소됨:** `run_trigger_engine_once`가 `evaluation.should_persist`이고 privacy gate가 안전할 때만 OCR capture+recognize를 시도함.
+**해소됨:** 기존 규칙으로 후보가 없더라도 Work+5분+idle60초 조건이면 evaluation 전 OCR probe를 수행하고, blocked signal이면 후보를 생성함.
+**해소됨:** OCR `text_summary_redacted`가 `LlmInputEnvelope.redacted_ocr_summary`로 주입되어 NudgeNote LLM 입력에 들어감.
+**해소됨:** OCR redacted summary에 error/failed/exception/cannot/오류/실패 등 blocked signal이 있으면 speakability score를 +8 보정함.
+**남음:** OCR 반복성/동일 화면 장시간 정체 판단은 아직 없음.
 
-**결론:** PRD가 말한 "OCR로 화면 보고 맥락 파악" = 미구현. 지금은 화면 내용을 못 봄. 앱 이름 + 멈춤만 앎.
+**결론:** PRD가 말한 "OCR로 화면 보고 맥락 파악" 중 LLM 입력 연결, blocked signal score 보정, 기본 OCR 후보 생성은 구현됨. 다만 "같은 화면/같은 오류가 반복되는 정체 상태" 판단은 아직 미구현.
 
 할 일 (시너지 작업 = 아래 전부):
-- `capture_primary_display_ocr`를 trigger 폴링 주기에 연결 (gate 통과 시에만)
-- OCR `text_summary_redacted` → `TriggerInput`에 필드 추가
-- scoring에 OCR 맥락 반영 (예: 동일 에러 텍스트 반복 = "막힘" 감지, 같은 화면 장시간 = "정체")
-- OCR 요약 → `LlmInputEnvelope.redacted_ocr_summary` 주입 → NudgeNote가 화면 맥락 반영
-- privacy gate(`pre_capture_gate`/`pre_ocr_gate`) 통과분만 사용
-- 성능: OCR 매 폴링마다 돌리면 비싸다 → idle/정체 의심 시에만 캡처하는 조건부 트리거
+- OCR `text_summary_redacted`/content_kind/classes → trigger context/signal 구조로 보존할지 결정
+- OCR 반복성 반영 (예: 같은 오류/같은 화면 장시간 = "정체")
+- OCR 후보 생성 조건 실측 튜닝
+- 실제 macOS 권한 ON 상태에서 end-to-end smoke test
 
 ---
 
@@ -241,20 +250,24 @@
 
 ### [ ] OCR → Trigger 파이프라인 end-to-end 검증
 
-**현황:** OCR (`apple_vision.rs`) 실제 구현, Trigger scoring 실제 구현  
-**미확인:** OCR 결과가 trigger scoring input에 실제로 들어가는가  
-**파일:** `src-tauri/src/trigger/core/scoring.rs`, `src-tauri/src/ocr/core/`
+**현황:** OCR (`apple_vision.rs`) 실제 구현, Trigger scoring 실제 구현
+**확인됨:** OCR 결과는 persist 가능한 trigger에서 `LlmInputEnvelope.redacted_ocr_summary`로 LLM 입력에 들어감.
+**확인됨:** blocked OCR signal은 `apply_ocr_signal_to_evaluation()`에서 speakability score/action 보정에 사용됨.
+**확인됨:** blocked OCR signal은 Work+5분+idle60초 조건에서 DeepPause 후보 생성에도 사용됨.
+**파일:** `src-tauri/src/trigger/commands/runner.rs`, `src-tauri/src/trigger/commands/persistence.rs`, `src-tauri/src/trigger/core/scoring.rs`, `src-tauri/src/ocr/core/`
 
 할 일:
-- `llm_request_for_trigger()` 안에서 OCR observation 사용 여부 확인
-- `capture_primary_display_ocr` → trigger 호출 체인 추적
+- macOS Screen Recording 권한 ON 상태에서 실제 자동 trigger smoke test
+- OCR summary가 prompt 로그/LLM envelope에 들어가는지 runtime log로 확인
+- OCR 후보 생성 조건과 실제 Nudge 빈도 튜닝
 
 ---
 
-### [ ] `modelRoute` 기본값 확인
+### [x] `modelRoute` 기본값 확인
 
-**파일:** `src/features/settings/` — `GeneralSettings.modelRoute` 기본값  
-결과에 따라 P0 LLM 라우트 작업 범위 달라짐.
+**확인됨:** Rust `AppSettings::default().model_route`는 `api-first`.
+**확인됨:** startup에서 settings 값을 읽어 `llm_state.set_route()`를 호출함.
+**남은 문제:** 기본값이 아니라 provider 연결/배포/실호출 검증이 P0 범위.
 
 ---
 
@@ -274,8 +287,8 @@ MVP v2 plan Task 2 전부 `- [ ]`:
 
 ### [ ] Daily Care Note — 실제 데이터 연결
 
-**현황:** `DailyCareNotePreview.tsx` 있음, `timelineEvents` prop 받음  
-**문제:** SQLite에서 오는지 mock인지 확인 필요  
+**현황:** `DailyCareNotePreview.tsx` 있음, `timelineEvents` prop 받음
+**문제:** SQLite에서 오는지 mock인지 확인 필요
 **범위:** Phase v3
 
 ---

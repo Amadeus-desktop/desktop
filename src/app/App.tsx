@@ -16,13 +16,14 @@ import { isTauriRuntime } from "../lib/tauri/runtime";
 import { useShellTheme } from "../ui";
 
 function App() {
-  const { hydrated: authHydrated, isAuthenticated, logoutTransitioning } = useAuth();
+  const { hydrated: authHydrated, isAuthenticated, logoutTransitioning, logoutPhase } = useAuth();
   const onboarding = useOnboarding(isAuthenticated, logoutTransitioning);
   useShellTheme();
   useTauriDevTools();
 
-  const showOnboardingShell =
-    logoutTransitioning || onboarding.showOnboardingShell;
+  const showOnboardingShell = logoutTransitioning
+    ? logoutPhase !== null
+    : onboarding.showOnboardingShell;
   const { isComplete } = onboarding;
   const [shellContentVisible, setShellContentVisible] = useState(true);
   const previousShowOnboardingShell = useRef(showOnboardingShell);

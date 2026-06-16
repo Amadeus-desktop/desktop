@@ -175,54 +175,68 @@ pub fn set_main_window_logical_size(
     window
         .set_size(LogicalSize::new(width, height))
         .map_err(|error| format!("set_main_window_logical_size: set_size failed: {error}"))?;
-    center_main_window_on_monitor(&window)?;
+    center_main_window_with_logical_size(&window, width, height)?;
     #[cfg(target_os = "macos")]
     refresh_macos_webview_layers(&window);
     Ok(())
 }
 
-fn center_main_window_on_monitor(window: &WebviewWindow) -> Result<(), String> {
+/// Center the window using the *known* target logical size instead of querying
+/// `outer_size()`. On macOS `set_size` is async, so reading `outer_size()`
+/// immediately afterwards can return the previous size and center the window
+/// against the wrong dimensions (window drifts off-center).
+fn center_main_window_with_logical_size(
+    window: &WebviewWindow,
+    width: f64,
+    height: f64,
+) -> Result<(), String> {
     use tauri::PhysicalPosition;
 
     let monitor = window
         .current_monitor()
-        .map_err(|error| format!("center_main_window_on_monitor: monitor lookup failed: {error}"))?
-        .ok_or_else(|| "center_main_window_on_monitor: current_monitor() unavailable".to_string())?;
+        .map_err(|error| format!("center_main_window: monitor lookup failed: {error}"))?
+        .ok_or_else(|| "center_main_window: current_monitor() unavailable".to_string())?;
+
+    let scale = window
+        .scale_factor()
+        .map_err(|error| format!("center_main_window: scale_factor failed: {error}"))?;
 
     let work_area = monitor.work_area();
-    let outer = window
-        .outer_size()
-        .map_err(|error| format!("center_main_window_on_monitor: outer_size failed: {error}"))?;
+    let phys_w = (width * scale).round() as i32;
+    let phys_h = (height * scale).round() as i32;
 
-    let x = work_area.position.x + (work_area.size.width as i32 - outer.width as i32) / 2;
-    let y = work_area.position.y + (work_area.size.height as i32 - outer.height as i32) / 2;
+    let x = work_area.position.x + (work_area.size.width as i32 - phys_w) / 2;
+    let y = work_area.position.y + (work_area.size.height as i32 - phys_h) / 2;
 
-    window.set_position(PhysicalPosition::new(x, y)).map_err(|error| {
-        format!("center_main_window_on_monitor: set_position failed: {error}")
-    })
+    window
+        .set_position(PhysicalPosition::new(x, y))
+        .map_err(|error| format!("center_main_window: set_position failed: {error}"))
 }
 
 #[cfg(target_os = "macos")]
-fn center_anchored_main_window_frame(
+fn monitor_centered_main_window_frame(
     ns_window: &objc2_app_kit::NSWindow,
     width: f64,
     height: f64,
-) -> objc2_foundation::NSRect {
-    use objc2_foundation::{NSPoint, NSRect, NSSize};
+) -> Result<objc2_foundation::NSRect, String> {
+    use objc2_app_kit::NSScreen;
+    use objc2_foundation::{MainThreadMarker, NSPoint, NSRect, NSSize};
 
-    let current = ns_window.frame();
-    let center_x = current.origin.x + current.size.width / 2.0;
-    let center_y = current.origin.y + current.size.height / 2.0;
+    let mtm = MainThreadMarker::new()
+        .ok_or_else(|| "monitor_centered_main_window_frame: not on main thread".to_string())?;
+
+    let visible = ns_window
+        .screen()
+        .or_else(|| NSScreen::mainScreen(mtm))
+        .map(|screen| screen.visibleFrame())
+        .ok_or_else(|| "monitor_centered_main_window_frame: screen unavailable".to_string())?;
+
     let content_rect = NSRect::new(NSPoint::new(0.0, 0.0), NSSize::new(width, height));
     let outer = ns_window.frameRectForContentRect(content_rect);
+    let frame_x = visible.origin.x + (visible.size.width - outer.size.width) / 2.0;
+    let frame_y = visible.origin.y + (visible.size.height - outer.size.height) / 2.0;
 
-    NSRect::new(
-        NSPoint::new(
-            center_x - outer.size.width / 2.0,
-            center_y - outer.size.height / 2.0,
-        ),
-        outer.size,
-    )
+    Ok(NSRect::new(NSPoint::new(frame_x, frame_y), outer.size))
 }
 
 #[cfg(target_os = "macos")]
@@ -244,12 +258,12 @@ pub fn animate_main_window_logical_size(
         .ns_window()
         .map_err(|error| format!("animate_main_window_logical_size: ns_window failed: {error}"))?;
 
-    let duration_secs = (duration_ms as f64 / 1000.0).clamp(0.15, 1.5);
+    let duration_secs = (duration_ms as f64 / 1000.0).clamp(0.25, 2.0);
     let ns_window_ptr = ptr as *const NSWindow;
     let window_for_completion = window.clone();
 
     unsafe {
-        let target_frame = center_anchored_main_window_frame(&*ns_window_ptr, width, height);
+        let target_frame = monitor_centered_main_window_frame(&*ns_window_ptr, width, height)?;
 
         let changes = RcBlock::new(move |context: NonNull<NSAnimationContext>| {
             let context = context.as_ref();
@@ -263,6 +277,14 @@ pub fn animate_main_window_logical_size(
                 log_error(
                     LogArea::Window,
                     format!("animate_main_window_logical_size: set_size sync failed: {error}"),
+                );
+            }
+            if let Err(error) =
+                center_main_window_with_logical_size(&window_for_completion, width, height)
+            {
+                log_error(
+                    LogArea::Window,
+                    format!("animate_main_window_logical_size: center sync failed: {error}"),
                 );
             }
             refresh_macos_webview_layers(&window_for_completion);
@@ -280,7 +302,7 @@ pub fn animate_main_window_logical_size(
     log_info(
         LogArea::Window,
         format!(
-            "main window native animation started: width={width} height={height} duration_ms={duration_ms} policy=center-anchored"
+            "main window native animation started: width={width} height={height} duration_ms={duration_ms} policy=monitor-centered"
         ),
     );
     Ok(())

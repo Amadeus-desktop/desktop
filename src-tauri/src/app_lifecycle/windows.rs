@@ -37,7 +37,7 @@ pub fn animate_main_window_logical_size_command(
     height: f64,
     duration_ms: Option<u64>,
 ) -> Result<(), String> {
-    let duration_ms = duration_ms.unwrap_or(420);
+    let duration_ms = duration_ms.unwrap_or(680);
     log_info(
         LogArea::Window,
         format!(

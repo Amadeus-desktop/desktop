@@ -1,4 +1,5 @@
 use super::*;
+use crate::trigger::scoring::should_capture_ocr_for_trigger;
 use crate::{macos_context::AppCategory, settings::AppSettings};
 use std::time::Duration;
 
@@ -60,6 +61,7 @@ fn trigger_utterance_request_uses_policy_envelope_without_raw_title() {
         &evaluation,
         &candidate,
         &AppSettings::default(),
+        None,
     );
 
     assert_eq!(request.trigger_type, "milestone");
@@ -68,6 +70,72 @@ fn trigger_utterance_request_uses_policy_envelope_without_raw_title() {
     assert_eq!(request.coarse_context_label, "work");
     assert_eq!(request.redacted_window_title, None);
     assert_eq!(request.redacted_ocr_summary, None);
+}
+
+#[test]
+fn trigger_utterance_request_includes_redacted_ocr_summary_when_available() {
+    let snapshot = snapshot(AppCategory::Work, 180.0, 12 * 60 * 1000);
+    let privacy = normal_privacy("main.rs");
+    let candidate = TriggerCandidate {
+        trigger_type: TriggerType::DeepPause,
+        message: "fallback".to_string(),
+        reason: "work_idle_after_sustained_focus".to_string(),
+        base_score: 72,
+    };
+    let evaluation = TriggerEvaluation {
+        candidate: Some(candidate.clone()),
+        speakability_score: 72,
+        action: TriggerAction::Bubble,
+        should_persist: true,
+        suppression_reason: None,
+    };
+
+    let request = llm_request_for_trigger(
+        &snapshot,
+        &privacy,
+        &evaluation,
+        &candidate,
+        &AppSettings::default(),
+        Some("redacted error summary"),
+    );
+
+    assert_eq!(
+        request.redacted_ocr_summary,
+        Some("redacted error summary".to_string())
+    );
+}
+
+#[test]
+fn trigger_ocr_capture_runs_only_for_persistable_safe_context() {
+    let persistable = TriggerEvaluation {
+        candidate: Some(TriggerCandidate {
+            trigger_type: TriggerType::DeepPause,
+            message: "fallback".to_string(),
+            reason: "work_idle_after_sustained_focus".to_string(),
+            base_score: 72,
+        }),
+        speakability_score: 72,
+        action: TriggerAction::Bubble,
+        should_persist: true,
+        suppression_reason: None,
+    };
+    let non_persistable = TriggerEvaluation {
+        should_persist: false,
+        ..persistable.clone()
+    };
+
+    assert!(should_capture_ocr_for_trigger(
+        &normal_privacy("main.rs"),
+        &persistable
+    ));
+    assert!(!should_capture_ocr_for_trigger(
+        &normal_privacy("main.rs"),
+        &non_persistable
+    ));
+    assert!(!should_capture_ocr_for_trigger(
+        &sensitive_privacy(),
+        &persistable
+    ));
 }
 
 #[test]

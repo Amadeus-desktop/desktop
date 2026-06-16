@@ -5,7 +5,7 @@ mod runtime;
 pub(crate) mod scoring;
 mod types;
 
-pub use engine::evaluate_trigger;
+pub(crate) use engine::evaluate_trigger_with_ocr;
 pub use history::ProcessHistoryWindow;
 pub use runtime::TriggerEngineState;
 pub use types::{
@@ -13,6 +13,8 @@ pub use types::{
     TriggerPollResult, TriggerRunResult, TriggerRuntimeSnapshot, TriggerType,
 };
 
+#[cfg(test)]
+pub(crate) use engine::evaluate_trigger;
 #[cfg(test)]
 pub(crate) use runtime::TriggerRuntimeState;
 #[cfg(test)]

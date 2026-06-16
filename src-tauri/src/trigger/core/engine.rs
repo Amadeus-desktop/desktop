@@ -3,11 +3,23 @@ use crate::settings::{
 };
 
 use super::{
-    scoring::{action_for_score, exception_suppression, select_candidate, suppressed},
+    scoring::{
+        action_for_score, apply_ocr_signal_to_evaluation, exception_suppression, select_candidate,
+        select_ocr_candidate, should_probe_ocr_for_candidate, suppressed,
+    },
     TriggerAction, TriggerEvaluation, TriggerInput,
 };
 
-pub fn evaluate_trigger(input: TriggerInput, settings: &AppSettings) -> TriggerEvaluation {
+#[cfg(test)]
+pub(crate) fn evaluate_trigger(input: TriggerInput, settings: &AppSettings) -> TriggerEvaluation {
+    evaluate_trigger_with_ocr(input, settings, None)
+}
+
+pub(crate) fn evaluate_trigger_with_ocr(
+    input: TriggerInput,
+    settings: &AppSettings,
+    redacted_ocr_summary: Option<&str>,
+) -> TriggerEvaluation {
     if input.privacy.should_suppress_utterance {
         return suppressed("privacy");
     }
@@ -24,7 +36,13 @@ pub fn evaluate_trigger(input: TriggerInput, settings: &AppSettings) -> TriggerE
         return suppressed(reason);
     }
 
-    let Some(candidate) = select_candidate(&input.snapshot) else {
+    let Some(candidate) = select_candidate(&input.snapshot).or_else(|| {
+        if should_probe_ocr_for_candidate(&input.snapshot, &input.privacy) {
+            select_ocr_candidate(&input.snapshot, redacted_ocr_summary)
+        } else {
+            None
+        }
+    }) else {
         return suppressed("no_trigger");
     };
     let speakability_score =
@@ -32,11 +50,13 @@ pub fn evaluate_trigger(input: TriggerInput, settings: &AppSettings) -> TriggerE
     let action = action_for_score(speakability_score);
     let should_persist = matches!(action, TriggerAction::Bubble | TriggerAction::Conversation);
 
-    TriggerEvaluation {
+    let evaluation = TriggerEvaluation {
         candidate: Some(candidate),
         speakability_score,
         action,
         should_persist,
         suppression_reason: None,
-    }
+    };
+
+    apply_ocr_signal_to_evaluation(evaluation, redacted_ocr_summary)
 }

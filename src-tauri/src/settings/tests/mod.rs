@@ -3,15 +3,22 @@ use crate::shared::constants::{MODEL_ROUTE_API_FIRST, MODEL_ROUTE_LOCAL_FIRST};
 use std::{
     fs,
     path::PathBuf,
+    sync::atomic::{AtomicU64, Ordering},
     time::{SystemTime, UNIX_EPOCH},
 };
+
+static SETTINGS_TEST_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 fn temp_settings_path() -> PathBuf {
     let nonce = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("clock is valid")
         .as_nanos();
-    std::env::temp_dir().join(format!("amadeus-settings-test-{nonce}.json"))
+    let counter = SETTINGS_TEST_COUNTER.fetch_add(1, Ordering::Relaxed);
+    std::env::temp_dir().join(format!(
+        "amadeus-settings-test-{}-{nonce}-{counter}.json",
+        std::process::id()
+    ))
 }
 
 #[test]

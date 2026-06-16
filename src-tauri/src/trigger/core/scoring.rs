@@ -15,6 +15,8 @@ use super::{
 const MINUTE_MS: u128 = 60 * 1000;
 const DEEP_PAUSE_MIN_FRONTMOST_MS: u128 = 10 * MINUTE_MS;
 const DEEP_PAUSE_MIN_IDLE_SECONDS: f64 = 120.0;
+const OCR_BLOCKED_MIN_FRONTMOST_MS: u128 = 5 * MINUTE_MS;
+const OCR_BLOCKED_MIN_IDLE_SECONDS: f64 = 60.0;
 const MILESTONE_MIN_FRONTMOST_MS: u128 = 60 * MINUTE_MS;
 const MILESTONE_MAX_IDLE_SECONDS: f64 = 600.0;
 const DRIFT_MIN_FRONTMOST_MS: u128 = 10 * MINUTE_MS;
@@ -59,6 +61,7 @@ pub(crate) fn llm_request_for_trigger(
     evaluation: &TriggerEvaluation,
     candidate: &TriggerCandidate,
     settings: &AppSettings,
+    redacted_ocr_summary: Option<&str>,
 ) -> LlmInputEnvelope {
     let redacted_window_title = privacy
         .is_sensitive
@@ -76,7 +79,7 @@ pub(crate) fn llm_request_for_trigger(
         tone_hint: "calm".to_string(),
         coarse_context_label: category_label(snapshot.category).to_string(),
         redacted_window_title,
-        redacted_ocr_summary: None,
+        redacted_ocr_summary: redacted_ocr_summary.map(str::to_string),
         score_summary: Some(PolicyScoreSummary {
             privacy_bucket: if privacy.is_sensitive { "high" } else { "low" }.to_string(),
             speakability_bucket: score_bucket(evaluation.speakability_score).to_string(),
@@ -84,7 +87,83 @@ pub(crate) fn llm_request_for_trigger(
         fallback_message: candidate.message.clone(),
         locale: settings.locale.clone(),
     }
-    .with_redacted_ocr_summary(None)
+    .with_redacted_ocr_summary(redacted_ocr_summary.map(str::to_string))
+}
+
+pub(crate) fn should_capture_ocr_for_trigger(
+    privacy: &PrivacyAssessment,
+    evaluation: &TriggerEvaluation,
+) -> bool {
+    evaluation.should_persist && !privacy.should_suppress_capture && !privacy.is_sensitive
+}
+
+pub(crate) fn should_probe_ocr_for_candidate(
+    snapshot: &MacosContextSnapshot,
+    privacy: &PrivacyAssessment,
+) -> bool {
+    snapshot.category == AppCategory::Work
+        && snapshot.frontmost_duration_ms >= OCR_BLOCKED_MIN_FRONTMOST_MS
+        && snapshot.idle_seconds >= OCR_BLOCKED_MIN_IDLE_SECONDS
+        && !privacy.should_suppress_capture
+        && !privacy.is_sensitive
+}
+
+pub(crate) fn apply_ocr_signal_to_evaluation(
+    mut evaluation: TriggerEvaluation,
+    redacted_ocr_summary: Option<&str>,
+) -> TriggerEvaluation {
+    if !evaluation.should_persist || !is_blocked_ocr_signal(redacted_ocr_summary) {
+        return evaluation;
+    }
+
+    evaluation.speakability_score = (evaluation.speakability_score + 8).clamp(0, 100);
+    evaluation.action = action_for_score(evaluation.speakability_score);
+    evaluation.should_persist = matches!(
+        evaluation.action,
+        TriggerAction::Bubble | TriggerAction::Conversation
+    );
+    evaluation
+}
+
+pub(crate) fn select_ocr_candidate(
+    snapshot: &MacosContextSnapshot,
+    redacted_ocr_summary: Option<&str>,
+) -> Option<TriggerCandidate> {
+    if snapshot.category != AppCategory::Work || !is_blocked_ocr_signal(redacted_ocr_summary) {
+        return None;
+    }
+
+    Some(TriggerCandidate {
+        trigger_type: TriggerType::DeepPause,
+        message: "막힌 흔적이 보여. 지금은 변수 하나만 같이 줄여보자.".to_string(),
+        reason: "ocr_blocked_signal_after_sustained_work".to_string(),
+        base_score: 72,
+    })
+}
+
+pub(crate) fn is_blocked_ocr_signal(redacted_ocr_summary: Option<&str>) -> bool {
+    let Some(summary) = redacted_ocr_summary else {
+        return false;
+    };
+    let summary = summary.to_ascii_lowercase();
+    [
+        "error",
+        "failed",
+        "failure",
+        "exception",
+        "panic",
+        "traceback",
+        "cannot",
+        "can't",
+        "unresolved",
+        "오류",
+        "에러",
+        "실패",
+        "안됨",
+        "안 돼",
+    ]
+    .iter()
+    .any(|keyword| summary.contains(keyword))
 }
 
 pub(super) fn select_candidate(snapshot: &MacosContextSnapshot) -> Option<TriggerCandidate> {

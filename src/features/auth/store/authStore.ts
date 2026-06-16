@@ -8,7 +8,7 @@ import {
   resetOnboardingProgress,
 } from "../../onboarding";
 import { requestMainWindowLayout } from "../../lifecycle";
-import { MAIN_WINDOW_ANIMATION_DURATION_MS } from "../lib/mainWindowLayout";
+import { MAIN_WINDOW_ANIMATION_DURATION_MS, waitForMainWindowAnimation } from "../lib/mainWindowLayout";
 import {
   AMADEUS_AUTH_CALLBACK_EVENT,
   consumePendingAuthCallback,
@@ -25,6 +25,7 @@ import type { AuthSnapshot, AuthUser, LogoutPhase } from "../types";
 import {
   LOGOUT_COMPLETE_DELAY_MS,
   LOGOUT_PREPARE_DELAY_MS,
+  LOGOUT_SETTLE_DELAY_MS,
   sleep,
 } from "../../onboarding/lib/transitionTiming";
 
@@ -306,20 +307,34 @@ function setLogoutPhase(phase: LogoutPhase) {
   });
 }
 
+function waitForNextPaint() {
+  return new Promise<void>((resolve) => {
+    if (typeof requestAnimationFrame !== "function") {
+      resolve();
+      return;
+    }
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+}
+
 export async function signOutWithTransition() {
   const snapshot = authStore.getSnapshot();
   if (snapshot.logoutTransitioning) return;
 
-  setLogoutPhase("preparing");
   resetOnboardingProgress();
 
-  await new Promise<void>((resolve) => {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => resolve());
-    });
+  // 1) Cross-fade to the onboarding background FIRST, while the window is still
+  // at its current (large) size. This way the resize animates the onboarding
+  // shell shrinking — never the control center — which feels far less abrupt.
+  authStore.setSnapshot({
+    ...snapshot,
+    logoutTransitioning: true,
+    logoutPhase: "preparing",
   });
+  await waitForNextPaint();
 
   try {
+    // 2) Now shrink the onboarding background down to the onboarding size.
     try {
       await requestMainWindowLayout({
         mode: "onboarding",
@@ -328,6 +343,7 @@ export async function signOutWithTransition() {
         durationMs: MAIN_WINDOW_ANIMATION_DURATION_MS,
         priority: 40,
       });
+      await waitForMainWindowAnimation();
     } catch (error) {
       logger.error("auth", "logout window transition failed", { error });
       try {
@@ -343,6 +359,8 @@ export async function signOutWithTransition() {
       }
     }
 
+    // 3) Settle so the user can register the resize before the steps advance.
+    await sleep(LOGOUT_SETTLE_DELAY_MS);
     await sleep(LOGOUT_PREPARE_DELAY_MS);
     setLogoutPhase("complete");
     await sleep(LOGOUT_COMPLETE_DELAY_MS);

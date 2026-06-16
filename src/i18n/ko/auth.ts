@@ -16,8 +16,8 @@ export const auth: AuthMessages = {
   logout: {
     preparing: {
       eyebrow: "잠깐만",
-      title: "곁에서 잠시 물러날게요",
-      subtitle: "설정을 정리하고 있어요.",
+      title: "나가는 중이에요",
+      subtitle: "곁에서 잠시 물러날게요.",
     },
     complete: {
       eyebrow: "정리 끝",
