@@ -8,6 +8,7 @@ import {
   persistCompanionMessage,
   restoreCompanionMessagesForPersona,
 } from "../lib/conversationPersistence";
+import { buildCompanionCurrentContext } from "../lib/currentContext";
 import {
   getCompanionSessionSnapshot,
   patchCompanionSession,
@@ -210,18 +211,24 @@ export function useCompanionChatActions({
     });
 
     try {
+      const currentContext = await buildCompanionCurrentContext({
+        nudge,
+      }).catch((error) => {
+        logger.warn("ui", "companion current context build failed", { error });
+        return nudge
+          ? {
+              source: "user_visible" as const,
+              summary: nudge,
+              allowed_surface: "both" as const,
+            }
+          : null;
+      });
       const generation = await resolveCompanionReply(
         nextMessages,
         selectedPersona,
         settings,
         {
-          currentContext: nudge
-            ? {
-                source: "user_visible",
-                summary: nudge,
-                allowed_surface: "both",
-              }
-            : null,
+          currentContext,
         },
       );
       const replyMessage: CompanionMessage = {
