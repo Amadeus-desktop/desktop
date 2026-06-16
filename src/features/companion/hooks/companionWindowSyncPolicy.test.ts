@@ -19,11 +19,13 @@ describe("companionWindowSyncPolicy", () => {
     });
   });
 
-  it("skips native resize when the last applied size is unchanged", () => {
+  it("skips native resize when the last applied size and mode are unchanged", () => {
     expect(
       shouldSkipCompanionResize(
         { width: 40, height: 40 },
         { width: 40, height: 40 },
+        "quiet",
+        "quiet",
       ),
     ).toBe(true);
   });
@@ -33,10 +35,23 @@ describe("companionWindowSyncPolicy", () => {
       shouldSkipCompanionResize(
         { width: 40, height: 40 },
         { width: 41, height: 40 },
+        "quiet",
+        "quiet",
       ),
     ).toBe(false);
     expect(
-      shouldSkipCompanionResize(null, { width: 40, height: 40 }),
+      shouldSkipCompanionResize(null, { width: 40, height: 40 }, "quiet", null),
+    ).toBe(false);
+  });
+
+  it("does not skip native resize when the layout mode changes", () => {
+    expect(
+      shouldSkipCompanionResize(
+        { width: 84, height: 84 },
+        { width: 84, height: 84 },
+        "pocket",
+        "quiet",
+      ),
     ).toBe(false);
   });
 });

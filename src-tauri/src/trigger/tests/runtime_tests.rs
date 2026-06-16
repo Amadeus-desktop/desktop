@@ -38,6 +38,57 @@ fn runtime_counts_ignored_as_negative_feedback() {
 }
 
 #[test]
+fn runtime_blocks_repeated_utterance_until_frontmost_app_changes() {
+    let mut runtime = TriggerRuntimeState::default();
+
+    let first_input = runtime.input_for(
+        snapshot(AppCategory::Work, 180.0, 12 * 60 * 1000),
+        normal_privacy("main.rs"),
+    );
+    assert!(!first_input.repeated_app_utterance_blocked);
+
+    runtime.record_persisted_utterance_for_snapshot(&first_input.snapshot);
+
+    let same_app_input = runtime.input_for(
+        snapshot(AppCategory::Work, 190.0, 13 * 60 * 1000),
+        normal_privacy("main.rs"),
+    );
+    assert!(same_app_input.repeated_app_utterance_blocked);
+
+    let mut changed_app = snapshot(AppCategory::Work, 180.0, 12 * 60 * 1000);
+    changed_app.bundle_identifier = "com.apple.Terminal".to_string();
+    changed_app.app_name = "Terminal".to_string();
+
+    let changed_app_input = runtime.input_for(changed_app, normal_privacy("Terminal"));
+    assert!(!changed_app_input.repeated_app_utterance_blocked);
+}
+
+#[test]
+fn runtime_tracks_work_session_across_work_app_switches_and_resets_outside_work() {
+    let mut runtime = TriggerRuntimeState::default();
+
+    let first_input = runtime.input_for(
+        snapshot(AppCategory::Work, 12.0, 30 * 60 * 1000),
+        normal_privacy("main.rs"),
+    );
+    assert_eq!(first_input.work_session_duration_ms, 30 * 60 * 1000);
+
+    let mut terminal = snapshot(AppCategory::Work, 12.0, 2 * 60 * 1000);
+    terminal.bundle_identifier = "com.apple.Terminal".to_string();
+    terminal.app_name = "Terminal".to_string();
+
+    runtime.started_at = Instant::now() - Duration::from_secs(75 * 60);
+    let switched_work_input = runtime.input_for(terminal, normal_privacy("Terminal"));
+    assert!(switched_work_input.work_session_duration_ms >= 75 * 60 * 1000);
+
+    let non_work_input = runtime.input_for(
+        snapshot(AppCategory::NonWork, 12.0, 10 * 60 * 1000),
+        normal_privacy("YouTube"),
+    );
+    assert_eq!(non_work_input.work_session_duration_ms, 0);
+}
+
+#[test]
 fn trigger_utterance_request_uses_policy_envelope_without_raw_title() {
     let snapshot = snapshot(AppCategory::Work, 12.0, 120 * 60 * 1000);
     let privacy = normal_privacy("Amadeus");

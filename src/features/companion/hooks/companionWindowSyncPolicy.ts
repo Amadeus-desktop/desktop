@@ -1,3 +1,5 @@
+import type { CompanionMode } from "../types";
+
 export type CompanionWindowSize = {
   width: number;
   height: number;
@@ -21,9 +23,15 @@ export function computeCompanionWindowSize(
 export function shouldSkipCompanionResize(
   lastAppliedSize: CompanionWindowSize | null,
   nextSize: CompanionWindowSize,
+  layoutMode: CompanionMode,
+  lastAppliedLayoutMode: CompanionMode | null,
 ) {
+  if (lastAppliedLayoutMode !== layoutMode) {
+    return false;
+  }
+
   return (
     lastAppliedSize?.width === nextSize.width &&
-    lastAppliedSize.height === nextSize.height
+    lastAppliedSize?.height === nextSize.height
   );
 }

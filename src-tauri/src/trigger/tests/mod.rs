@@ -1,5 +1,6 @@
 mod evaluation_tests;
 mod runtime_tests;
+mod scenario_tests;
 mod suppression_tests;
 
 pub(super) use super::*;
@@ -21,6 +22,7 @@ fn snapshot(
         idle_seconds,
         category,
         frontmost_duration_ms,
+        is_fullscreen: false,
     }
 }
 

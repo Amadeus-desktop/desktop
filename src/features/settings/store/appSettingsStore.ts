@@ -191,6 +191,11 @@ export function useSettings() {
       patchAppSettings({ companionPersonaId: value }),
     [],
   );
+  const setCompanionMateIcon = useCallback(
+    (value: GeneralSettings["companionMateIcon"]) =>
+      patchAppSettings({ companionMateIcon: value }),
+    [],
+  );
   const setTalkFrequency = useCallback(
     (value: TalkFrequency) => patchAppSettings({ talkFrequency: value }),
     [],
@@ -253,6 +258,7 @@ export function useSettings() {
       setAccentColor,
       setCharacterId,
       setCompanionPersonaId,
+      setCompanionMateIcon,
       setTalkFrequency,
       setModelRoute,
       setLocalFallbackEnabled,
@@ -279,6 +285,7 @@ export function useSettings() {
       setAccentColor,
       setCharacterId,
       setCompanionPersonaId,
+      setCompanionMateIcon,
       setTalkFrequency,
       setModelRoute,
       setLocalFallbackEnabled,

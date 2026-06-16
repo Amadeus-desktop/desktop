@@ -15,7 +15,8 @@ pub use gates::{pre_capture_gate, pre_ocr_gate};
 pub use redaction::redacted_observation_from_adapter_text;
 pub use state::OcrState;
 pub use types::{
-    CaptureGateInput, CaptureMetadata, GateDecision, OcrObservation, OcrProviderStatus,
+    CaptureGateInput, CaptureMetadata, GateDecision, OcrContextClass, OcrObservation,
+    OcrProviderStatus,
 };
 
 #[cfg(any(test, not(target_os = "macos")))]

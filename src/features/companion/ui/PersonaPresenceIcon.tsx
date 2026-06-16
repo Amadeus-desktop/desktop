@@ -16,6 +16,7 @@ type PersonaPresenceIconProps = {
   shape?: "circle" | "square";
   variant?: "filled" | "outline";
   showFill?: boolean;
+  accentSource?: "persona" | "settings";
   className?: string;
   style?: CSSProperties;
 };
@@ -27,12 +28,14 @@ export function PersonaPresenceIcon({
   shape = "circle",
   variant = "filled",
   showFill = true,
+  accentSource = "persona",
   className,
   style,
 }: PersonaPresenceIconProps) {
   const resolvedKind =
     kind ?? (personaId ? PRESENCE_ICON_BY_PERSONA[personaId] : "bubble");
-  const accent = personaId ? getPersonaAccent(personaId) : null;
+  const personaAccent = personaId ? getPersonaAccent(personaId) : null;
+  const useSettingsAccent = accentSource === "settings" || !personaId;
   const isOutline = variant === "outline";
 
   return (
@@ -42,22 +45,37 @@ export function PersonaPresenceIcon({
         shape === "square" ? "rounded-[12px]" : "rounded-full",
         size !== "fab" && PRESENCE_ICON_TILE[size],
         isOutline
-          ? "border-2 bg-transparent shadow-none"
-          : "border border-[#48484f] bg-[#2c2c30] shadow-none",
-        !isOutline && accent?.ring,
+          ? cn(
+              "border-2 bg-transparent shadow-none",
+              useSettingsAccent
+                ? "border-[color:rgb(var(--accent-rgb)/0.55)] text-[color:var(--accent-soft)]"
+                : undefined,
+            )
+          : cn(
+              "border shadow-none",
+              useSettingsAccent
+                ? "border-[color:rgb(var(--accent-rgb)/0.35)] text-[color:var(--accent-on)] ring-2 ring-[color:rgb(var(--accent-rgb)/0.18)]"
+                : "border-[#48484f] bg-[#2c2c30]",
+              !useSettingsAccent && personaAccent?.ring,
+            ),
         className,
       )}
       style={{
-        ...(isOutline && accent ? { borderColor: `rgb(${accent.glow})` } : undefined),
+        ...(isOutline && !useSettingsAccent && personaAccent
+          ? { borderColor: `rgb(${personaAccent.glow})` }
+          : undefined),
         ...style,
       }}
       aria-hidden="true"
     >
-      {accent && showFill && !isOutline ? (
+      {useSettingsAccent && showFill && !isOutline ? (
+        <span className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[color:var(--accent-gradient-from)] to-[color:var(--accent-gradient-to)]" />
+      ) : null}
+      {personaAccent && showFill && !isOutline && !useSettingsAccent ? (
         <span
           className={cn(
             "pointer-events-none absolute inset-0 bg-gradient-to-br",
-            accent.gradient,
+            personaAccent.gradient,
           )}
         />
       ) : null}

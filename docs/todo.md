@@ -89,6 +89,41 @@
 
 ## P1 — 핵심 UX 연결
 
+### [ ] Trigger Behavior Signal Layer — Unknown을 정체가 아니라 행동으로 판정
+
+**문제:** 키워드 기반 Work/NonWork 분류는 롱테일 앱/사이트를 이길 수 없음. tvwiki, niconico, Zeta, LoveyDovey, 신생 AI chat 서비스 등을 계속 whitelist/blacklist에 추가하는 방식은 유지보수 불가능.
+**현재 정책:** Unknown은 기본 침묵. 모르는 앱/사이트를 Work/NonWork로 억지 분류하지 않음.
+**이유:** 작업을 NonWork로 오인해 Drift를 띄우는 비용이, 소비 활동을 놓치는 비용보다 큼. AI chat/companion 서비스는 특히 NonWork 잔소리 금지.
+**현재 한계:** 코드에는 아직 키보드/마우스/스크롤 rate가 없음. 단 `idle_seconds`와 `is_fullscreen` 기반의 보수적 guard는 들어감.
+**구현됨:** `OcrObservation.context_class`와 `OcrContextClass` 정책 메서드가 있음. Unknown OCR probe가 trigger runner에 연결되어 있고, `work_document`/`code_error`만 Work-like DeepPause로 승격 가능함.
+**파일:** `src-tauri/src/macos_context/core/native_macos.rs`, `src-tauri/src/macos_context/core/types.rs`, `src-tauri/src/trigger/core/history.rs`, `src-tauri/src/trigger/core/scoring.rs`
+
+할 일:
+- `MacosContextSnapshot` 또는 별도 `BehaviorSignalSnapshot`에 행동 신호 추가
+- `keyboard_activity_rate` 수집
+- `mouse_activity_rate` 수집
+- `scroll_activity_rate` 수집
+- `idle_transition_pattern` 또는 최근 idle 변화 window 계산
+- `is_fullscreen` 감지 고도화: 현재는 메인 디스플레이 window bounds overlap 기반 heuristic
+- OCR 사용 시 raw text가 아니라 `OcrObservation.context_class`만 정책 판단에 사용
+- Unknown은 기본 침묵 유지
+- Unknown에서 확인이 필요한 경우에도 키워드가 아니라 행동 신호 + privacy gate + OCR redacted class로만 판단
+- OCR class는 우선 오발화 방지에 사용하고, NonWork Drift 승격에는 사용하지 않음
+- `work_document`/`code_error`만 Work-like DeepPause 승격 가능
+- `video_player`/`game`/`ai_chat_companion`/`private_chat`/`unknown`은 침묵 또는 observe-only
+- Zeta/LoveyDovey 같은 AI chat/companion은 기본 Unknown 침묵, NonWork Drift 금지
+- 실제 키보드/마우스/스크롤 rate 기반 판단은 별도 phase에서 구현
+
+완료 기준:
+- NonWork + fullscreen + long foreground → `fullscreen_non_work`로 발화 억제
+- Unknown + work-like OCR class + idle pause → Work-like DeepPause 후보 가능
+- Unknown + video/game/private/AI chat OCR class → 발화하지 않음
+- AI chat/companion title/domain은 NonWork로 분류되지 않음
+- Unknown + video/game/private/AI chat OCR class는 Drift를 만들지 않음
+- `docs/trigger-scenarios.md`의 Unknown 정책과 코드 테스트가 일치
+
+---
+
 ### [ ] 페르소나 소스 — Supabase pull을 UI에 연결
 
 **문제:** `useCompanionShell` → `getCompanionMates(locale)` → `getPersonas(locale)` → i18n hardcoded 값만 표시
@@ -227,13 +262,15 @@
 - 앱 지속 시간: `Instant::elapsed()`
 - 작업/비작업: `classify_app(bundle_id)`
 
-**현재 트리거 후보 규칙** (`scoring.rs select_candidate`): DeepPause(Work+10분+idle120초↑) / Milestone(Work+60분+idle600초미만) / Drift(NonWork+10분↑).
+**현재 트리거 후보 규칙** (`scoring.rs`): DeepPause(Work+같은앱10분 또는 work_cluster10분+idle120초↑) / Milestone(Work+같은앱60분 또는 work_session60분+idle600초미만) / Drift(NonWork+10분↑).
 **추가 OCR 후보 규칙:** Work 앱에서 5분 이상 머물고 idle 60초 이상이며 OCR redacted summary에 blocked signal(error/failed/cannot/오류/실패 등)이 있으면 `ocr_blocked_signal_after_sustained_work` DeepPause 후보를 생성함.
 
 **해소됨:** `run_trigger_engine_once`가 `evaluation.should_persist`이고 privacy gate가 안전할 때만 OCR capture+recognize를 시도함.
 **해소됨:** 기존 규칙으로 후보가 없더라도 Work+5분+idle60초 조건이면 evaluation 전 OCR probe를 수행하고, blocked signal이면 후보를 생성함.
+**해소됨:** Unknown+10분+idle120초 조건에서도 privacy-safe하면 evaluation 전 OCR probe를 수행하고, `work_document`/`code_error` context class일 때만 Work-like DeepPause 후보를 생성함.
 **해소됨:** OCR `text_summary_redacted`가 `LlmInputEnvelope.redacted_ocr_summary`로 주입되어 NudgeNote LLM 입력에 들어감.
 **해소됨:** OCR redacted summary에 error/failed/exception/cannot/오류/실패 등 blocked signal이 있으면 speakability score를 +8 보정함.
+**해소됨:** OCR blocked 후보 메시지에서 "화면/보여/흔적" 같은 감시감 표현을 제거함.
 **남음:** OCR 반복성/동일 화면 장시간 정체 판단은 아직 없음.
 
 **결론:** PRD가 말한 "OCR로 화면 보고 맥락 파악" 중 LLM 입력 연결, blocked signal score 보정, 기본 OCR 후보 생성은 구현됨. 다만 "같은 화면/같은 오류가 반복되는 정체 상태" 판단은 아직 미구현.
@@ -254,6 +291,7 @@
 **확인됨:** OCR 결과는 persist 가능한 trigger에서 `LlmInputEnvelope.redacted_ocr_summary`로 LLM 입력에 들어감.
 **확인됨:** blocked OCR signal은 `apply_ocr_signal_to_evaluation()`에서 speakability score/action 보정에 사용됨.
 **확인됨:** blocked OCR signal은 Work+5분+idle60초 조건에서 DeepPause 후보 생성에도 사용됨.
+**확인됨:** Unknown OCR probe는 privacy-safe + 10분 + idle120초 조건에서만 수행되고, `work_document`/`code_error`만 DeepPause로 승격함.
 **파일:** `src-tauri/src/trigger/commands/runner.rs`, `src-tauri/src/trigger/commands/persistence.rs`, `src-tauri/src/trigger/core/scoring.rs`, `src-tauri/src/ocr/core/`
 
 할 일:

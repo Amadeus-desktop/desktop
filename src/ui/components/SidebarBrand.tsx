@@ -1,5 +1,8 @@
 import { cn } from "../../lib/utils/cn";
+import { createWindowDragHandler } from "../lib/windowDrag";
 import { UserAvatar } from "./UserAvatar";
+
+const handleWindowDragMouseDown = createWindowDragHandler();
 
 type SidebarBrandProps = {
   name: string;
@@ -31,7 +34,7 @@ export function SidebarBrand({
   if (!onClick) {
     return (
       <div
-        data-tauri-drag-region
+        onMouseDown={handleWindowDragMouseDown}
         className="min-w-0 select-none px-2 pb-2 pt-0.5 max-sm:hidden"
       >
         <div className="flex items-center gap-2.5">{content}</div>

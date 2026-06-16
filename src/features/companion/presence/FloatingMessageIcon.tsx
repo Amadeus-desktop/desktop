@@ -1,19 +1,19 @@
 import { cn } from "../../../lib/utils/cn";
+import type { MateIconKind } from "../../../domain/mate";
 import type { CompanionLocale } from "../../../i18n";
-import type { PersonaId } from "../../../domain/persona/types";
 import { PersonaPresenceIcon } from "../ui/PersonaPresenceIcon";
 import type { CompanionMode } from "../types";
 
 type FloatingMessageIconProps = {
   mode: CompanionMode;
-  personaId: PersonaId;
+  mateIcon: MateIconKind;
   labels: CompanionLocale["presence"];
   onClick: () => void;
 };
 
 export function FloatingMessageIcon({
   mode,
-  personaId,
+  mateIcon,
   labels,
   onClick,
 }: FloatingMessageIconProps) {
@@ -25,11 +25,16 @@ export function FloatingMessageIcon({
       aria-label={sleeping ? labels.wake : labels.open}
       onClick={onClick}
       className={cn(
-        "rounded-full p-0 shadow-none transition",
+        "tauri-interactive rounded-full p-0 shadow-none transition",
         sleeping && "opacity-50",
       )}
     >
-      <PersonaPresenceIcon personaId={personaId} size="lg" variant="outline" />
+      <PersonaPresenceIcon
+        kind={mateIcon}
+        accentSource="settings"
+        size="lg"
+        variant="outline"
+      />
     </button>
   );
 }

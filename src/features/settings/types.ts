@@ -1,5 +1,6 @@
 import type { LocaleCode } from "../../i18n/types";
 import type { CharacterId } from "../character/types";
+import type { MateIconKind } from "../../domain/mate";
 import type { PersonaId } from "../../domain/persona/types";
 import type { AccentColorId, AppearanceMode } from "../../ui/tokens/appearance";
 
@@ -12,6 +13,7 @@ export type GeneralSettings = {
   accentColor: AccentColorId;
   characterId: CharacterId;
   companionPersonaId: PersonaId;
+  companionMateIcon: MateIconKind;
   talkFrequency: TalkFrequency;
   modelRoute: ModelRoute;
   localFallbackEnabled: boolean;

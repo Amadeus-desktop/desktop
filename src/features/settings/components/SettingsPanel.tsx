@@ -13,6 +13,7 @@ import {
 } from "../../../ui";
 import { AccentColorPicker } from "./AccentColorPicker";
 import { AppearancePicker } from "./AppearancePicker";
+import { MateIconPicker } from "./MateIconPicker";
 import {
   generateTestUtterance,
   loadLlamaSidecarStatus,
@@ -142,6 +143,7 @@ export function SettingsPanel() {
       <SectionHeading>{t.settings.sections.conversation}</SectionHeading>
       <SettingsGroup>
         <AccentColorPicker />
+        <MateIconPicker />
         <SettingRow
           variant="primary"
           title={t.settings.talkFrequency.label}

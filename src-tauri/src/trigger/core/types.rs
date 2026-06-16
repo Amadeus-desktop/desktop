@@ -60,6 +60,8 @@ pub struct TriggerInput {
     pub privacy: PrivacyAssessment,
     pub history: Option<ProcessHistoryWindow>,
     pub recent_utterance_minutes_ago: Option<i64>,
+    pub repeated_app_utterance_blocked: bool,
+    pub work_session_duration_ms: u128,
     pub dismissed_recent_count: i64,
     pub utterances_today: i64,
 }

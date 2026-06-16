@@ -1,4 +1,5 @@
 import { cn } from "../../lib/utils/cn";
+import { createWindowDragHandler } from "../lib/windowDrag";
 import { glassStyles, shellText } from "../theme/shellStyles";
 
 type PanelHeaderProps = {
@@ -7,10 +8,12 @@ type PanelHeaderProps = {
   description: string;
 };
 
+const handleWindowDragMouseDown = createWindowDragHandler();
+
 export function PanelHeader({ eyebrow, title, description }: PanelHeaderProps) {
   return (
     <header
-      data-tauri-drag-region
+      onMouseDown={handleWindowDragMouseDown}
       className={`mb-4 select-none border-b border-[color:var(--shell-border-subtle)] pb-4 ${glassStyles.panel} ${glassStyles.radiusCard} px-4 py-3`}
     >
       <p className="text-[10px] font-medium uppercase tracking-wide text-[color:rgb(var(--accent-rgb)/0.85)]">

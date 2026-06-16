@@ -4,9 +4,14 @@ use core_foundation::{
     number::CFNumber,
     string::CFString,
 };
-use core_graphics::window::{
-    copy_window_info, kCGNullWindowID, kCGWindowLayer, kCGWindowListExcludeDesktopElements,
-    kCGWindowListOptionOnScreenOnly, kCGWindowName, kCGWindowOwnerPID,
+use core_graphics::{
+    display::CGDisplay,
+    geometry::CGRect,
+    window::{
+        copy_window_info, kCGNullWindowID, kCGWindowBounds, kCGWindowLayer,
+        kCGWindowListExcludeDesktopElements, kCGWindowListOptionOnScreenOnly, kCGWindowName,
+        kCGWindowOwnerPID,
+    },
 };
 use objc2_app_kit::NSWorkspace;
 use std::time::Instant;
@@ -44,9 +49,15 @@ impl ContextBridge for NativeMacosContextBridge {
             self.last_frontmost_since = Instant::now();
         }
 
-        let window_title = read_window_title(app.process_id)
+        let window = read_frontmost_window(app.process_id);
+        let window_title = window
+            .as_ref()
+            .and_then(|window| window.title.clone())
             .filter(|title| !title.trim().is_empty())
             .unwrap_or_else(|| "Unknown Window".to_string());
+        let is_fullscreen = window
+            .and_then(|window| window.bounds)
+            .is_some_and(is_fullscreen_window);
         let category = classify_app(
             &app.bundle_identifier,
             &format!("{} {window_title}", app.app_name),
@@ -60,6 +71,7 @@ impl ContextBridge for NativeMacosContextBridge {
             idle_seconds: read_idle_seconds(),
             category,
             frontmost_duration_ms: self.last_frontmost_since.elapsed().as_millis(),
+            is_fullscreen,
         })
     }
 }
@@ -93,7 +105,12 @@ fn read_frontmost_app() -> Result<FrontmostApp, MacosContextError> {
     })
 }
 
-fn read_window_title(process_id: i32) -> Option<String> {
+struct FrontmostWindow {
+    title: Option<String>,
+    bounds: Option<CGRect>,
+}
+
+fn read_frontmost_window(process_id: i32) -> Option<FrontmostWindow> {
     let window_info = copy_window_info(
         kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements,
         kCGNullWindowID,
@@ -101,6 +118,7 @@ fn read_window_title(process_id: i32) -> Option<String> {
     let owner_pid_key = unsafe { CFString::wrap_under_get_rule(kCGWindowOwnerPID) };
     let layer_key = unsafe { CFString::wrap_under_get_rule(kCGWindowLayer) };
     let name_key = unsafe { CFString::wrap_under_get_rule(kCGWindowName) };
+    let bounds_key = unsafe { CFString::wrap_under_get_rule(kCGWindowBounds) };
 
     for value in window_info.get_all_values() {
         let dictionary: CFDictionary<CFString, CFType> =
@@ -111,9 +129,10 @@ fn read_window_title(process_id: i32) -> Option<String> {
             continue;
         }
 
-        if let Some(title) = read_string(&dictionary, &name_key) {
-            return Some(title);
-        }
+        return Some(FrontmostWindow {
+            title: read_string(&dictionary, &name_key),
+            bounds: read_window_bounds(&dictionary, &bounds_key),
+        });
     }
 
     None
@@ -140,4 +159,66 @@ fn read_string(dictionary: &CFDictionary<CFString, CFType>, key: &CFString) -> O
         .find(key)
         .and_then(|value| value.downcast::<CFString>())
         .map(|value| value.to_string())
+}
+
+fn read_window_bounds(
+    dictionary: &CFDictionary<CFString, CFType>,
+    key: &CFString,
+) -> Option<CGRect> {
+    dictionary.find(key).and_then(|value| {
+        let bounds: CFDictionary<CFString, CFType> =
+            unsafe { TCFType::wrap_under_get_rule(value.as_CFTypeRef() as CFDictionaryRef) };
+        let x_key = CFString::new("X");
+        let y_key = CFString::new("Y");
+        let width_key = CFString::new("Width");
+        let height_key = CFString::new("Height");
+        Some(CGRect::new(
+            &core_graphics::geometry::CGPoint::new(
+                read_f64(&bounds, &x_key)?,
+                read_f64(&bounds, &y_key)?,
+            ),
+            &core_graphics::geometry::CGSize::new(
+                read_f64(&bounds, &width_key)?,
+                read_f64(&bounds, &height_key)?,
+            ),
+        ))
+    })
+}
+
+fn read_f64(dictionary: &CFDictionary<CFString, CFType>, key: &CFString) -> Option<f64> {
+    dictionary
+        .find(key)
+        .and_then(|value| value.downcast::<CFNumber>())
+        .and_then(|number| number.to_f64())
+}
+
+fn is_fullscreen_window(window_bounds: CGRect) -> bool {
+    let display_bounds = CGDisplay::main().bounds();
+    fullscreen_coverage_ratio(window_bounds, display_bounds) >= 0.95
+}
+
+fn fullscreen_coverage_ratio(window_bounds: CGRect, display_bounds: CGRect) -> f64 {
+    let overlap_width = overlap_length(
+        window_bounds.origin.x,
+        window_bounds.size.width,
+        display_bounds.origin.x,
+        display_bounds.size.width,
+    );
+    let overlap_height = overlap_length(
+        window_bounds.origin.y,
+        window_bounds.size.height,
+        display_bounds.origin.y,
+        display_bounds.size.height,
+    );
+    let display_area = display_bounds.size.width * display_bounds.size.height;
+    if display_area <= 0.0 {
+        return 0.0;
+    }
+    (overlap_width * overlap_height / display_area).clamp(0.0, 1.0)
+}
+
+fn overlap_length(first_start: f64, first_size: f64, second_start: f64, second_size: f64) -> f64 {
+    let start = first_start.max(second_start);
+    let end = (first_start + first_size).min(second_start + second_size);
+    (end - start).max(0.0)
 }

@@ -1,4 +1,5 @@
 import { createExternalStore } from "../../../lib/store/createExternalStore";
+import { setCompanionLayoutMode } from "./companionLayoutMode";
 import type { CompanionMessage, CompanionMode } from "../types";
 
 export type CompanionSessionSnapshot = {
@@ -32,6 +33,10 @@ export function subscribeToCompanionSession(listener: () => void) {
 export function patchCompanionSession(
   patch: Partial<Omit<CompanionSessionSnapshot, "initialized">>,
 ) {
+  if (patch.mode !== undefined) {
+    setCompanionLayoutMode(patch.mode);
+  }
+
   const current = companionSessionStore.getSnapshot();
   companionSessionStore.setSnapshot({
     ...current,
@@ -47,6 +52,7 @@ export function markCompanionSessionInitialized() {
 }
 
 export function resetCompanionSession() {
+  setCompanionLayoutMode(emptySession.mode);
   companionSessionStore.setSnapshot({ ...emptySession }, { notify: false });
 }
 

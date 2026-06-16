@@ -1,3 +1,4 @@
+use crate::ocr::OcrContextClass;
 use crate::settings::{
     talk_frequency_cooldown_minutes, talk_frequency_daily_utterance_limit, AppSettings,
 };
@@ -5,8 +6,9 @@ use crate::settings::{
 use super::{
     scoring::{
         action_for_score, apply_ocr_signal_to_evaluation, exception_suppression, select_candidate,
-        select_ocr_candidate, select_work_cluster_candidate, should_probe_ocr_for_candidate,
-        suppressed,
+        select_ocr_candidate, select_unknown_ocr_candidate, select_work_cluster_candidate,
+        select_work_session_milestone_candidate, should_probe_ocr_for_candidate,
+        should_suppress_active_input_milestone, should_suppress_away_idle, suppressed,
     },
     TriggerAction, TriggerEvaluation, TriggerInput,
 };
@@ -16,10 +18,20 @@ pub(crate) fn evaluate_trigger(input: TriggerInput, settings: &AppSettings) -> T
     evaluate_trigger_with_ocr(input, settings, None)
 }
 
+#[cfg(test)]
 pub(crate) fn evaluate_trigger_with_ocr(
     input: TriggerInput,
     settings: &AppSettings,
     redacted_ocr_summary: Option<&str>,
+) -> TriggerEvaluation {
+    evaluate_trigger_with_ocr_context(input, settings, redacted_ocr_summary, None)
+}
+
+pub(crate) fn evaluate_trigger_with_ocr_context(
+    input: TriggerInput,
+    settings: &AppSettings,
+    redacted_ocr_summary: Option<&str>,
+    ocr_context_class: Option<OcrContextClass>,
 ) -> TriggerEvaluation {
     if input.privacy.should_suppress_utterance {
         return suppressed("privacy");
@@ -33,12 +45,25 @@ pub(crate) fn evaluate_trigger_with_ocr(
     {
         return suppressed("cooldown");
     }
+    if input.repeated_app_utterance_blocked {
+        return suppressed("repeated_app_utterance");
+    }
+    if should_suppress_away_idle(&input) {
+        return suppressed("away_idle");
+    }
+    if should_suppress_active_input_milestone(&input) {
+        return suppressed("active_input_guard");
+    }
     if let Some(reason) = exception_suppression(&input) {
         return suppressed(reason);
     }
 
     let Some(candidate) = select_candidate(&input.snapshot)
         .or_else(|| select_work_cluster_candidate(&input.snapshot, input.history.as_ref()))
+        .or_else(|| {
+            select_work_session_milestone_candidate(&input.snapshot, input.work_session_duration_ms)
+        })
+        .or_else(|| select_unknown_ocr_candidate(&input.snapshot, ocr_context_class))
         .or_else(|| {
             if should_probe_ocr_for_candidate(&input.snapshot, &input.privacy) {
                 select_ocr_candidate(&input.snapshot, redacted_ocr_summary)

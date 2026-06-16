@@ -1,4 +1,5 @@
 import type { CompanionLocale } from "../../../i18n";
+import type { MateIconKind } from "../../../domain/mate";
 import type { PersonaId } from "../../../domain/persona/types";
 import { getPersonaAccent } from "../../../domain/persona/theme";
 import { PersonaPresenceIcon } from "../ui/PersonaPresenceIcon";
@@ -7,6 +8,7 @@ import { companionStyles } from "../ui/styles";
 
 type NudgeNoteProps = {
   personaId: PersonaId;
+  mateIcon: MateIconKind;
   personaName: string;
   nudge: string;
   labels: CompanionLocale;
@@ -17,6 +19,7 @@ type NudgeNoteProps = {
 
 export function NudgeNote({
   personaId,
+  mateIcon,
   personaName,
   nudge,
   labels,
@@ -32,7 +35,19 @@ export function NudgeNote({
       style={{ backgroundColor: "#28282d" }}
     >
       <div className={companionStyles.nudgeBody}>
-        <PersonaPresenceIcon personaId={personaId} size="md" variant="filled" />
+        <button
+          type="button"
+          aria-label={labels.presence.open}
+          onClick={onOpen}
+          className="tauri-interactive shrink-0 rounded-full transition active:scale-[0.98]"
+        >
+          <PersonaPresenceIcon
+            kind={mateIcon}
+            accentSource="settings"
+            size="md"
+            variant="filled"
+          />
+        </button>
 
         <div className="min-w-0 flex-1">
           <div className={companionStyles.nudgeHeader}>
@@ -52,7 +67,7 @@ export function NudgeNote({
           <button
             type="button"
             onClick={onOpen}
-            className={companionStyles.nudgeMessage}
+            className={`tauri-interactive ${companionStyles.nudgeMessage}`}
             style={{ backgroundColor: "#323238" }}
           >
             {nudge}

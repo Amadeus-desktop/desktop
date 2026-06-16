@@ -65,5 +65,6 @@ fn snapshot(app_name: &str, bundle_identifier: &str, window_title: &str) -> Maco
         idle_seconds: 0.0,
         category: AppCategory::Work,
         frontmost_duration_ms: 1000,
+        is_fullscreen: false,
     }
 }

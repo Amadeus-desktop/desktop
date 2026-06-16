@@ -37,6 +37,20 @@ impl CompanionWindowVisibility {
 }
 
 pub fn position_companion_window(window: &WebviewWindow) {
+    position_companion_window_sized(window, None);
+}
+
+/// Anchors the companion window to the work-area bottom-right corner.
+///
+/// `override_size` lets the resize path pass the physical size it just applied.
+/// On macOS `outer_size()` can lag a programmatic `setSize`, so reading it right
+/// after a resize may return the stale (smaller) size and push a freshly grown
+/// window off the bottom-right of the screen. Passing the intended size avoids
+/// that race so the chat panel never lands clipped off-screen.
+fn position_companion_window_sized(
+    window: &WebviewWindow,
+    override_size: Option<tauri::PhysicalSize<u32>>,
+) {
     use tauri::PhysicalPosition;
 
     const MARGIN: i32 = 12;
@@ -50,7 +64,9 @@ pub fn position_companion_window(window: &WebviewWindow) {
     };
 
     let work_area = monitor.work_area();
-    let window_size = window.outer_size().unwrap_or(work_area.size);
+    let window_size = override_size
+        .or_else(|| window.outer_size().ok())
+        .unwrap_or(work_area.size);
 
     let x = work_area.position.x + work_area.size.width as i32 - window_size.width as i32 - MARGIN;
     let y =
@@ -154,6 +170,85 @@ pub fn configure_macos_main_window(window: &WebviewWindow) {
     }
 }
 
+/// Start a native window drag.
+///
+/// We do NOT use Tauri/tao's `start_dragging()` here. When a drag is kicked off
+/// over async IPC, `[NSApp currentEvent]` is frequently an `AppKitDefined`
+/// event by the time tao runs (especially on the first interaction, when the
+/// window is also being activated). tao then synthesizes a `LeftMouseDown`
+/// event but puts the *global* mouse location into the window-local `location`
+/// field, so `performWindowDragWithEvent:` anchors against the wrong point and
+/// the window jumps by ~its own origin (toward the top-left) on the first drag.
+///
+/// We instead synthesize the event ourselves using the window-local mouse
+/// location (`mouseLocationOutsideOfEventStream`), so the drag anchor is always
+/// correct and the window never jumps.
+#[cfg(target_os = "macos")]
+pub fn start_main_window_drag(app: &AppHandle) -> Result<(), String> {
+    use objc2_app_kit::{NSApplication, NSEvent, NSEventModifierFlags, NSEventType, NSWindow};
+    use objc2_foundation::MainThreadMarker;
+
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| "start_main_window_drag: main window missing".to_string())?;
+    let ptr = window
+        .ns_window()
+        .map_err(|error| format!("start_main_window_drag: ns_window failed: {error}"))?;
+
+    let mtm = MainThreadMarker::new()
+        .ok_or_else(|| "start_main_window_drag: not on main thread".to_string())?;
+
+    unsafe {
+        let ns_window: &NSWindow = &*(ptr as *const NSWindow);
+        let current = NSApplication::sharedApplication(mtm).currentEvent();
+
+        // If the live event is already a real left-mouse gesture, it carries the
+        // correct window-local location, so use it directly.
+        if let Some(event) = current.as_ref().filter(|event| {
+            matches!(
+                event.r#type(),
+                NSEventType::LeftMouseDown | NSEventType::LeftMouseDragged
+            )
+        }) {
+            ns_window.performWindowDragWithEvent(event);
+            return Ok(());
+        }
+
+        // Otherwise synthesize a LeftMouseDown anchored at the *window-local*
+        // mouse location (the field tao gets wrong).
+        let location = ns_window.mouseLocationOutsideOfEventStream();
+        let window_number = ns_window.windowNumber();
+        let modifier_flags = current
+            .as_ref()
+            .map(|event| event.modifierFlags())
+            .unwrap_or(NSEventModifierFlags::empty());
+        let timestamp = current
+            .as_ref()
+            .map(|event| event.timestamp())
+            .unwrap_or(0.0);
+
+        let synthetic = NSEvent::mouseEventWithType_location_modifierFlags_timestamp_windowNumber_context_eventNumber_clickCount_pressure(
+            NSEventType::LeftMouseDown,
+            location,
+            modifier_flags,
+            timestamp,
+            window_number,
+            None,
+            0,
+            1,
+            1.0,
+        )
+        .ok_or_else(|| {
+            "start_main_window_drag: failed to synthesize drag event".to_string()
+        })?;
+
+        ns_window.performWindowDragWithEvent(&synthetic);
+    }
+
+    Ok(())
+}
+
+#[cfg(not(target_os = "macos"))]
 pub fn start_main_window_drag(app: &AppHandle) -> Result<(), String> {
     let window = app
         .get_webview_window("main")
@@ -280,14 +375,11 @@ pub fn animate_main_window_logical_size(
             // (work_area) coordinate systems caused an end-of-animation jump.
             // tao observes the resize notification and syncs Tauri's size state.
             refresh_macos_webview_layers(&window_for_completion);
-            if let Err(error) =
-                window_for_completion.emit(MAIN_WINDOW_ANIMATION_COMPLETE_EVENT, ())
+            if let Err(error) = window_for_completion.emit(MAIN_WINDOW_ANIMATION_COMPLETE_EVENT, ())
             {
                 log_warn(
                     LogArea::Window,
-                    format!(
-                        "animate_main_window_logical_size: completion emit failed: {error}"
-                    ),
+                    format!("animate_main_window_logical_size: completion emit failed: {error}"),
                 );
             }
             log_info(
@@ -401,12 +493,20 @@ pub fn restore_companion_window_on_active_space(app: &AppHandle) {
     }
 }
 
-pub fn sync_companion_window_position_only(app: &AppHandle) {
+pub fn sync_companion_window_position_only(app: &AppHandle, logical_size: Option<(f64, f64)>) {
     let Some(window) = app.get_webview_window("companion") else {
         return;
     };
 
-    position_companion_window(&window);
+    let override_size = logical_size.and_then(|(width, height)| {
+        let scale = window.scale_factor().ok()?;
+        Some(tauri::PhysicalSize::new(
+            (width * scale).round() as u32,
+            (height * scale).round() as u32,
+        ))
+    });
+
+    position_companion_window_sized(&window, override_size);
 }
 
 #[cfg(target_os = "macos")]

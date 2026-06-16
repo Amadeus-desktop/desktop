@@ -4,7 +4,7 @@ use crate::{
     llm::LlmState,
     macos_context::{read_current_snapshot, ContextBridgeState},
     observability::{info as log_info, warn as log_warn, LogArea},
-    ocr::{capture_gate_input_for_command, OcrState, ScreenCaptureState},
+    ocr::{capture_gate_input_for_command, OcrObservation, OcrState, ScreenCaptureState},
     privacy::{assess_privacy, get_screen_capture_permission_status},
     settings::{privacy_keywords_for, talk_frequency_poll_interval, SettingsState},
     timeline::TimelineState,
@@ -12,10 +12,10 @@ use crate::{
 
 use super::{persistence::persist_trigger_events, CommandError};
 use crate::trigger::{
-    core::evaluate_trigger_with_ocr,
+    core::evaluate_trigger_with_ocr_context,
     scoring::{
         apply_ocr_signal_to_evaluation, should_capture_ocr_for_trigger,
-        should_probe_ocr_for_candidate, suppressed,
+        should_probe_ocr_for_candidate, should_probe_unknown_ocr_for_candidate, suppressed,
     },
     TriggerEngineState, TriggerPollDecision, TriggerPollResult, TriggerRunResult,
     TriggerRuntimeSnapshot,
@@ -58,18 +58,27 @@ pub fn run_trigger_engine_once(
         .lock()
         .map_err(|_| CommandError::from("trigger runtime lock was poisoned".to_string()))?
         .input_for(snapshot.clone(), privacy.clone());
-    let mut redacted_ocr_summary = should_probe_ocr_for_candidate(&snapshot, &privacy)
-        .then(|| {
-            capture_trigger_ocr_summary(&ocr_state, &capture_state, &settings, &snapshot, &privacy)
-        })
-        .flatten();
-    let mut evaluation =
-        evaluate_trigger_with_ocr(trigger_input, &settings, redacted_ocr_summary.as_deref());
+    let mut ocr_observation = (should_probe_ocr_for_candidate(&snapshot, &privacy)
+        || should_probe_unknown_ocr_for_candidate(&snapshot, &privacy))
+    .then(|| {
+        capture_trigger_ocr_observation(&ocr_state, &capture_state, &settings, &snapshot, &privacy)
+    })
+    .flatten();
+    let mut evaluation = evaluate_trigger_with_ocr_context(
+        trigger_input,
+        &settings,
+        ocr_observation
+            .as_ref()
+            .map(|observation| observation.text_summary_redacted.as_str()),
+        ocr_observation
+            .as_ref()
+            .map(|observation| observation.context_class),
+    );
     let (context_event, utterance_event) = if evaluation.should_persist {
         let captured_after_evaluation =
-            redacted_ocr_summary.is_none() && should_capture_ocr_for_trigger(&privacy, &evaluation);
+            ocr_observation.is_none() && should_capture_ocr_for_trigger(&privacy, &evaluation);
         if captured_after_evaluation {
-            redacted_ocr_summary = capture_trigger_ocr_summary(
+            ocr_observation = capture_trigger_ocr_observation(
                 &ocr_state,
                 &capture_state,
                 &settings,
@@ -78,8 +87,12 @@ pub fn run_trigger_engine_once(
             );
         }
         if captured_after_evaluation {
-            evaluation =
-                apply_ocr_signal_to_evaluation(evaluation, redacted_ocr_summary.as_deref());
+            evaluation = apply_ocr_signal_to_evaluation(
+                evaluation,
+                ocr_observation
+                    .as_ref()
+                    .map(|observation| observation.text_summary_redacted.as_str()),
+            );
         }
         persist_trigger_events(
             &timeline_state,
@@ -88,7 +101,9 @@ pub fn run_trigger_engine_once(
             &snapshot,
             &privacy,
             &evaluation,
-            redacted_ocr_summary.as_deref(),
+            ocr_observation
+                .as_ref()
+                .map(|observation| observation.text_summary_redacted.as_str()),
         )?
     } else {
         (None, None)
@@ -99,7 +114,7 @@ pub fn run_trigger_engine_once(
             .runtime
             .lock()
             .map_err(|_| CommandError::from("trigger runtime lock was poisoned".to_string()))?
-            .record_persisted_utterance();
+            .record_persisted_utterance_for_snapshot(&snapshot);
     }
 
     Ok(TriggerRunResult {
@@ -177,13 +192,13 @@ pub fn poll_trigger_engine(
     })
 }
 
-fn capture_trigger_ocr_summary(
+fn capture_trigger_ocr_observation(
     ocr_state: &State<'_, OcrState>,
     capture_state: &State<'_, ScreenCaptureState>,
     settings: &crate::settings::AppSettings,
     snapshot: &crate::macos_context::MacosContextSnapshot,
     privacy: &crate::privacy::PrivacyAssessment,
-) -> Option<String> {
+) -> Option<OcrObservation> {
     if privacy.should_suppress_capture || privacy.is_sensitive {
         log_info(LogArea::Ocr, "trigger OCR skipped: sensitive context");
         return None;
@@ -208,7 +223,7 @@ fn capture_trigger_ocr_summary(
                     observation.confidence
                 ),
             );
-            Some(observation.text_summary_redacted)
+            Some(observation)
         }
         Err(error) => {
             log_warn(LogArea::Ocr, format!("trigger OCR skipped: {error}"));

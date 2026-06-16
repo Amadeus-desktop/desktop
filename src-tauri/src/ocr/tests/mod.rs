@@ -55,6 +55,52 @@ fn ocr_observation_has_no_raw_text_field() {
 }
 
 #[test]
+fn ocr_observation_classifies_redacted_context_without_raw_text() {
+    let code_error = redacted_observation_from_adapter_text(
+        "compile error cannot resolve module in main rs",
+        0.9,
+    );
+    let work_document =
+        redacted_observation_from_adapter_text("planning document todo next steps", 0.9);
+    let video_player =
+        redacted_observation_from_adapter_text("next episode comments play pause", 0.9);
+    let ai_companion = redacted_observation_from_adapter_text("Zeta AI chat persona reply", 0.9);
+    let private_chat = redacted_observation_from_adapter_text("private DM password=abc123", 0.9);
+    let game = redacted_observation_from_adapter_text("steam inventory quest health", 0.9);
+    let unknown = redacted_observation_from_adapter_text("plain neutral words", 0.9);
+
+    assert_eq!(code_error.context_class, OcrContextClass::CodeError);
+    assert_eq!(work_document.context_class, OcrContextClass::WorkDocument);
+    assert_eq!(video_player.context_class, OcrContextClass::VideoPlayer);
+    assert_eq!(ai_companion.context_class, OcrContextClass::AiChatCompanion);
+    assert_eq!(private_chat.context_class, OcrContextClass::PrivateChat);
+    assert_eq!(game.context_class, OcrContextClass::Game);
+    assert_eq!(unknown.context_class, OcrContextClass::Unknown);
+
+    let serialized = serde_json::to_value(&code_error).expect("observation json");
+    assert_eq!(serialized["contextClass"], "code_error");
+    assert!(serialized.get("rawText").is_none());
+}
+
+#[test]
+fn ocr_context_class_policy_matches_unknown_trigger_contract() {
+    assert!(OcrContextClass::WorkDocument.can_promote_unknown_to_work_like());
+    assert!(OcrContextClass::CodeError.can_promote_unknown_to_work_like());
+
+    assert!(!OcrContextClass::VideoPlayer.can_promote_unknown_to_work_like());
+    assert!(!OcrContextClass::AiChatCompanion.can_promote_unknown_to_work_like());
+    assert!(!OcrContextClass::PrivateChat.can_promote_unknown_to_work_like());
+    assert!(!OcrContextClass::Game.can_promote_unknown_to_work_like());
+    assert!(!OcrContextClass::Unknown.can_promote_unknown_to_work_like());
+
+    assert!(OcrContextClass::VideoPlayer.blocks_non_work_drift());
+    assert!(OcrContextClass::AiChatCompanion.blocks_non_work_drift());
+    assert!(OcrContextClass::PrivateChat.blocks_non_work_drift());
+    assert!(OcrContextClass::Game.blocks_non_work_drift());
+    assert!(OcrContextClass::Unknown.blocks_non_work_drift());
+}
+
+#[test]
 fn ocr_state_reports_central_adapter_status() {
     let state = OcrState::new(Box::new(DisabledOcrAdapter::new("test-disabled")));
 

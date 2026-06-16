@@ -36,4 +36,17 @@ describe("normalizeGeneralSettings", () => {
 
     expect(settings.characterId).toBe("emilia");
   });
+
+  it("normalizes companion mate icon values", () => {
+    const settings = normalizeGeneralSettings({
+      companionMateIcon: "star" as typeof initialSettings.companionMateIcon,
+    });
+
+    expect(settings.companionMateIcon).toBe("star");
+    expect(
+      normalizeGeneralSettings({
+        companionMateIcon: "invalid" as typeof initialSettings.companionMateIcon,
+      }).companionMateIcon,
+    ).toBe("bubble");
+  });
 });

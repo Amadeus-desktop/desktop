@@ -3,6 +3,7 @@ import { normalizeCharacterId } from "../../character";
 import type { GeneralSettings, ModelRoute, TalkFrequency } from "../types";
 import type { AccentColorId, AppearanceMode } from "../../../ui/tokens/appearance";
 import { normalizeCompanionMateId } from "../../../domain/mate";
+import { normalizeMateIconKind } from "../../../domain/mate/mateIcons";
 
 export const initialSettings: GeneralSettings = {
   locale: "ko",
@@ -10,6 +11,7 @@ export const initialSettings: GeneralSettings = {
   accentColor: "rose",
   characterId: "emilia",
   companionPersonaId: "warm_friend",
+  companionMateIcon: "bubble",
   talkFrequency: "balanced",
   modelRoute: "api-first",
   localFallbackEnabled: true,
@@ -35,6 +37,7 @@ export function normalizeGeneralSettings(
     ...merged,
     characterId: normalizeCharacterId(merged.characterId),
     companionPersonaId: normalizeCompanionMateId(merged.companionPersonaId),
+    companionMateIcon: normalizeMateIconKind(String(merged.companionMateIcon ?? "bubble")),
     accentColor: isAccentColor(accentColor)
       ? accentColor
       : initialSettings.accentColor,

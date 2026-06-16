@@ -1,5 +1,6 @@
 import { useCompanionPresentationEnabled } from "../hooks/useCompanionPresentationEnabled";
 import { useCompanionDevTools } from "../hooks/useCompanionDevTools";
+import { useCompanionLayoutResync } from "../hooks/useCompanionLayoutResync";
 import { useCompanionShell } from "../hooks/useCompanionShell";
 import { DailyCareNotePreview } from "../daily-care/DailyCareNotePreview";
 import { PocketChat } from "../chat/PocketChat";
@@ -11,12 +12,14 @@ export function CompanionShell() {
   const devToolsOpen = useCompanionDevTools();
   const presentationEnabled = useCompanionPresentationEnabled();
   const shell = useCompanionShell({ companionEnabled: presentationEnabled });
+  useCompanionLayoutResync(shell.mode);
 
   return (
     <CompanionViewport>
       {presentationEnabled && shell.mode === "nudge" ? (
         <NudgeNote
           personaId={shell.selectedPersonaId}
+          mateIcon={shell.mateIcon}
           personaName={shell.selectedPersona.name}
           nudge={shell.nudge}
           labels={shell.t}
@@ -58,7 +61,7 @@ export function CompanionShell() {
       {presentationEnabled && shell.showPresence ? (
         <FloatingMessageIcon
           mode={shell.mode}
-          personaId={shell.selectedPersonaId}
+          mateIcon={shell.mateIcon}
           labels={shell.t.presence}
           onClick={() => void shell.openIcon()}
         />

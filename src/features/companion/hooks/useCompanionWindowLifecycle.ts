@@ -17,15 +17,6 @@ export function useCompanionWindowLifecycle() {
     const unlisteners: Array<() => void> = [];
 
     void window
-      .listen("tauri://focus", () => {
-        logger.info("window", "companion focus event requested resync");
-        void resyncTauriCompanionWindow();
-      })
-      .then((unlisten) => {
-        unlisteners.push(unlisten);
-      });
-
-    void window
       .listen("tauri://scale-change", () => {
         logger.info("window", "companion scale-change event requested resync");
         void resyncTauriCompanionWindow();

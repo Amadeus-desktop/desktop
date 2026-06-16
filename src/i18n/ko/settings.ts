@@ -117,12 +117,22 @@ export const settings: SettingsMessages = {
   },
   companionPersona: {
     label: "companion 페르소나",
-    subtitle: "말투와 하단 presence 아이콘",
+    subtitle: "말투와 관계 설정",
     icons: {
       bubble: "말풍선",
       letter: "편지",
       star: "별",
       orb: "오브",
+    },
+  },
+  mateIcon: {
+    label: "메이트",
+    subtitle: "우측 하단에 표시할 아이콘 — 외곽선은 강조 색상을 따릅니다",
+    icons: {
+      bubble: "대화",
+      letter: "편지",
+      star: "별",
+      orb: "원형",
     },
   },
 };

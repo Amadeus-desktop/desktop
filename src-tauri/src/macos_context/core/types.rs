@@ -18,4 +18,5 @@ pub struct MacosContextSnapshot {
     pub idle_seconds: f64,
     pub category: AppCategory,
     pub frontmost_duration_ms: u128,
+    pub is_fullscreen: bool,
 }

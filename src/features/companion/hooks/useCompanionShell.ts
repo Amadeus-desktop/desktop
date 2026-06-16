@@ -105,6 +105,7 @@ export function useCompanionShell({
     showPresence,
     isSending,
     modelRoute: settings.modelRoute,
+    mateIcon: settings.companionMateIcon,
     nightCareEnabled: settings.nightCareEnabled,
     nickname: settings.nickname,
     setDraft,

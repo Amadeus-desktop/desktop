@@ -46,7 +46,7 @@
 
 | 증상 | 근거 수준 | 근거 |
 | --- | --- | --- |
-| drag 중 투명화 | 수정 전 확정 | 수정 전 `src/lib/tauri/useTauriWindowDragOpacity.ts`가 drag threshold 이후 `document.documentElement.style.opacity = "0"`을 실행했다. L3에서 이 직접 투명화 경로는 제거했다. |
+| drag 중 투명화 | 해결됨 | 과거 `src/lib/tauri/useTauriWindowDragOpacity.ts`가 drag threshold 이후 `document.documentElement.style.opacity = "0"`을 실행했다. L3에서 이 hook과 직접 투명화 경로를 제거했고, drag는 `createWindowDragHandler()` → `start_main_window_drag_command`로 일원화했다. |
 | click 단독 투명화 | 근거 부족 | 같은 hook은 `mousedown`만으로 opacity를 바꾸지 않고, threshold를 넘은 `mousemove` 이후에만 바꾼다. click만으로 투명화되는지는 런타임 이벤트 로그가 필요하다. |
 | resize animation 버벅임 | 강한 추정 | `animateMainWindowLayoutMode()`가 `requestAnimationFrame`마다 native `setSize`/`setPosition` IPC를 호출한다. companion도 `ResizeObserver`마다 `setSize`와 position sync를 호출한다. 실제 frame drop 수치는 아직 없다. |
 | transparent/compositor 영향 | 강한 추정 | config가 `transparent: true`, `titleBarStyle: "Transparent"`, `macOSPrivateApi: true`를 사용하고, Rust/JS 모두 compositor refresh성 1px resize 또는 layer refresh를 가진다. 다만 이것이 click 단독 투명화의 직접 원인이라는 증거는 없다. |
@@ -81,15 +81,12 @@ Frontend forwarded log:
 - `main native resize animation skipped`
 - `main layout apply started/completed`
 - `main compositor kick scheduled/completed`
-- `onboarding drag armed`
-- `onboarding drag threshold crossed`
-- `onboarding click ended without drag`
+- `main window native drag requested`
 - `companion native resize synced`
 
 판정 규칙:
 
-- click만 했는데 `onboarding drag opacity hidden`이 찍히면 click/drag threshold 분기 버그다.
-- click만 했고 `onboarding drag ended without opacity hide`만 찍히면 click 단독 투명화 원인은 이 hook이 아니다.
+- 첫 drag에서 window가 좌상단으로 점프하면 native drag anchor 좌표 문제다. `start_main_window_drag` 합성 이벤트가 window-local 좌표(`mouseLocationOutsideOfEventStream`)를 쓰는지 확인한다 (tao `start_dragging`은 global 좌표를 넣어 jump를 유발).
 - `main native resize animation skipped` 이후에도 버벅임이 재현되면 JS RAF native resize가 아니라 single apply, compositor refresh, React paint, transparent window 쪽을 본다.
 - `startup phase completed` 중 특정 phase가 100ms 이상 반복되면 해당 phase를 first-paint 이후로 미룰 후보로 본다.
 - `dev auth callback server failed` 또는 `hydrateAuth failed`가 찍히면 login/onboarding 정지 원인은 auth callback path부터 본다.
@@ -298,9 +295,10 @@ type MainWindowLayoutRequest = {
 
 정책:
 
-- 기본은 Tauri 공식 `data-tauri-drag-region` 또는 `startDragging()`의 단일 owner다.
+- main window drag는 `start_main_window_drag_command`(native `performWindowDragWithEvent`, window-local anchor) 단일 owner다. tao `data-tauri-drag-region`/`startDragging()`은 async IPC 경로에서 첫 drag jump를 유발하므로 main window에서는 사용하지 않는다.
+- onboarding drag handle과 control-center JS drag는 `createWindowDragHandler()`(mousedown → command)로 통일한다.
 - custom drag opacity, CSS pointer policy, native start dragging을 동시에 건드리지 않는다.
-- interactive element는 drag region 안에 묻히면 안 된다.
+- interactive element는 drag region 안에 묻히면 안 된다 (`createWindowDragHandler`가 `INTERACTIVE_SELECTOR`로 제외).
 
 ---
 

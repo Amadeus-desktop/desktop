@@ -67,6 +67,26 @@ fn classifies_collaboration_and_design_apps_as_work() {
 }
 
 #[test]
+fn keeps_long_tail_and_ai_companion_titles_unknown_by_default() {
+    assert_eq!(
+        classify_app("com.google.Chrome", "tvwiki - Google Chrome"),
+        AppCategory::Unknown
+    );
+    assert_eq!(
+        classify_app("com.apple.Safari", "niconico - Safari"),
+        AppCategory::Unknown
+    );
+    assert_eq!(
+        classify_app("com.google.Chrome", "Zeta AI Chat - Google Chrome"),
+        AppCategory::Unknown
+    );
+    assert_eq!(
+        classify_app("com.google.Chrome", "LoveyDovey - Google Chrome"),
+        AppCategory::Unknown
+    );
+}
+
+#[test]
 fn classifies_unknown_apps() {
     assert_eq!(
         classify_app("dev.unknown.App", "Unknown"),

@@ -47,6 +47,14 @@ export const amadeusTailwindPlugin = plugin(({ addBase, addUtilities }) => {
       minHeight: "100%",
       background: "transparent !important",
     },
+    "html[data-companion-viewport], html[data-companion-viewport] body, html[data-companion-viewport] #root":
+      {
+        height: "auto",
+        minHeight: "0",
+        width: "auto",
+        minWidth: "0",
+        overflow: "visible",
+      },
     body: {
       margin: "0",
     },
@@ -55,11 +63,6 @@ export const amadeusTailwindPlugin = plugin(({ addBase, addUtilities }) => {
     },
     button: {
       cursor: "default",
-    },
-    "[data-tauri-drag-region]": {
-      "-webkit-app-region": "drag",
-      "app-region": "drag",
-      userSelect: "none",
     },
     ...Object.fromEntries(noDragSelectors.map((selector) => [selector, noDragRule])),
     "::-webkit-scrollbar": {

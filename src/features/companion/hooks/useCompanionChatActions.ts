@@ -1,9 +1,11 @@
 import { useCallback } from "react";
+import { logger } from "../../../observability/logger";
 import { patchAppSettings } from "../../settings";
 import type { GeneralSettings } from "../../settings/types";
 import { recordTriggerReactionForScoring } from "../../trigger";
 import { generatePocketIntro } from "../lib/pocketIntro";
 import { patchCompanionSession } from "../lib/companionSessionStore";
+import { forceResyncTauriCompanionWindow } from "./useTauriCompanionWindow";
 import { resolveCompanionReply } from "../lib/reply";
 import type { CompanionMateId } from "../../../domain/mate";
 import type {
@@ -53,36 +55,37 @@ export function useCompanionChatActions({
   const openPocket = useCallback(async () => {
     const intro = generatePocketIntro(nudge, selectedPersona);
 
-    setMessages([
-      {
-        id: `companion-intro-${Date.now()}`,
-        sender: "companion",
-        text: intro,
-      },
-    ]);
-    await recordReaction("opened");
-    await transitionMode("pocket");
-  }, [nudge, recordReaction, selectedPersona, setMessages, transitionMode]);
+    logger.info("ui", "companion pocket opening", {
+      fromMode: mode,
+      hasNudge: Boolean(nudge.trim()),
+    });
+
+    patchCompanionSession({
+      mode: "pocket",
+      messages: [
+        {
+          id: `companion-intro-${Date.now()}`,
+          sender: "companion",
+          text: intro,
+        },
+      ],
+    });
+    forceResyncTauriCompanionWindow();
+    void recordReaction("opened").catch(() => undefined);
+  }, [mode, nudge, recordReaction, selectedPersona]);
 
   const openIcon = useCallback(async () => {
-    if (mode === "sleep") {
-      await transitionMode("quiet");
-      return;
-    }
+    logger.info("ui", "companion icon click", {
+      mode,
+      hasNudge: Boolean(nudge.trim()),
+    });
 
     if (mode === "pocket" || mode === "deep" || mode === "daily_care") {
       return;
     }
 
-    if (mode === "nudge" && nudge) {
-      await openPocket();
-      return;
-    }
-
-    if (mode === "new_note" && nudge) {
-      await transitionMode("nudge");
-    }
-  }, [mode, nudge, openPocket, transitionMode]);
+    await openPocket();
+  }, [mode, nudge, openPocket]);
 
   const dismissNudge = useCallback(async () => {
     await recordReaction("dismissed");

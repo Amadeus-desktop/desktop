@@ -120,6 +120,11 @@ export type AppLocale = {
       subtitle: string;
       icons: Record<"bubble" | "letter" | "star" | "orb", string>;
     };
+    mateIcon: {
+      label: string;
+      subtitle: string;
+      icons: Record<"bubble" | "letter" | "star" | "orb", string>;
+    };
   };
   llm: {
     template: {

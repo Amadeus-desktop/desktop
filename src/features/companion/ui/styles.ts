@@ -1,10 +1,13 @@
 export const companionStyles = {
-  stack: "inline-flex flex-col items-end gap-2.5 overflow-visible p-2.5",
+  stack:
+    "tauri-interactive-zone inline-flex flex-col items-end gap-2.5 overflow-visible p-2.5",
 
   panel:
     "flex flex-col overflow-hidden rounded-chat-panel border border-chat-border bg-chat-surface text-chat-ink shadow-chat-panel animate-chat-in dark:border-chat-border-dark dark:bg-chat-surface-dark dark:text-chat-ink-dark",
-  panelSize:
-    "h-chat-panel max-h-[calc(100vh-1.25rem)] w-chat-panel max-w-[calc(100vw-1.25rem)]",
+  // Fixed intrinsic size only. The companion window auto-sizes to this content via
+  // ResizeObserver, so any viewport-relative cap (100vh/100vw) here would feed the
+  // window size back into the content size and stall growth at a clipped size.
+  panelSize: "h-chat-panel w-chat-panel",
 
   header:
     "flex h-chat-header shrink-0 items-center gap-3 border-b border-chat-border bg-chat-header px-3.5 dark:border-chat-border-dark dark:bg-chat-header-dark",
@@ -33,7 +36,7 @@ export const companionStyles = {
     "text-chat-xs text-chat-muted transition hover:text-[#0a84ff] dark:text-chat-muted-dark",
 
   nudgeCard:
-    "w-chat-nudge max-w-[calc(100vw-1.25rem)] overflow-hidden rounded-chat-nudge border-2 border-[#505058] bg-[#28282d] text-[#f5f5f7] shadow-[0_12px_40px_rgb(0_0_0_/_0.45)] animate-chat-in",
+    "w-chat-nudge overflow-hidden rounded-chat-nudge border-2 border-[#505058] bg-[#28282d] text-[#f5f5f7] shadow-[0_12px_40px_rgb(0_0_0_/_0.45)] animate-chat-in",
   nudgeBody: "flex gap-3 p-3.5",
   nudgeHeader: "mb-2 flex items-start justify-between gap-2",
   nudgeMessage:

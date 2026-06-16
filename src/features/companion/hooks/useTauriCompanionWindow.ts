@@ -5,6 +5,10 @@ import { useEffect, useRef } from "react";
 import { isTauriRuntime } from "../../../lib/tauri/runtime";
 import { logger } from "../../../observability/logger";
 import { COMPANION_WINDOW_MEASURE_INSET } from "../lib/measureInsets";
+import { getCompanionLayoutMode } from "../lib/companionLayoutMode";
+import { mergeCompanionContentRect } from "../lib/companionLayoutTargets";
+import { measureCompanionContentRect } from "../lib/measureCompanionContent";
+import type { CompanionMode } from "../types";
 import {
   computeCompanionWindowSize,
   shouldSkipCompanionResize,
@@ -13,15 +17,23 @@ import {
 
 let contentElement: HTMLElement | null = null;
 let lastAppliedSize: CompanionWindowSize | null = null;
+let lastAppliedLayoutMode: CompanionMode | null = null;
 let syncInFlight = false;
 let pendingSyncElement: HTMLElement | null = null;
+let pendingForceResync = false;
 let syncTimer: ReturnType<typeof setTimeout> | null = null;
 
 const COMPANION_RESIZE_DEBOUNCE_MS = 80;
 
 type CompanionWindowSyncOptions = {
   forcePositionSync?: boolean;
+  forceResync?: boolean;
 };
+
+function clearAppliedCompanionWindowSize() {
+  lastAppliedSize = null;
+  lastAppliedLayoutMode = null;
+}
 
 export async function syncTauriWindowToElement(
   element: HTMLElement | null,
@@ -31,6 +43,7 @@ export async function syncTauriWindowToElement(
 
   if (syncInFlight) {
     pendingSyncElement = element;
+    pendingForceResync = pendingForceResync || options.forceResync === true;
     logger.info("window", "companion native resize coalesced while in-flight");
     return;
   }
@@ -38,14 +51,25 @@ export async function syncTauriWindowToElement(
   const window = getCurrentWebviewWindow();
   if (window.label !== "companion") return;
 
+  const layoutMode = getCompanionLayoutMode();
+  const measured = measureCompanionContentRect(element);
+  const contentRect = mergeCompanionContentRect(measured, layoutMode);
   const nextSize = computeCompanionWindowSize(
-    element.getBoundingClientRect(),
+    contentRect,
     COMPANION_WINDOW_MEASURE_INSET,
   );
-  if (shouldSkipCompanionResize(lastAppliedSize, nextSize)) {
+  if (
+    shouldSkipCompanionResize(
+      lastAppliedSize,
+      nextSize,
+      layoutMode,
+      lastAppliedLayoutMode,
+    )
+  ) {
     logger.info("window", "companion native resize skipped unchanged size", {
       width: nextSize.width,
       height: nextSize.height,
+      layoutMode,
       forcePositionSync: Boolean(options.forcePositionSync),
     });
     if (options.forcePositionSync) {
@@ -64,22 +88,41 @@ export async function syncTauriWindowToElement(
   try {
     await window.setSize(new LogicalSize(nextSize.width, nextSize.height));
     lastAppliedSize = nextSize;
-    await invoke("sync_companion_window_position");
+    lastAppliedLayoutMode = layoutMode;
+    await invoke("sync_companion_window_position", {
+      width: nextSize.width,
+      height: nextSize.height,
+    });
     const durationMs = performance.now() - beganAt;
     const level = durationMs > 34 ? "warn" : "info";
     logger[level]("window", "companion native resize synced", {
       durationMs: Math.round(durationMs),
       width: nextSize.width,
       height: nextSize.height,
+      layoutMode,
+    });
+  } catch (error) {
+    logger.error("window", "companion native resize failed", {
+      layoutMode,
+      width: nextSize.width,
+      height: nextSize.height,
+      error,
     });
   } finally {
     syncInFlight = false;
   }
 
   const pending = pendingSyncElement;
+  const forcePending = pendingForceResync;
   pendingSyncElement = null;
+  pendingForceResync = false;
   if (pending) {
-    scheduleTauriWindowSync(pending);
+    if (forcePending) {
+      clearAppliedCompanionWindowSize();
+    }
+    void syncTauriWindowToElement(pending, {
+      forcePositionSync: options.forcePositionSync,
+    });
   }
 }
 
@@ -88,9 +131,22 @@ export async function resyncTauriCompanionWindow() {
   scheduleTauriWindowSync(contentElement, { forcePositionSync: true });
 }
 
+/** Mode transitions need an immediate, non-debounced resize with a fresh measure. */
+export function forceResyncTauriCompanionWindow() {
+  if (!contentElement) return;
+
+  clearAppliedCompanionWindowSize();
+  if (syncTimer !== null) {
+    clearTimeout(syncTimer);
+    syncTimer = null;
+  }
+
+  void syncTauriWindowToElement(contentElement, { forceResync: true });
+}
+
 function scheduleTauriWindowSync(
   element: HTMLElement,
-  options: CompanionWindowSyncOptions = {},
+  options: CompanionWindowSyncOptions & { forceResync?: boolean } = {},
 ) {
   if (syncTimer !== null) {
     clearTimeout(syncTimer);
@@ -128,8 +184,9 @@ export function useTauriCompanionWindow() {
       }
       if (contentElement === element) {
         contentElement = null;
-        lastAppliedSize = null;
+        clearAppliedCompanionWindowSize();
         pendingSyncElement = null;
+        pendingForceResync = false;
       }
     };
   }, []);

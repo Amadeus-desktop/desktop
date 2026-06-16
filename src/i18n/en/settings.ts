@@ -117,10 +117,20 @@ export const settings: SettingsMessages = {
   },
   companionPersona: {
     label: "Companion persona",
-    subtitle: "Tone and bottom presence icon",
+    subtitle: "Tone and relationship settings",
     icons: {
       bubble: "Bubble",
       letter: "Letter",
+      star: "Star",
+      orb: "Orb",
+    },
+  },
+  mateIcon: {
+    label: "Mate",
+    subtitle: "Bottom-right HUD icon — outline follows your accent color",
+    icons: {
+      bubble: "Chat",
+      letter: "Mail",
       star: "Star",
       orb: "Orb",
     },

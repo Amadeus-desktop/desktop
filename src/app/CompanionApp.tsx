@@ -16,6 +16,7 @@ export function CompanionApp() {
   useCompanionWindowLifecycle();
 
   useEffect(() => {
+    document.documentElement.dataset.companionViewport = "true";
     logger.info("ui", "companion app mounted", {
       performanceNowMs: Math.round(performance.now()),
     });
@@ -24,6 +25,10 @@ export function CompanionApp() {
     hydrateOnboardingProgress();
     ensureSettingsSync();
     void ensureCompanionWebviewTransparency();
+
+    return () => {
+      delete document.documentElement.dataset.companionViewport;
+    };
   }, []);
 
   return <CompanionShell />;

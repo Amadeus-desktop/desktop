@@ -1,6 +1,7 @@
 use crate::{
     llm::{LlmInputEnvelope, PolicyScoreSummary, ProviderInputGrade},
     macos_context::{AppCategory, MacosContextSnapshot},
+    ocr::OcrContextClass,
     policy::{LlmGateDecision, PolicyScores},
     privacy::PrivacyAssessment,
     settings::AppSettings,
@@ -21,6 +22,8 @@ const OCR_BLOCKED_MIN_FRONTMOST_MS: u128 = 5 * MINUTE_MS;
 const OCR_BLOCKED_MIN_IDLE_SECONDS: f64 = 60.0;
 const MILESTONE_MIN_FRONTMOST_MS: u128 = 60 * MINUTE_MS;
 const MILESTONE_MAX_IDLE_SECONDS: f64 = 600.0;
+const ACTIVE_INPUT_MAX_IDLE_SECONDS: f64 = 5.0;
+const AWAY_IDLE_MIN_SECONDS: f64 = 600.0;
 const DRIFT_MIN_FRONTMOST_MS: u128 = 10 * MINUTE_MS;
 
 pub(crate) fn llm_gate_for_trigger(
@@ -106,8 +109,35 @@ pub(crate) fn should_probe_ocr_for_candidate(
     snapshot.category == AppCategory::Work
         && snapshot.frontmost_duration_ms >= OCR_BLOCKED_MIN_FRONTMOST_MS
         && snapshot.idle_seconds >= OCR_BLOCKED_MIN_IDLE_SECONDS
+        && snapshot.idle_seconds <= AWAY_IDLE_MIN_SECONDS
         && !privacy.should_suppress_capture
         && !privacy.is_sensitive
+}
+
+pub(crate) fn should_probe_unknown_ocr_for_candidate(
+    snapshot: &MacosContextSnapshot,
+    privacy: &PrivacyAssessment,
+) -> bool {
+    snapshot.category == AppCategory::Unknown
+        && snapshot.frontmost_duration_ms >= DEEP_PAUSE_MIN_FRONTMOST_MS
+        && snapshot.idle_seconds >= DEEP_PAUSE_MIN_IDLE_SECONDS
+        && snapshot.idle_seconds <= AWAY_IDLE_MIN_SECONDS
+        && !privacy.should_suppress_capture
+        && !privacy.is_sensitive
+}
+
+pub(crate) fn should_suppress_active_input_milestone(input: &TriggerInput) -> bool {
+    input.snapshot.category == AppCategory::Work
+        && input.snapshot.idle_seconds < ACTIVE_INPUT_MAX_IDLE_SECONDS
+        && (input.snapshot.frontmost_duration_ms >= MILESTONE_MIN_FRONTMOST_MS
+            || input.work_session_duration_ms >= MILESTONE_MIN_FRONTMOST_MS)
+}
+
+pub(crate) fn should_suppress_away_idle(input: &TriggerInput) -> bool {
+    matches!(
+        input.snapshot.category,
+        AppCategory::Work | AppCategory::Unknown
+    ) && input.snapshot.idle_seconds > AWAY_IDLE_MIN_SECONDS
 }
 
 pub(crate) fn apply_ocr_signal_to_evaluation(
@@ -137,8 +167,29 @@ pub(crate) fn select_ocr_candidate(
 
     Some(TriggerCandidate {
         trigger_type: TriggerType::DeepPause,
-        message: "막힌 흔적이 보여. 지금은 변수 하나만 같이 줄여보자.".to_string(),
+        message: "잠깐 정리할 타이밍 같아. 지금은 한 가지만 같이 좁혀보자.".to_string(),
         reason: "ocr_blocked_signal_after_sustained_work".to_string(),
+        base_score: 72,
+    })
+}
+
+pub(crate) fn select_unknown_ocr_candidate(
+    snapshot: &MacosContextSnapshot,
+    context_class: Option<OcrContextClass>,
+) -> Option<TriggerCandidate> {
+    let context_class = context_class?;
+    if snapshot.category != AppCategory::Unknown
+        || !context_class.can_promote_unknown_to_work_like()
+        || snapshot.idle_seconds < DEEP_PAUSE_MIN_IDLE_SECONDS
+        || snapshot.frontmost_duration_ms < DEEP_PAUSE_MIN_FRONTMOST_MS
+    {
+        return None;
+    }
+
+    Some(TriggerCandidate {
+        trigger_type: TriggerType::DeepPause,
+        message: "잠깐 정리할 타이밍 같아. 이어갈 한 가지만 같이 잡아보자.".to_string(),
+        reason: "unknown_work_like_ocr_after_pause".to_string(),
         base_score: 72,
     })
 }
@@ -228,7 +279,30 @@ pub(super) fn select_work_cluster_candidate(
     None
 }
 
+pub(super) fn select_work_session_milestone_candidate(
+    snapshot: &MacosContextSnapshot,
+    work_session_duration_ms: u128,
+) -> Option<TriggerCandidate> {
+    if snapshot.category == AppCategory::Work
+        && work_session_duration_ms >= MILESTONE_MIN_FRONTMOST_MS
+        && snapshot.idle_seconds < MILESTONE_MAX_IDLE_SECONDS
+    {
+        return Some(TriggerCandidate {
+            trigger_type: TriggerType::Milestone,
+            message: "조용히 오래 해내고 있었네.".to_string(),
+            reason: "long_work_session_milestone".to_string(),
+            base_score: 82,
+        });
+    }
+
+    None
+}
+
 pub(super) fn exception_suppression(input: &TriggerInput) -> Option<&'static str> {
+    if suppress_fullscreen_non_work(&input.snapshot) {
+        return Some("fullscreen_non_work");
+    }
+
     let Some(history) = input.history.as_ref() else {
         return None;
     };
@@ -262,6 +336,10 @@ fn suppress_work_cluster_drift(
         && history.work_cluster_duration_ms >= 10 * MINUTE_MS
         && history.app_switch_count >= 3
         && history.non_work_single_app_max_duration_ms < 10 * MINUTE_MS
+}
+
+fn suppress_fullscreen_non_work(snapshot: &MacosContextSnapshot) -> bool {
+    snapshot.category == AppCategory::NonWork && snapshot.is_fullscreen
 }
 
 pub(crate) fn action_for_score(score: i64) -> TriggerAction {

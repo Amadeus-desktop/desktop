@@ -766,4 +766,3 @@ daily_care_summaries
 기술 원칙은 다음 문장으로 정리된다.
 
 > **Persona는 서버가 원본, App은 local-first, 민감 원본은 로컬에 남기고 안전한 요약만 동기화한다.**
-

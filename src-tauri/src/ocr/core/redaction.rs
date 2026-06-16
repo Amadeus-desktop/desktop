@@ -1,4 +1,4 @@
-use super::OcrObservation;
+use super::{OcrContextClass, OcrObservation};
 
 #[derive(Debug, Clone)]
 struct RawOcrText {
@@ -30,6 +30,7 @@ fn build_ocr_observation(raw: RawOcrText, confidence: f64) -> OcrObservation {
 
     OcrObservation {
         text_summary_redacted,
+        context_class: context_class(&raw.value, sensitive_hits),
         visible_text_classes: visible_text_classes(&raw.value),
         content_kind: content_kind(&raw.value).to_string(),
         confidence: confidence.clamp(0.0, 1.0),
@@ -68,6 +69,95 @@ fn summarize_ocr_text(value: &str) -> String {
         .join(" ")
 }
 
+fn context_class(value: &str, sensitive_hits: usize) -> OcrContextClass {
+    if sensitive_hits > 0 {
+        return OcrContextClass::PrivateChat;
+    }
+
+    let lower = value.to_ascii_lowercase();
+    if contains_any(
+        &lower,
+        &[
+            "compile error",
+            "error",
+            "failed",
+            "failure",
+            "exception",
+            "traceback",
+            "cannot",
+            "unresolved",
+            "오류",
+            "에러",
+            "실패",
+        ],
+    ) {
+        return OcrContextClass::CodeError;
+    }
+
+    if contains_any(
+        &lower,
+        &[
+            "zeta",
+            "loveydovey",
+            "character ai",
+            "ai chat",
+            "persona",
+            "companion",
+        ],
+    ) {
+        return OcrContextClass::AiChatCompanion;
+    }
+
+    if contains_any(
+        &lower,
+        &[
+            "next episode",
+            "episode",
+            "comments",
+            "subscribe",
+            "play pause",
+            "다음 화",
+            "댓글",
+        ],
+    ) {
+        return OcrContextClass::VideoPlayer;
+    }
+
+    if contains_any(
+        &lower,
+        &[
+            "steam",
+            "inventory",
+            "quest",
+            "health",
+            "achievement",
+            "게임",
+            "아이템",
+        ],
+    ) {
+        return OcrContextClass::Game;
+    }
+
+    if contains_any(
+        &lower,
+        &[
+            "planning",
+            "document",
+            "todo",
+            "jira",
+            "github",
+            "pull request",
+            "notion",
+            "문서",
+            "작업",
+        ],
+    ) {
+        return OcrContextClass::WorkDocument;
+    }
+
+    OcrContextClass::Unknown
+}
+
 fn visible_text_classes(value: &str) -> Vec<String> {
     let lower = value.to_ascii_lowercase();
     let mut classes = Vec::new();
@@ -81,6 +171,10 @@ fn visible_text_classes(value: &str) -> Vec<String> {
         classes.push("plain_text".to_string());
     }
     classes
+}
+
+fn contains_any(haystack: &str, needles: &[&str]) -> bool {
+    needles.iter().any(|needle| haystack.contains(needle))
 }
 
 fn content_kind(value: &str) -> &'static str {

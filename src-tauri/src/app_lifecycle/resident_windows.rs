@@ -22,8 +22,7 @@ pub fn watch_companion_window_layout(app: &tauri::AppHandle, window: &tauri::Web
     window.on_window_event(move |event| {
         let should_reposition = matches!(
             event,
-            WindowEvent::Focused(_)
-                | WindowEvent::Moved(_)
+            WindowEvent::Moved(_)
                 | WindowEvent::ScaleFactorChanged { .. }
                 | WindowEvent::Resized(_)
         );

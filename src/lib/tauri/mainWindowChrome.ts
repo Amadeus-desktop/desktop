@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/core";
 import { LogicalSize } from "@tauri-apps/api/dpi";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { logger } from "../../observability/logger";
@@ -5,13 +6,19 @@ import { isTauriRuntime } from "./runtime";
 
 const TRANSPARENT = { red: 0, green: 0, blue: 0, alpha: 0 } as const;
 
+/**
+ * Use the native command instead of `window.startDragging()`. tao's drag path
+ * synthesizes a drag event with a global-coordinate anchor when kicked off over
+ * async IPC, which jumps the window toward the top-left on the first drag. The
+ * command anchors at the window-local mouse location, so the window never jumps.
+ */
 export async function startMainWindowDrag() {
   if (!isTauriRuntime()) return;
 
   const window = getCurrentWebviewWindow();
   if (window.label !== "main") return;
 
-  await window.startDragging();
+  await invoke("start_main_window_drag_command");
 }
 
 /**

@@ -117,12 +117,22 @@ export const settings: SettingsMessages = {
   },
   companionPersona: {
     label: "companionペルソナ",
-    subtitle: "口調と下部presenceアイコン",
+    subtitle: "口調と関係設定",
     icons: {
       bubble: "吹き出し",
       letter: "手紙",
       star: "星",
       orb: "オーブ",
+    },
+  },
+  mateIcon: {
+    label: "メイト",
+    subtitle: "右下に表示するアイコン — 外枠は強調色に連動",
+    icons: {
+      bubble: "会話",
+      letter: "手紙",
+      star: "星",
+      orb: "丸",
     },
   },
 };

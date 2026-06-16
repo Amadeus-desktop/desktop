@@ -5,7 +5,6 @@ import { resetCompanionSession } from "../../companion/lib/companionSessionStore
 import {
   getOnboardingSnapshot,
   hydrateOnboardingProgress,
-  resetOnboardingProgress,
 } from "../../onboarding";
 import { requestMainWindowLayout } from "../../lifecycle";
 import { MAIN_WINDOW_ANIMATION_DURATION_MS } from "../lib/mainWindowLayout";
@@ -321,7 +320,11 @@ export async function signOutWithTransition() {
   const snapshot = authStore.getSnapshot();
   if (snapshot.logoutTransitioning) return;
 
-  resetOnboardingProgress();
+  // NOTE: onboarding progress (permissions/model-route/setup flags) is kept
+  // across logout on purpose. Permissions are OS-level and the model route is
+  // persisted in app settings, so a returning user who already finished setup
+  // should land straight in the control center after signing back in instead of
+  // re-running the whole onboarding. First run still does the full flow.
 
   // 1) Cross-fade to the onboarding background FIRST, while the window is still
   // at its current (large) size. This way the resize animates the onboarding
