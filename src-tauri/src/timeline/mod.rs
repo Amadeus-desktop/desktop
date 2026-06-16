@@ -4,14 +4,15 @@ mod core;
 pub use commands::{
     append_conversation_message, clear_local_timeline_data, create_context_event,
     create_local_memory, create_user_reaction, create_utterance_event, enqueue_sync_payload,
-    get_or_create_conversation_session, list_timeline_events,
+    get_or_create_conversation_session, list_conversation_messages_for_persona,
+    list_timeline_events,
 };
 pub use core::{
     AppendConversationMessageInput, ContextEvent, ConversationMessage, ConversationSession,
     CreateContextEventInput, CreateLocalMemoryInput, CreateUserReactionInput,
     CreateUtteranceEventInput, EnqueueSyncPayloadInput, GetOrCreateConversationSessionInput,
-    LocalMemory, SyncQueueRow, TimelineEvent, TimelineRepository, TimelineState, UserReaction,
-    UtteranceEvent,
+    ListConversationMessagesInput, LocalMemory, SyncQueueRow, TimelineEvent, TimelineRepository,
+    TimelineState, UserReaction, UtteranceEvent,
 };
 
 pub(crate) use core::{CommandError, TimelineError};

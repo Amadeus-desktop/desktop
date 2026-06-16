@@ -4,6 +4,7 @@ export {
   createUserReaction,
   createUtteranceEvent,
   getOrCreateConversationSession,
+  listConversationMessagesForPersona,
   listTimelineEvents,
 } from "./adapters/timelineRepository";
 export type {
@@ -13,6 +14,7 @@ export type {
   ConversationSession,
   CreateContextEventInput,
   GetOrCreateConversationSessionInput,
+  ListConversationMessagesInput,
   CreateUserReactionInput,
   CreateUtteranceEventInput,
   TimelineEvent,

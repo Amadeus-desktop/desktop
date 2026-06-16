@@ -31,6 +31,11 @@ export type GetOrCreateConversationSessionInput = {
   personaId: string;
 };
 
+export type ListConversationMessagesInput = {
+  personaId: string;
+  limit?: number;
+};
+
 export type AppendConversationMessageInput = {
   sessionId: string;
   role: "user" | "assistant" | "system_summary";

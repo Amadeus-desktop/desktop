@@ -9,7 +9,8 @@ pub use contract::{
     AppendConversationMessageInput, ContextEvent, ConversationMessage, ConversationSession,
     CreateContextEventInput, CreateLocalMemoryInput, CreateUserReactionInput,
     CreateUtteranceEventInput, EnqueueSyncPayloadInput, GetOrCreateConversationSessionInput,
-    LocalMemory, SyncPayloadEnvelope, SyncQueueRow, TimelineEvent, UserReaction, UtteranceEvent,
+    ListConversationMessagesInput, LocalMemory, SyncPayloadEnvelope, SyncQueueRow, TimelineEvent,
+    UserReaction, UtteranceEvent,
 };
 pub use repository::TimelineRepository;
 pub use state::TimelineState;

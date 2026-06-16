@@ -4,7 +4,10 @@ import { patchAppSettings } from "../../settings";
 import type { GeneralSettings } from "../../settings/types";
 import { recordTriggerReactionForScoring } from "../../trigger";
 import { generatePocketIntro } from "../lib/pocketIntro";
-import { persistCompanionExchange } from "../lib/conversationPersistence";
+import {
+  persistCompanionMessage,
+  restoreCompanionMessagesForPersona,
+} from "../lib/conversationPersistence";
 import {
   getCompanionSessionSnapshot,
   patchCompanionSession,
@@ -68,6 +71,21 @@ export function useCompanionChatActions({
     });
     setMessages([]);
     setIsSending(true);
+    const restoredMessages = await restoreCompanionMessagesForPersona(
+      selectedPersona.id,
+    ).catch((error) => {
+      logger.warn("ui", "conversation restore failed", {
+        personaId: selectedPersona.id,
+        error,
+      });
+      return [];
+    });
+    if (restoredMessages.length > 0) {
+      setMessages(restoredMessages);
+      setIsSending(false);
+      void recordReaction("opened").catch(() => undefined);
+      return;
+    }
     window.setTimeout(() => {
       const currentSession = getCompanionSessionSnapshot();
       if (currentSession.mode !== "pocket") {
@@ -129,10 +147,27 @@ export function useCompanionChatActions({
   }, [transitionMode]);
 
   const selectPersona = useCallback(
-    (personaId: CompanionMateId) => {
+    async (personaId: CompanionMateId) => {
       patchAppSettings({ companionPersonaId: personaId });
 
       if (mode !== "pocket") return;
+
+      setMessages([]);
+      setIsSending(true);
+      const restoredMessages = await restoreCompanionMessagesForPersona(
+        personas[personaId].id,
+      ).catch((error) => {
+        logger.warn("ui", "conversation restore failed", {
+          personaId: personas[personaId].id,
+          error,
+        });
+        return [];
+      });
+      if (restoredMessages.length > 0) {
+        setMessages(restoredMessages);
+        setIsSending(false);
+        return;
+      }
 
       const nextIntro = generatePocketIntro(nudge, personas[personaId]);
       setMessages([
@@ -142,8 +177,9 @@ export function useCompanionChatActions({
           text: nextIntro,
         },
       ]);
+      setIsSending(false);
     },
-    [mode, nudge, personas, setMessages],
+    [mode, nudge, personas, setIsSending, setMessages],
   );
 
   const sendMessage = useCallback(async (text: string) => {
@@ -164,6 +200,14 @@ export function useCompanionChatActions({
     setIsSending(true);
 
     void recordReaction("user_input", { score: false }).catch(() => undefined);
+    void persistCompanionMessage({
+      personaId: selectedPersona.id,
+      message: userMessage,
+      role: "user",
+      provider: null,
+    }).catch((error) => {
+      logger.warn("ui", "conversation user persistence failed", { error });
+    });
 
     try {
       const generation = await resolveCompanionReply(
@@ -187,13 +231,13 @@ export function useCompanionChatActions({
       };
 
       setMessages((currentMessages) => [...currentMessages, replyMessage]);
-      void persistCompanionExchange({
+      void persistCompanionMessage({
         personaId: selectedPersona.id,
-        userMessage,
-        replyMessage,
+        message: replyMessage,
+        role: "assistant",
         provider: generation.provider,
       }).catch((error) => {
-        logger.warn("ui", "conversation persistence failed", { error });
+        logger.warn("ui", "conversation assistant persistence failed", { error });
       });
       await recordReaction("deep_reply", { score: false });
       await recordTriggerReactionForScoring("replied");

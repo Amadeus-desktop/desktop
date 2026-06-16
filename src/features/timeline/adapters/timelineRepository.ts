@@ -21,6 +21,7 @@ import type {
   CreateUtteranceEventInput,
   EnqueueSyncPayloadInput,
   GetOrCreateConversationSessionInput,
+  ListConversationMessagesInput,
   LocalMemory,
   SyncQueueRow,
   TimelineEvent,
@@ -88,6 +89,18 @@ export async function appendConversationMessage(
   }
 
   return appendMockConversationMessage(input);
+}
+
+export async function listConversationMessagesForPersona(
+  input: ListConversationMessagesInput,
+): Promise<ConversationMessage[]> {
+  if (isTauriRuntime()) {
+    return invoke<ConversationMessage[]>("list_conversation_messages_for_persona", {
+      input,
+    });
+  }
+
+  return [];
 }
 
 export async function enqueueSyncPayload(

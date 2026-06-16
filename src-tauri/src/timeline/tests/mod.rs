@@ -297,6 +297,24 @@ fn stores_conversation_sessions_per_persona_and_messages_idempotently() {
     assert_eq!(user_message.client_sequence, 1);
     assert_eq!(reply.client_sequence, 2);
     assert_eq!(reply.provider.as_deref(), Some("edge:openai"));
+
+    let restored = repository
+        .list_conversation_messages_for_persona(ListConversationMessagesInput {
+            persona_id: "seoyeon-modern-senior".to_string(),
+            limit: Some(10),
+        })
+        .expect("messages are restored for persona");
+    let makise_restored = repository
+        .list_conversation_messages_for_persona(ListConversationMessagesInput {
+            persona_id: "makise-kurisu".to_string(),
+            limit: Some(10),
+        })
+        .expect("other persona has independent session");
+
+    assert_eq!(restored.len(), 2);
+    assert_eq!(restored[0].role, "user");
+    assert_eq!(restored[1].role, "assistant");
+    assert!(makise_restored.is_empty());
 }
 
 #[test]

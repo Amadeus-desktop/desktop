@@ -9,8 +9,8 @@ use super::{
     validate_local_memory_input, validate_sync_payload_envelope, AppendConversationMessageInput,
     ContextEvent, ConversationMessage, ConversationSession, CreateContextEventInput,
     CreateLocalMemoryInput, CreateUserReactionInput, CreateUtteranceEventInput,
-    EnqueueSyncPayloadInput, GetOrCreateConversationSessionInput, LocalMemory, SyncQueueRow,
-    TimelineError, TimelineEvent, UserReaction, UtteranceEvent,
+    EnqueueSyncPayloadInput, GetOrCreateConversationSessionInput, ListConversationMessagesInput,
+    LocalMemory, SyncQueueRow, TimelineError, TimelineEvent, UserReaction, UtteranceEvent,
 };
 
 pub struct TimelineRepository {
@@ -261,6 +261,40 @@ impl TimelineRepository {
             params![message.created_at_ms, message.session_id],
         )?;
         Ok(message)
+    }
+
+    pub fn list_conversation_messages_for_persona(
+        &self,
+        input: ListConversationMessagesInput,
+    ) -> Result<Vec<ConversationMessage>, TimelineError> {
+        let persona_id = input.persona_id.trim();
+        if persona_id.is_empty() {
+            return Err(TimelineError::Validation(
+                "conversation persona_id is required".to_string(),
+            ));
+        }
+
+        let Some(session) = self.find_conversation_session_for_persona(persona_id)? else {
+            return Ok(Vec::new());
+        };
+        let safe_limit = input.limit.unwrap_or(40).clamp(1, 120);
+        let mut statement = self.connection.prepare(
+            "SELECT id, cloud_message_id, session_id, role, content, provider, sync_status, idempotency_key, client_sequence, created_at_ms, server_received_at_ms
+             FROM (
+                SELECT id, cloud_message_id, session_id, role, content, provider, sync_status, idempotency_key, client_sequence, created_at_ms, server_received_at_ms
+                FROM conversation_messages
+                WHERE session_id = ?1 AND sync_status != 'deleted'
+                ORDER BY created_at_ms DESC, client_sequence DESC
+                LIMIT ?2
+             )
+             ORDER BY created_at_ms ASC, client_sequence ASC",
+        )?;
+        let rows = statement.query_map(
+            params![session.id, safe_limit],
+            conversation_message_from_row,
+        )?;
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(TimelineError::from)
     }
 
     pub fn enqueue_sync_payload(

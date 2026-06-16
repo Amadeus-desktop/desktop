@@ -45,6 +45,13 @@ pub struct GetOrCreateConversationSessionInput {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ListConversationMessagesInput {
+    pub persona_id: String,
+    pub limit: Option<i64>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AppendConversationMessageInput {
     pub session_id: String,
     pub role: String,

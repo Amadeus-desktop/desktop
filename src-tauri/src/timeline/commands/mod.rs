@@ -4,8 +4,8 @@ use super::{
     AppendConversationMessageInput, CommandError, ContextEvent, ConversationMessage,
     ConversationSession, CreateContextEventInput, CreateLocalMemoryInput, CreateUserReactionInput,
     CreateUtteranceEventInput, EnqueueSyncPayloadInput, GetOrCreateConversationSessionInput,
-    LocalMemory, SyncQueueRow, TimelineError, TimelineEvent, TimelineState, UserReaction,
-    UtteranceEvent,
+    ListConversationMessagesInput, LocalMemory, SyncQueueRow, TimelineError, TimelineEvent,
+    TimelineState, UserReaction, UtteranceEvent,
 };
 
 #[tauri::command]
@@ -59,6 +59,16 @@ pub fn append_conversation_message(
 ) -> Result<ConversationMessage, CommandError> {
     with_repository(&state, |repository| {
         repository.append_conversation_message(input)
+    })
+}
+
+#[tauri::command]
+pub fn list_conversation_messages_for_persona(
+    state: State<'_, TimelineState>,
+    input: ListConversationMessagesInput,
+) -> Result<Vec<ConversationMessage>, CommandError> {
+    with_repository(&state, |repository| {
+        repository.list_conversation_messages_for_persona(input)
     })
 }
 

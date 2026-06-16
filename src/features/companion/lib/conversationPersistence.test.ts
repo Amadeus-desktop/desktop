@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { persistCompanionExchange } from "./conversationPersistence";
+import {
+  persistCompanionExchange,
+  persistCompanionMessage,
+  restoreCompanionMessagesForPersona,
+} from "./conversationPersistence";
 
 describe("persistCompanionExchange", () => {
   it("stores user and assistant messages in a persona-scoped session", async () => {
@@ -8,6 +12,7 @@ describe("persistCompanionExchange", () => {
       personaId: "seoyeon-modern-senior",
     });
     const appendConversationMessage = vi.fn().mockResolvedValue({});
+    const listConversationMessagesForPersona = vi.fn().mockResolvedValue([]);
 
     await persistCompanionExchange(
       {
@@ -27,6 +32,7 @@ describe("persistCompanionExchange", () => {
       {
         getOrCreateConversationSession,
         appendConversationMessage,
+        listConversationMessagesForPersona,
       },
     );
 
@@ -47,5 +53,83 @@ describe("persistCompanionExchange", () => {
       provider: "edge:openai",
       idempotencyKey: "assistant-1",
     });
+  });
+
+  it("stores a single user message before reply generation completes", async () => {
+    const getOrCreateConversationSession = vi.fn().mockResolvedValue({
+      id: "session-makise",
+    });
+    const appendConversationMessage = vi.fn().mockResolvedValue({});
+    const listConversationMessagesForPersona = vi.fn().mockResolvedValue([]);
+
+    await persistCompanionMessage(
+      {
+        personaId: "makise-kurisu",
+        message: {
+          id: "user-early",
+          sender: "user",
+          text: "지금 막혔어.",
+        },
+        role: "user",
+      },
+      {
+        getOrCreateConversationSession,
+        appendConversationMessage,
+        listConversationMessagesForPersona,
+      },
+    );
+
+    expect(appendConversationMessage).toHaveBeenCalledWith({
+      sessionId: "session-makise",
+      role: "user",
+      content: "지금 막혔어.",
+      provider: null,
+      idempotencyKey: "user-early",
+    });
+  });
+
+  it("restores persona-scoped conversation messages for the companion UI", async () => {
+    const getOrCreateConversationSession = vi.fn();
+    const appendConversationMessage = vi.fn();
+    const listConversationMessagesForPersona = vi.fn().mockResolvedValue([
+      {
+        id: "msg-1",
+        role: "user",
+        content: "오늘 한글 작업했어.",
+      },
+      {
+        id: "msg-2",
+        role: "assistant",
+        content: "응, 한글을 오래 붙잡고 있었지.",
+      },
+      {
+        id: "msg-3",
+        role: "system_summary",
+        content: "hidden",
+      },
+    ]);
+
+    const restored = await restoreCompanionMessagesForPersona("makise-kurisu", {
+      getOrCreateConversationSession,
+      appendConversationMessage,
+      listConversationMessagesForPersona,
+    });
+
+    expect(listConversationMessagesForPersona).toHaveBeenCalledWith({
+      personaId: "makise-kurisu",
+      limit: 40,
+    });
+    expect(restored).toEqual([
+      {
+        id: "msg-1",
+        sender: "user",
+        text: "오늘 한글 작업했어.",
+      },
+      {
+        id: "msg-2",
+        sender: "companion",
+        text: "응, 한글을 오래 붙잡고 있었지.",
+      },
+    ]);
   });
 });
