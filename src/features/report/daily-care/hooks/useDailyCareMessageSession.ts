@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Persona } from "../../../../domain/persona/types";
 import type { AppLocale } from "../../../../i18n";
+import { logger } from "../../../../observability/logger";
+import { persistCompanionMessage } from "../../../companion/lib/conversationPersistence";
+import type { CompanionMessage } from "../../../companion/types";
 import type { GeneralSettings } from "../../../settings/types";
 import type { DailyCareInsight, ReportMetric } from "../../types";
 import { buildDailyCarePhases, type DailyCarePhase } from "../lib/phases";
@@ -16,6 +19,40 @@ function sleep(ms: number) {
   return new Promise<void>((resolve) => {
     window.setTimeout(resolve, ms);
   });
+}
+
+function dailyCareMessageId(prefix: string, phaseIndex: number, id: string, index = 0) {
+  return `daily-care-${prefix}-${Date.now()}-${phaseIndex}-${index}-${id}`;
+}
+
+function persistDailyCareTextMessage(persona: Persona, message: DailyCareThreadMessage) {
+  if (message.kind !== "text") return;
+
+  const companionMessage: CompanionMessage = {
+    id: message.id,
+    sender: message.sender,
+    text: message.text,
+  };
+
+  void persistCompanionMessage({
+    personaId: persona.id,
+    message: companionMessage,
+    role: message.sender === "user" ? "user" : "assistant",
+    provider: message.sender === "user" ? null : "daily-care",
+  }).catch((error) => {
+    logger.warn("ui", "daily care conversation persistence failed", { error });
+  });
+}
+
+function withSessionMessageId(
+  message: DailyCareThreadMessage,
+  phaseIndex: number,
+  index: number,
+): DailyCareThreadMessage {
+  return {
+    ...message,
+    id: dailyCareMessageId(message.sender, phaseIndex, message.id, index),
+  };
 }
 
 type UseDailyCareMessageSessionOptions = {
@@ -113,7 +150,9 @@ export function useDailyCareMessageSession({
         }
         if (cancelled || revealTokenRef.current !== revealToken) return;
 
-        setMessages((current) => [...current, item]);
+        const sessionItem = withSessionMessageId(item, phaseIndex, index);
+        setMessages((current) => [...current, sessionItem]);
+        persistDailyCareTextMessage(personaRef.current, sessionItem);
       }
 
       if (cancelled || revealTokenRef.current !== revealToken) return;
@@ -130,15 +169,18 @@ export function useDailyCareMessageSession({
 
   const selectReply = useCallback(
     (reply: DailyCareReply) => {
+      const userMessage: DailyCareThreadMessage = {
+        id: dailyCareMessageId("user", phaseIndex, reply.id, messagesRef.current.length),
+        sender: "user",
+        kind: "text",
+        text: reply.label,
+      };
+
       setMessages((current) => [
         ...current,
-        {
-          id: `user-${phaseIndex}-${reply.id}-${current.length}`,
-          sender: "user",
-          kind: "text",
-          text: reply.label,
-        },
+        userMessage,
       ]);
+      persistDailyCareTextMessage(personaRef.current, userMessage);
       setReplies([]);
 
       if (phaseIndex >= phasesRef.current.length - 1) {

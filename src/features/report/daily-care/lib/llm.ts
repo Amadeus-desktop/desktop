@@ -96,10 +96,10 @@ async function requestDailyCareBeat(
   return parseDailyCareBeat(generation.message, input);
 }
 
-function buildDailyCareContext(input: GenerateDailyCareBeatInput): SafeCurrentContext {
+export function buildDailyCareContext(input: GenerateDailyCareBeatInput): SafeCurrentContext {
   return {
     source: "cloud_safe",
-    allowed_surface: "app",
+    allowed_surface: "both",
     summary: JSON.stringify({
       surface: "daily_care",
       phase: input.phase.kind,
@@ -140,6 +140,7 @@ function buildDirectorPrompt(input: GenerateDailyCareBeatInput): string {
     'Return ONLY compact JSON: {"messages":["..."],"replies":["...","..."]}',
     "messages: 1-2 short bubbles, max 2 sentences each.",
     "replies: exactly 2 tap options the user might send as chat lines.",
+    "Make replies concrete to this day or this phase when possible; avoid generic buttons like 'continue' or 'tell me more'.",
     "Write replies as natural first-person chat in the user's language (Korean: casual 반말, complete or natural fragments).",
     "Each reply must express a clearly different mood (agree, curious, tired, playful, soft, etc.). Never paraphrase the same idea twice.",
     "Do not include a free-text or 'type your own' option — the UI adds that separately.",
@@ -308,11 +309,15 @@ export function fallbackDailyCareBeat(input: GenerateDailyCareBeatInput): DailyC
 }
 
 export function pickPresetReplies(input: GenerateDailyCareBeatInput): DailyCareReply[] {
-  const { labels, phase, phaseIndex, totalPhases } = input;
+  const { labels, phase, phaseIndex, totalPhases, settings } = input;
   const replies = labels.summaryOverlay.replies;
   const welcome = labels.summaryOverlay.steps.welcome;
   const finish = labels.summaryOverlay.navigation.finish;
   const isLast = phaseIndex >= totalPhases - 1;
+
+  if (settings.locale === "ko") {
+    return pickKoreanPresetReplies(input, isLast, finish);
+  }
 
   if (phase.kind === "closing" || isLast) {
     const pairs: DailyCareReply[][] = [
@@ -411,6 +416,114 @@ export function pickPresetReplies(input: GenerateDailyCareBeatInput): DailyCareR
 
 function fallbackReplies(input: GenerateDailyCareBeatInput): DailyCareReply[] {
   return pickPresetReplies(input);
+}
+
+function pickKoreanPresetReplies(
+  input: GenerateDailyCareBeatInput,
+  isLast: boolean,
+  finish: string,
+): DailyCareReply[] {
+  const { phase, phaseIndex } = input;
+  const primaryActivity = input.insight.activityDetails[0];
+  const activityLabel =
+    phase.kind === "activity"
+      ? phase.activity.label
+      : primaryActivity?.label ?? "오늘 한 일";
+  const keywordLabel = input.insight.keywords.slice(0, 2).join(", ") || "오늘 기분";
+
+  if (phase.kind === "closing" || isLast) {
+    const pairs: DailyCareReply[][] = [
+      [
+        { id: "close-for-now", label: "응, 오늘은 여기까지 할래" },
+        { id: "one-more", label: "마지막으로 한마디만 더 해줘" },
+      ],
+      [
+        { id: "keep-session", label: "이 얘기 세션에 남겨줘" },
+        { id: "finish", label: finish },
+      ],
+      [
+        { id: "soft-close", label: "조용히 마무리하고 싶어" },
+        { id: "thanks", label: "같이 봐줘서 고마워" },
+      ],
+    ];
+    return pairs[phaseIndex % pairs.length] ?? pairs[0];
+  }
+
+  switch (phase.kind) {
+    case "welcome": {
+      const pairs: DailyCareReply[][] = [
+        [
+          { id: "look-together", label: "응, 같이 봐줘" },
+          { id: "short-version", label: "짧게만 보고 싶어" },
+        ],
+        [
+          { id: "need-company", label: "오늘 좀 같이 정리해줘" },
+          { id: "low-energy", label: "나 지금 기운이 별로 없어" },
+        ],
+        [
+          { id: "check-work", label: `${activityLabel}부터 봐줘` },
+          { id: "gentle", label: "너무 무겁진 않게 해줘" },
+        ],
+      ];
+      return pairs[phaseIndex % pairs.length] ?? pairs[0];
+    }
+    case "summary": {
+      const pairs: DailyCareReply[][] = [
+        [
+          { id: "felt-right", label: "맞아, 그런 흐름이었어" },
+          { id: "felt-messy", label: "사실 좀 정신없었어" },
+        ],
+        [
+          { id: "more-flow", label: "그 흐름 조금만 더 짚어줘" },
+          { id: "hard-day", label: "오늘은 꽤 힘들었어" },
+        ],
+        [
+          { id: "activity-next", label: `${activityLabel} 얘기부터 해보자` },
+          { id: "softly", label: "부드럽게만 말해줘" },
+        ],
+      ];
+      return pairs[phaseIndex % pairs.length] ?? pairs[0];
+    }
+    case "activity": {
+      const pairs: DailyCareReply[][] = [
+        [
+          { id: "activity-yes", label: `맞아, ${activityLabel} 붙잡고 있었어` },
+          { id: "activity-heavy", label: `그 ${activityLabel}, 꽤 버거웠어` },
+        ],
+        [
+          { id: "activity-detail", label: `${activityLabel}을 좀 더 자세히 봐줘` },
+          { id: "activity-over", label: "생각보다 오래 했네" },
+        ],
+        [
+          { id: "activity-relieved", label: `${activityLabel} 끝낸 건 다행이야` },
+          { id: "activity-not-quite", label: "그렇게만 보이진 않았어" },
+        ],
+      ];
+      return pairs[phaseIndex % pairs.length] ?? pairs[0];
+    }
+    case "keywords": {
+      const pairs: DailyCareReply[][] = [
+        [
+          { id: "keyword-right", label: `${keywordLabel}, 맞는 것 같아` },
+          { id: "keyword-different", label: "나는 조금 다르게 느꼈어" },
+        ],
+        [
+          { id: "keyword-explain", label: "왜 그런 키워드인지 말해줘" },
+          { id: "keyword-tired", label: "그냥 오늘은 피곤했어" },
+        ],
+        [
+          { id: "keyword-keep", label: "이 감정도 기억해줘" },
+          { id: "keyword-light", label: "가볍게 넘겨도 될 것 같아" },
+        ],
+      ];
+      return pairs[phaseIndex % pairs.length] ?? pairs[0];
+    }
+    default:
+      return [
+        { id: "continue", label: "이어서 같이 봐줘" },
+        { id: "slow", label: "천천히 말해줘" },
+      ];
+  }
 }
 
 function toCompanionMessages(history: DailyCareThreadMessage[]): CompanionMessage[] {
