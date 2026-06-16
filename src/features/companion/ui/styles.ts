@@ -2,20 +2,29 @@ export const companionStyles = {
   stack:
     "tauri-interactive-zone inline-flex flex-col items-end justify-end gap-2.5 overflow-visible p-2.5",
 
-  /** Compact nudge bubble sitting above the mate anchor. */
-  nudgeCard:
-    "w-chat-nudge origin-bottom-right rounded-[20px] border border-white/10 bg-[#2b2629]/95 px-3.5 py-3 text-[color:var(--shell-ink)] shadow-[0_16px_40px_rgb(0_0_0/0.35)] backdrop-blur-md transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-safe-animate animate-tab-panel-enter",
-
-  nudgeName:
+  /** Nudge note bubble only — 1–2 sentences, tap to open pocket chat. */
+  noteBubble: [
+    "relative w-chat-nudge max-w-chat-nudge origin-bottom-right rounded-[20px]",
+    "border border-white/10 bg-[#2b2629] px-3.5 py-3 text-[color:var(--shell-ink)]",
+    "shadow-[0_16px_40px_rgb(0_0_0/0.35)]",
+    "after:pointer-events-none after:absolute after:-bottom-[7px] after:right-5",
+    "after:size-3.5 after:rotate-45 after:rounded-[2px]",
+    "after:border after:border-white/10 after:border-t-0 after:border-l-0 after:bg-[#2b2629]",
+  ].join(" "),
+  noteBubbleEnter:
+    "motion-safe-animate animate-chat-in",
+  noteEyebrow:
+    "mb-1 text-[10px] font-medium uppercase tracking-[0.08em] text-[color:var(--shell-ink-faint)]",
+  noteName:
     "mb-1.5 text-[11px] font-semibold text-[color:rgb(var(--accent-rgb)/0.9)]",
-  nudgeMessage:
-    "block w-full rounded-[14px] bg-white/[0.04] px-3 py-2.5 text-left text-[13px] leading-relaxed text-[color:var(--shell-ink)] transition hover:bg-white/[0.07] active:scale-[0.995]",
+  noteMessage:
+    "line-clamp-3 block w-full rounded-[14px] bg-white/[0.04] px-3 py-2.5 text-left text-[13px] leading-relaxed text-[color:var(--shell-ink)] transition hover:bg-white/[0.07] active:scale-[0.995]",
 
-  /** Full chat sheet above anchor — LoveyDovey / Zeta inspired warm chat. */
+  /** Full pocket / deep chat panel above mate anchor. */
   chatPanel: [
     "flex h-chat-panel w-chat-panel origin-bottom-right flex-col overflow-hidden rounded-[24px]",
     "border border-white/10 bg-[#1f1b1e] shadow-[0_20px_48px_rgb(0_0_0/0.42)]",
-    "transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-safe-animate animate-tab-panel-enter",
+    "motion-safe-animate animate-chat-in",
   ].join(" "),
 
   chatHeader:

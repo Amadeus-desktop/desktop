@@ -16,7 +16,7 @@ const CHAT_PRESENCE_ICON_PX = 44;
 const CHAT_NUDGE_WIDTH_PX = 296;
 const CHAT_PANEL_WIDTH_PX = 368;
 const CHAT_PANEL_HEIGHT_PX = 448;
-const NUDGE_CARD_HEIGHT_PX = 108;
+const NOTE_BUBBLE_MIN_HEIGHT_PX = 120;
 
 const ANCHOR_STACK_HEIGHT_PX =
   CHAT_PRESENCE_ICON_PX + COMPANION_STACK_GAP_PX;
@@ -26,13 +26,15 @@ const QUIET_CONTENT: CompanionContentRect = {
   height: CHAT_PRESENCE_ICON_PX + COMPANION_STACK_PADDING_PX,
 };
 
+const NOTE_BUBBLE_STACK_HEIGHT_PX =
+  NOTE_BUBBLE_MIN_HEIGHT_PX +
+  COMPANION_STACK_GAP_PX +
+  ANCHOR_STACK_HEIGHT_PX +
+  COMPANION_STACK_PADDING_PX;
+
 const NUDGE_CONTENT: CompanionContentRect = {
   width: CHAT_NUDGE_WIDTH_PX + COMPANION_STACK_PADDING_PX,
-  height:
-    NUDGE_CARD_HEIGHT_PX +
-    COMPANION_STACK_GAP_PX +
-    ANCHOR_STACK_HEIGHT_PX +
-    COMPANION_STACK_PADDING_PX,
+  height: NOTE_BUBBLE_STACK_HEIGHT_PX,
 };
 
 const PANEL_CONTENT: CompanionContentRect = {
@@ -74,6 +76,13 @@ export function mergeCompanionContentRect(
   const floor = getCompanionModeContentFloor(mode);
   if (!floor) {
     return measured;
+  }
+
+  if (mode === "nudge") {
+    return {
+      width: Math.max(measured.width, floor.width),
+      height: Math.max(measured.height, floor.height),
+    };
   }
 
   return {

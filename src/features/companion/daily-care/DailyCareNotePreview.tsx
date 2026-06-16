@@ -4,6 +4,7 @@ import { companionStyles } from "../ui/styles";
 import { CloseIcon } from "../ui/icons";
 import { LocalTimeline } from "../dev/LocalTimeline";
 import type { TimelineEvent } from "../../timeline/types";
+import { buildDailyCareInsight } from "../../report/lib/report";
 import { buildDailyCareStats } from "./dailyCareStats";
 
 type DailyCareNotePreviewProps = {
@@ -21,6 +22,7 @@ export function DailyCareNotePreview({
 }: DailyCareNotePreviewProps) {
   const locale = useI18n();
   const stats = buildDailyCareStats(timelineEvents, locale);
+  const insight = buildDailyCareInsight(timelineEvents, locale);
 
   return (
     <section className={companionStyles.chatPanel}>
@@ -45,6 +47,29 @@ export function DailyCareNotePreview({
             {labels.dailyCare.intro}
           </p>
 
+          <section className={companionStyles.statCard}>
+            <p className="text-[11px] text-[color:var(--shell-ink-faint)]">
+              {locale.report.summaryOverlay.steps.narrative.eyebrow}
+            </p>
+            <p className="mt-1.5 text-[13px] leading-relaxed text-[color:var(--shell-ink)]">
+              {insight.companionNarrative}
+            </p>
+          </section>
+
+          {insight.activityDetails[0] ? (
+            <section className={companionStyles.statCard}>
+              <p className="text-[11px] text-[color:var(--shell-ink-faint)]">
+                {locale.report.summaryOverlay.steps.activity.eyebrow}
+              </p>
+              <p className="mt-1 text-[13px] font-medium text-[color:var(--shell-ink)]">
+                {insight.activityDetails[0].label}
+              </p>
+              <p className="mt-1 text-[12px] leading-relaxed text-[color:var(--shell-ink-muted)]">
+                {insight.activityDetails[0].summary}
+              </p>
+            </section>
+          ) : null}
+
           <div className="grid grid-cols-2 gap-3">
             <CareStat
               label={labels.dailyCare.togetherTime}
@@ -61,7 +86,7 @@ export function DailyCareNotePreview({
               {labels.dailyCare.keywords}
             </p>
             <p className="mt-1 text-[13px] font-medium text-[color:var(--shell-ink)]">
-              {labels.dailyCare.keywordValue}
+              {insight.keywords.join(" · ")}
             </p>
           </section>
 
@@ -70,7 +95,7 @@ export function DailyCareNotePreview({
               {labels.dailyCare.closing}
             </p>
             <p className="mt-1.5 text-[13px] leading-relaxed text-[color:var(--shell-ink)]">
-              {labels.dailyCare.closingMessage}
+              {insight.closingNote}
             </p>
           </section>
         </div>

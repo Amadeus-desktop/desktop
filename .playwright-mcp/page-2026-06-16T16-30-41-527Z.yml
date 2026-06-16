@@ -1,0 +1,19 @@
+- main [ref=e4]:
+  - generic [ref=e9]:
+    - generic [ref=e12]:
+      - generic [ref=e13]:
+        - paragraph [ref=e14]: Amadeus
+        - heading "조용히 함께하는 동반자" [level=1] [ref=e15]
+        - paragraph [ref=e16]: Google로 시작해 설정과 기록을 기기에 맞춰보세요.
+      - generic [ref=e18]:
+        - button "Google로 계속하기" [ref=e19] [cursor=pointer]:
+          - img [ref=e20]
+          - generic [ref=e25]: Google로 계속하기
+        - paragraph [ref=e26]: 계속하면 이용약관 및 개인정보 처리방침에 동의합니다.
+    - generic [ref=e27]:
+      - generic [ref=e28]:
+        - generic "로그인" [ref=e29]
+        - generic "맥락 허용" [ref=e30]
+        - generic "말하는 방식" [ref=e31]
+        - generic "동반자" [ref=e32]
+      - paragraph [ref=e33]: 로그인

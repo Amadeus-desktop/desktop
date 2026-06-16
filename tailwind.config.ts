@@ -73,6 +73,10 @@ export default {
         "chat-base": ["14px", { lineHeight: "1.6" }],
         "chat-title": ["15px", { lineHeight: "1.2", fontWeight: "600" }],
       },
+      zIndex: {
+        "daily-care-overlay": "1200",
+        "daily-care-controls": "1300",
+      },
       boxShadow: {
         glass:
           "0 18px 48px rgb(0 0 0 / 0.28), inset 0 1px 0 rgb(255 255 255 / 0.08)",
@@ -84,6 +88,20 @@ export default {
         "chat-fab": "none",
         "chat-fab-dark": "none",
         "persona-glow": "0 0 0 1px rgb(255 255 255 / 0.08)",
+        "daily-care-sheet": "0 -28px 96px rgb(0 0 0 / 0.5)",
+      },
+      backgroundImage: {
+        "daily-care-sheet-gradient":
+          "linear-gradient(to bottom, rgb(var(--accent-rgb) / 0.18), var(--daily-care-sheet-mid), var(--daily-care-sheet-deep))",
+        "daily-care-sheet-glow":
+          "radial-gradient(circle at 28% 0%, rgb(var(--accent-rgb) / 0.24), transparent 34%), radial-gradient(circle at 82% 8%, var(--daily-care-glow), transparent 30%)",
+      },
+      transitionTimingFunction: {
+        sheet: "cubic-bezier(0.16, 1, 0.3, 1)",
+      },
+      transitionDuration: {
+        "daily-care-enter": "780ms",
+        "daily-care-exit": "640ms",
       },
       keyframes: {
         "chat-in": {
@@ -118,6 +136,22 @@ export default {
           "0%, 100%": { opacity: "0.35", transform: "translateY(0)" },
           "50%": { opacity: "1", transform: "translateY(-2px)" },
         },
+        "daily-care-scrim-in": {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
+        "daily-care-scrim-out": {
+          from: { opacity: "1" },
+          to: { opacity: "0" },
+        },
+        "daily-care-sheet-rise": {
+          from: { opacity: "0.985", transform: "translateY(100%)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        "daily-care-sheet-fall": {
+          from: { opacity: "1", transform: "translateY(0)" },
+          to: { opacity: "0.985", transform: "translateY(100%)" },
+        },
       },
       animation: {
         "chat-in": `chat-in 240ms ${motionEase} forwards`,
@@ -128,6 +162,12 @@ export default {
         "tab-panel-enter": `tab-panel-enter 280ms ${motionEase}`,
         "onboarding-enter": `onboarding-enter 360ms ${motionEase}`,
         "onboarding-step-enter": `onboarding-step-enter 280ms ${motionEase}`,
+        "daily-care-scrim-in": "daily-care-scrim-in 780ms ease-out forwards",
+        "daily-care-scrim-out": "daily-care-scrim-out 640ms ease-out forwards",
+        "daily-care-sheet-rise":
+          "daily-care-sheet-rise 780ms cubic-bezier(0.16, 1, 0.3, 1) forwards",
+        "daily-care-sheet-fall":
+          "daily-care-sheet-fall 640ms cubic-bezier(0.16, 1, 0.3, 1) forwards",
       },
     },
   },

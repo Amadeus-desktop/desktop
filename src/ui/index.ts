@@ -13,7 +13,7 @@ export { IosSwitch } from "./components/IosSwitch";
 export { MacInput } from "./components/MacInput";
 export { SegmentedControl } from "./components/SegmentedControl";
 export { SettingSelect } from "./components/SettingSelect";
-export { MacWindow } from "./components/MacWindow";
+export { MacWindow, MAIN_WINDOW_OVERLAY_ROOT_ID } from "./components/MacWindow";
 export { PanelHeader } from "./components/PanelHeader";
 export { SidebarBrand } from "./components/SidebarBrand";
 export { ReportCard } from "./components/ReportCard";

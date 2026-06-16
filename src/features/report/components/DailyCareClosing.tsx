@@ -1,3 +1,6 @@
+import { shellText } from "../../../ui/theme/shellStyles";
+import { reportPanelStyles } from "../ui/reportStyles";
+
 type DailyCareClosingProps = {
   title: string;
   keywordsTitle: string;
@@ -13,26 +16,23 @@ export function DailyCareClosing({
 }: DailyCareClosingProps) {
   return (
     <div className="space-y-2.5">
-      <article className="rounded-[18px] border border-[#48484f] bg-[#222226] p-3.5">
-        <div className="text-[10px] font-medium uppercase tracking-wide text-white/40">
+      <article className={reportPanelStyles.closingCard}>
+        <div className={`text-[10px] font-medium uppercase tracking-wide ${shellText.faint}`}>
           {keywordsTitle}
         </div>
         <div className="mt-2 flex flex-wrap gap-1.5">
           {keywords.map((keyword) => (
-            <span
-              key={keyword}
-              className="rounded-full border border-[color:rgb(var(--accent-rgb)/0.25)] bg-[color:rgb(var(--accent-rgb)/0.10)] px-2.5 py-0.5 text-[11px] text-[color:var(--accent-soft)]"
-            >
+            <span key={keyword} className={reportPanelStyles.keywordChip}>
               {keyword}
             </span>
           ))}
         </div>
       </article>
-      <article className="rounded-[18px] border border-[color:rgb(var(--accent-rgb)/0.20)] bg-gradient-to-br from-[color:rgb(var(--accent-rgb)/0.10)] to-[#222226] p-4">
-        <div className="text-[10px] font-medium uppercase tracking-wide text-white/40">
+      <article className={reportPanelStyles.closingAccentCard}>
+        <div className={`text-[10px] font-medium uppercase tracking-wide ${shellText.faint}`}>
           {title}
         </div>
-        <p className="mt-2 text-[13px] leading-6 text-white/82">{closingNote}</p>
+        <p className={`mt-2 text-[13px] leading-6 ${shellText.muted}`}>{closingNote}</p>
       </article>
     </div>
   );

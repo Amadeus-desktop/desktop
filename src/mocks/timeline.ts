@@ -37,6 +37,7 @@ export function createMockContextEvent(
     kind: "context",
     title: event.appName,
     subtitle: event.windowTitle,
+    metadataJson: event.metadataJson,
   });
 
   return event;
@@ -58,6 +59,7 @@ export function createMockUtteranceEvent(
     kind: "utterance",
     title: event.message,
     subtitle: `${event.triggerType} · ${event.provider}`,
+    metadataJson: "{}",
   });
 
   return event;
@@ -79,6 +81,7 @@ export function createMockUserReaction(
     kind: "reaction",
     title: reaction.reactionType,
     subtitle: reaction.utteranceEventId ?? "",
+    metadataJson: "{}",
   });
 
   return reaction;

@@ -24,7 +24,7 @@ export function WindowControls() {
   };
 
   return (
-    <div className="mb-3 ml-2 flex gap-2">
+    <div className="window-controls pointer-events-auto ml-1 flex gap-2">
       <button
         type="button"
         onClick={handleClose}

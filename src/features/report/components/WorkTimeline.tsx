@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Button, TimelineList } from "../../../ui";
 import type { AppLocale } from "../../../i18n";
 import type { WorkTimelineItem } from "../types";
+import { reportPanelStyles } from "../ui/reportStyles";
+import { shellText } from "../../../ui/theme/shellStyles";
 
 const DEFAULT_VISIBLE_COUNT = 5;
 
@@ -22,7 +24,7 @@ export function WorkTimeline({ items, loading, labels }: WorkTimelineProps) {
 
   if (loading) {
     return (
-      <div className="rounded-[18px] border border-[#333338] bg-[#222226] p-4 text-[13px] text-white/42">
+      <div className={`${reportPanelStyles.timelinePanel} ${shellText.faint}`}>
         {labels.loading}
       </div>
     );
@@ -30,7 +32,7 @@ export function WorkTimeline({ items, loading, labels }: WorkTimelineProps) {
 
   if (items.length === 0) {
     return (
-      <div className="rounded-[18px] border border-[#333338] bg-[#222226] p-4 text-[13px] text-white/42">
+      <div className={`${reportPanelStyles.timelinePanel} ${shellText.faint}`}>
         {labels.empty}
       </div>
     );
@@ -43,7 +45,7 @@ export function WorkTimeline({ items, loading, labels }: WorkTimelineProps) {
         <Button
           variant="ghost"
           size="md"
-          className="w-full border border-[#333338] bg-[#222226] text-white/62 hover:text-white"
+          className={reportPanelStyles.timelineExpandButton}
           onClick={() => setExpanded((value) => !value)}
         >
           {expanded

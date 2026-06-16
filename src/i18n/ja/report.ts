@@ -7,6 +7,56 @@ export const report: ReportMessages = {
   intro: {
     prompt: "今日はよく頑張ったね。一緒に振り返ってみない？",
   },
+  summaryOverlay: {
+    preface: "今日もよく頑張ったね。",
+    title: "今日のことを\nゆっくり確かめてみる？",
+    description: "採点するのではなく、今日残った流れだけを静かにまとめています。",
+    close: "一日のまとめを閉じる",
+    defaultName: "きみ",
+    navigation: {
+      next: "次へ",
+      back: "戻る",
+      finish: "今日を閉じる",
+    },
+    stepLabels: {
+      welcome: "あいさつ",
+      summary: "そばで見た流れ",
+      mood: "感情キーワード",
+      moments: "残った跡",
+      closing: "締め",
+    },
+    steps: {
+      welcome: {
+        eyebrow: "Daily Care",
+        title: "今日のことを\n一緒に確かめてみる？",
+        description: "数字より先に、そばで見ていた流れからまとめるね。",
+        cta: "見てみる",
+      },
+      narrative: {
+        eyebrow: "そばで見た今日",
+        title: "今日残った流れ",
+      },
+      activity: {
+        eyebrow: "今日の跡",
+        longStay: "長く留まった流れ",
+        trace: "短く残った跡",
+        kinds: {
+          work: "作業",
+          break: "休憩",
+          unknown: "留まった場所",
+        },
+      },
+      keywords: {
+        eyebrow: "今日の感情",
+        title: "今日はこんな一日だったね",
+        description: "キーワードだけ軽く残しておいたよ。",
+      },
+      closing: {
+        eyebrow: "締め",
+        title: "companionから",
+      },
+    },
+  },
   sections: {
     summary: "今日一緒にいた時間",
     moments: "今日の瞬間",

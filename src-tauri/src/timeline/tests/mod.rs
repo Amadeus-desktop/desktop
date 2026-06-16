@@ -20,7 +20,12 @@ fn stores_context_utterance_and_reaction_as_timeline_rows() {
             app_name: "Visual Studio Code".to_string(),
             window_title: "Amadeus".to_string(),
             event_type: "active_window_changed".to_string(),
-            metadata_json: "{}".to_string(),
+            metadata_json: serde_json::json!({
+                "category": "Work",
+                "frontmostDurationMs": 3600000,
+                "browserContext": null
+            })
+            .to_string(),
         })
         .expect("context event is stored");
 
@@ -52,6 +57,7 @@ fn stores_context_utterance_and_reaction_as_timeline_rows() {
     assert_eq!(timeline[1].title, "잠깐 멈춘 것 같아서. 말 안 해도 괜찮아.");
     assert_eq!(timeline[2].kind, "context");
     assert_eq!(timeline[2].title, "Visual Studio Code");
+    assert!(timeline[2].metadata_json.contains("frontmostDurationMs"));
 }
 
 #[test]

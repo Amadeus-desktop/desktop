@@ -116,6 +116,7 @@ pub fn run_trigger_engine_once(
             )
         })
         .flatten();
+    let trigger_input_for_llm = trigger_input.clone();
     let mut evaluation = evaluate_trigger_with_ocr_context(
         trigger_input,
         &settings,
@@ -152,6 +153,7 @@ pub fn run_trigger_engine_once(
             &settings,
             &snapshot,
             &privacy,
+            &trigger_input_for_llm,
             &evaluation,
             ocr_observation
                 .as_ref()

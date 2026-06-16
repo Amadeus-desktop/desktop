@@ -1,0 +1,5 @@
+{"type":"click","text":"A\n    \n      추천: main window 내부 전체 overlay\n      창 크기는 유지하고, ReportPanel 위를 full-bleed 회고 화면으로 덮습니다. lifecycle 충돌이 가장 적습니다.","choice":"recommended","id":null,"timestamp":1781626987385}
+{"type":"click","text":"A\n    \n      추천: main window 내부 전체 overlay\n      창 크기는 유지하고, ReportPanel 위를 full-bleed 회고 화면으로 덮습니다. lifecycle 충돌이 가장 적습니다.","choice":"recommended","id":null,"timestamp":1781626987601}
+{"type":"click","text":"A\n    \n      추천: main window 내부 전체 overlay\n      창 크기는 유지하고, ReportPanel 위를 full-bleed 회고 화면으로 덮습니다. lifecycle 충돌이 가장 적습니다.","choice":"recommended","id":null,"timestamp":1781626988685}
+{"type":"click","text":"B\n    \n      별도 main window layout mode\n      회고 전용 창 크기/애니메이션을 lifecycle에 추가합니다. 멋은 있지만 현재 window queue 영향이 큽니다.","choice":"new-layout-mode","id":null,"timestamp":1781626991635}
+{"type":"click","text":"A\n    \n      추천: main window 내부 전체 overlay\n      창 크기는 유지하고, ReportPanel 위를 full-bleed 회고 화면으로 덮습니다. lifecycle 충돌이 가장 적습니다.","choice":"recommended","id":null,"timestamp":1781626991935}

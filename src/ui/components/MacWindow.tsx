@@ -6,6 +6,10 @@ import {
   controlCenterWindowPolicy,
   onboardingWindowPolicy,
 } from "../layout/controlCenterPreferences";
+import { WindowControls } from "./WindowControls";
+
+/** Portal mount for in-window overlays (Daily Care, etc.). */
+export const MAIN_WINDOW_OVERLAY_ROOT_ID = "main-window-overlay-root";
 
 type MacWindowVariant = "control-center" | "onboarding";
 
@@ -32,7 +36,7 @@ export function MacWindow({ children, variant = "control-center" }: MacWindowPro
   return (
     <section
       className={cn(
-        "flex h-full w-full min-h-0 overflow-hidden text-white",
+        "relative flex h-full w-full min-h-0 overflow-hidden text-white",
         glassStyles.shell,
         glassStyles.radiusWindow,
         "tauri-no-drag",
@@ -45,6 +49,16 @@ export function MacWindow({ children, variant = "control-center" }: MacWindowPro
       }}
     >
       {children}
+      <div
+        id={MAIN_WINDOW_OVERLAY_ROOT_ID}
+        className="pointer-events-none absolute inset-0 z-daily-care-overlay overflow-hidden"
+        aria-hidden="true"
+      />
+      {variant === "control-center" ? (
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-daily-care-controls px-3 pt-3">
+          <WindowControls />
+        </div>
+      ) : null}
     </section>
   );
 }

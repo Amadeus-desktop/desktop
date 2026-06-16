@@ -14,6 +14,7 @@ describe("buildDailyCareStats", () => {
         occurredAt: now.getTime(),
         title: "Code",
         subtitle: "Amadeus",
+        metadataJson: "{}",
       },
       {
         id: "ctx-2",
@@ -21,6 +22,7 @@ describe("buildDailyCareStats", () => {
         occurredAt: now.getTime() + 10 * 60 * 1000,
         title: "Code",
         subtitle: "Amadeus",
+        metadataJson: "{}",
       },
       {
         id: "utt-1",
@@ -28,6 +30,7 @@ describe("buildDailyCareStats", () => {
         occurredAt: now.getTime() + 11 * 60 * 1000,
         title: "잠깐 쉬어도 괜찮아.",
         subtitle: "deep_pause · template",
+        metadataJson: "{}",
       },
     ];
 

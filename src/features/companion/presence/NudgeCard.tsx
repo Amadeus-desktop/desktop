@@ -1,5 +1,7 @@
 import type { CompanionLocale } from "../../../i18n";
+import { formatNudgePreview } from "../lib/formatNudgePreview";
 import { companionStyles } from "../ui/styles";
+import { NoteBubble } from "./NoteBubble";
 
 type NudgeCardProps = {
   personaName: string;
@@ -16,21 +18,24 @@ export function NudgeCard({
   onOpen,
   onIgnore,
 }: NudgeCardProps) {
+  const preview = formatNudgePreview(nudge);
+
   return (
-    <article className={companionStyles.nudgeCard}>
-      <p className={companionStyles.nudgeName}>{personaName}</p>
+    <NoteBubble>
+      <p className={companionStyles.noteEyebrow}>{labels.presence.newMessage}</p>
+      <p className={companionStyles.noteName}>{personaName}</p>
       <button
         type="button"
         onClick={onOpen}
-        className={`tauri-interactive ${companionStyles.nudgeMessage}`}
+        className={`tauri-interactive ${companionStyles.noteMessage}`}
       >
-        {nudge}
+        {preview}
       </button>
       <div className="mt-2 flex justify-end">
         <button type="button" onClick={onIgnore} className={companionStyles.textLink}>
           {labels.nudge.ignore}
         </button>
       </div>
-    </article>
+    </NoteBubble>
   );
 }

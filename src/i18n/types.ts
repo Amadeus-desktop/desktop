@@ -224,6 +224,52 @@ export type AppLocale = {
     intro: {
       prompt: string;
     };
+    summaryOverlay: {
+      preface: string;
+      title: string;
+      description: string;
+      close: string;
+      defaultName: string;
+      navigation: {
+        next: string;
+        back: string;
+        finish: string;
+      };
+      stepLabels: {
+        welcome: string;
+        summary: string;
+        mood: string;
+        moments: string;
+        closing: string;
+      };
+      steps: {
+        welcome: {
+          eyebrow: string;
+          title: string;
+          description: string;
+          cta: string;
+        };
+        narrative: {
+          eyebrow: string;
+          title: string;
+        };
+        activity: {
+          eyebrow: string;
+          longStay: string;
+          trace: string;
+          kinds: Record<"work" | "break" | "unknown", string>;
+        };
+        keywords: {
+          eyebrow: string;
+          title: string;
+          description: string;
+        };
+        closing: {
+          eyebrow: string;
+          title: string;
+        };
+      };
+    };
     sections: {
       summary: string;
       moments: string;
@@ -284,6 +330,7 @@ export type AppLocale = {
     nudge: {
       close: string;
       ignore: string;
+      open: string;
     };
     chat: {
       close: string;
@@ -301,13 +348,9 @@ export type AppLocale = {
       close: string;
       intro: string;
       togetherTime: string;
-      togetherTimeValue: string;
       noteCount: string;
-      noteCountValue: string;
       keywords: string;
-      keywordValue: string;
       closing: string;
-      closingMessage: string;
     };
     dev: {
       mate: string;

@@ -71,8 +71,9 @@ pub(crate) fn llm_request_for_trigger(
         persona_summary: Some(crate::llm::persona_summary(
             &settings.locale,
             &settings.nickname,
+            &settings.companion_persona_id,
         )),
-        safe_memory_summary: None,
+        safe_memory_summary: safe_memory_summary_for_trigger(snapshot, None),
         trigger_type: candidate.trigger_type.as_str().to_string(),
         trigger_reason: candidate.reason.clone(),
         tone_hint: "calm".to_string(),
@@ -87,6 +88,68 @@ pub(crate) fn llm_request_for_trigger(
         locale: settings.locale.clone(),
     }
     .with_redacted_ocr_summary(redacted_ocr_summary.map(str::to_string))
+}
+
+pub(crate) fn llm_request_for_trigger_input(
+    input: &TriggerInput,
+    evaluation: &TriggerEvaluation,
+    candidate: &TriggerCandidate,
+    settings: &AppSettings,
+    redacted_ocr_summary: Option<&str>,
+) -> LlmInputEnvelope {
+    let privacy = &input.privacy;
+    let snapshot = &input.snapshot;
+    let mut request = llm_request_for_trigger(
+        snapshot,
+        privacy,
+        evaluation,
+        candidate,
+        settings,
+        redacted_ocr_summary,
+    );
+    request.safe_memory_summary = safe_memory_summary_for_trigger(snapshot, input.history.as_ref());
+    request
+}
+
+fn safe_memory_summary_for_trigger(
+    snapshot: &MacosContextSnapshot,
+    history: Option<&ProcessHistoryWindow>,
+) -> Option<String> {
+    let mut parts = Vec::new();
+    if let Some(history) = history {
+        if history.work_cluster_duration_ms > 0 {
+            parts.push(format!(
+                "recent_work_cluster_minutes={}",
+                history.work_cluster_duration_ms / MINUTE_MS
+            ));
+        }
+        if history.app_switch_count > 0 {
+            parts.push(format!("recent_app_switches={}", history.app_switch_count));
+        }
+        if history.non_work_single_app_max_duration_ms > 0 {
+            parts.push(format!(
+                "recent_non_work_single_app_max_seconds={}",
+                history.non_work_single_app_max_duration_ms / 1000
+            ));
+        }
+    }
+    if let Some(browser_context) = snapshot.browser_context.as_ref() {
+        parts.push(format!("browser_url_class={:?}", browser_context.url_class));
+        if let Some(host) = browser_context.url_host.as_deref() {
+            parts.push(format!("browser_host={host}"));
+        }
+    }
+    if snapshot.frontmost_duration_ms > 0 {
+        parts.push(format!(
+            "current_frontmost_seconds={}",
+            snapshot.frontmost_duration_ms / 1000
+        ));
+    }
+    if parts.is_empty() {
+        None
+    } else {
+        Some(parts.join("; "))
+    }
 }
 
 pub(crate) fn should_capture_ocr_for_trigger(

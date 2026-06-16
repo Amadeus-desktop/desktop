@@ -13,7 +13,8 @@ use crate::{
 
 use super::{metadata::trigger_context_metadata_json, CommandError};
 use crate::trigger::{
-    scoring::{llm_gate_for_trigger, llm_request_for_trigger},
+    core::TriggerInput,
+    scoring::{llm_gate_for_trigger, llm_request_for_trigger_input},
     TriggerEvaluation,
 };
 
@@ -23,6 +24,7 @@ pub(super) fn persist_trigger_events(
     settings: &AppSettings,
     snapshot: &MacosContextSnapshot,
     privacy: &PrivacyAssessment,
+    trigger_input: &TriggerInput,
     evaluation: &TriggerEvaluation,
     redacted_ocr_summary: Option<&str>,
 ) -> Result<(Option<ContextEvent>, Option<UtteranceEvent>), CommandError> {
@@ -48,15 +50,15 @@ pub(super) fn persist_trigger_events(
         return Ok((Some(context_event), None));
     }
 
+    let request = llm_request_for_trigger_input(
+        trigger_input,
+        evaluation,
+        candidate,
+        settings,
+        redacted_ocr_summary,
+    );
     let generation = llm_state
-        .generate_utterance(&llm_request_for_trigger(
-            snapshot,
-            privacy,
-            evaluation,
-            candidate,
-            settings,
-            redacted_ocr_summary,
-        ))
+        .generate_utterance(&request)
         .map_err(|error| CommandError::from(error.to_string()))?;
     let utterance_event = repository
         .create_utterance_event(CreateUtteranceEventInput {

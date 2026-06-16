@@ -5,7 +5,10 @@ import type { GeneralSettings } from "../../settings/types";
 import { recordTriggerReactionForScoring } from "../../trigger";
 import { generatePocketIntro } from "../lib/pocketIntro";
 import { persistCompanionExchange } from "../lib/conversationPersistence";
-import { patchCompanionSession } from "../lib/companionSessionStore";
+import {
+  getCompanionSessionSnapshot,
+  patchCompanionSession,
+} from "../lib/companionSessionStore";
 import { resolveCompanionReply } from "../lib/reply";
 import type { CompanionMateId } from "../../../domain/mate";
 import type {
@@ -15,6 +18,8 @@ import type {
 } from "../types";
 
 type TransitionMode = (mode: CompanionMode) => Promise<void>;
+
+const POCKET_FIRST_SPEAK_DELAY_MS = 520;
 
 type UseCompanionChatActionsOptions = {
   mode: CompanionMode;
@@ -50,6 +55,7 @@ export function useCompanionChatActions({
 }: UseCompanionChatActionsOptions) {
   const openPocket = useCallback(async () => {
     const intro = generatePocketIntro(nudge, selectedPersona);
+    const openingId = `companion-intro-${Date.now()}`;
 
     logger.info("ui", "companion pocket opening", {
       fromMode: mode,
@@ -58,16 +64,26 @@ export function useCompanionChatActions({
 
     patchCompanionSession({
       mode: "pocket",
-      messages: [
-        {
-          id: `companion-intro-${Date.now()}`,
-          sender: "companion",
-          text: intro,
-        },
-      ],
+      messages: [],
     });
+    setMessages([]);
+    setIsSending(true);
+    window.setTimeout(() => {
+      const currentSession = getCompanionSessionSnapshot();
+      if (currentSession.mode !== "pocket") {
+        setIsSending(false);
+        return;
+      }
+      const introMessage: CompanionMessage = {
+        id: openingId,
+        sender: "companion",
+        text: intro,
+      };
+      setMessages([introMessage]);
+      setIsSending(false);
+    }, POCKET_FIRST_SPEAK_DELAY_MS);
     void recordReaction("opened").catch(() => undefined);
-  }, [mode, nudge, recordReaction, selectedPersona]);
+  }, [mode, nudge, recordReaction, selectedPersona, setIsSending, setMessages]);
 
   const openIcon = useCallback(async () => {
     logger.info("ui", "companion icon click", {
@@ -98,8 +114,9 @@ export function useCompanionChatActions({
     await recordReaction("closed", { score: true });
     patchCompanionSession({ activeUtteranceId: null, messages: [], draft: "" });
     setMessages([]);
+    setIsSending(false);
     await transitionMode("quiet");
-  }, [recordReaction, setMessages, transitionMode]);
+  }, [recordReaction, setIsSending, setMessages, transitionMode]);
 
   const openDailyCare = useCallback(async () => {
     if (!settings.nightCareEnabled) return;

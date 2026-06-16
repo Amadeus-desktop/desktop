@@ -44,6 +44,15 @@ fn api_provider_envelope_excludes_ocr_and_title() {
 }
 
 #[test]
+fn api_provider_envelope_keeps_safe_trigger_reason() {
+    let mut source = policy_envelope();
+    source.trigger_reason = "non_work_duration_detected".to_string();
+    let envelope = source.for_provider(ProviderInputGrade::ApiRedacted);
+
+    assert_eq!(envelope.trigger_reason, "non_work_duration_detected");
+}
+
+#[test]
 fn chat_envelope_filters_provider_input() {
     let request = chat_request(vec![LlmChatMessage {
         role: "user".to_string(),

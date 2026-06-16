@@ -173,4 +173,5 @@ pub struct TimelineEvent {
     pub kind: String,
     pub title: String,
     pub subtitle: String,
+    pub metadata_json: String,
 }

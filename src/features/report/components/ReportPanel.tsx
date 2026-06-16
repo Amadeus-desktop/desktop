@@ -1,15 +1,21 @@
+import { useCallback, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { Button, PanelHeader, SectionHeading } from "../../../ui";
 import { useI18n } from "../../../i18n";
+import { useAppSettings } from "../../settings";
 import { CareSummaryGrid } from "./CareSummaryGrid";
 import { DailyCareClosing } from "./DailyCareClosing";
 import { DailyCareHero } from "./DailyCareHero";
+import { DailyCareSummaryOverlay } from "./DailyCareSummaryOverlay";
 import { buildDailyCareInsight } from "../lib/report";
 import { WorkTimeline } from "./WorkTimeline";
 import { useReport } from "../hooks/useReport";
+import { reportPanelStyles } from "../ui/reportStyles";
 
 export function ReportPanel() {
   const t = useI18n();
+  const { settings } = useAppSettings();
+  const [summaryMounted, setSummaryMounted] = useState(false);
   const {
     events,
     reportMetrics,
@@ -19,15 +25,23 @@ export function ReportPanel() {
   } = useReport();
   const insight = buildDailyCareInsight(events, t);
 
+  const openSummary = useCallback(() => {
+    setSummaryMounted(true);
+  }, []);
+
+  const closeSummary = useCallback(() => {
+    setSummaryMounted(false);
+  }, []);
+
   return (
-    <section className="motion-safe-animate animate-tab-panel-enter">
+    <section className="relative min-h-full motion-safe-animate animate-tab-panel-enter">
       <PanelHeader
         eyebrow={t.report.eyebrow}
         title={t.report.title}
         description={t.report.description}
       />
 
-      <DailyCareHero prompt={t.report.intro.prompt} />
+      <DailyCareHero prompt={insight.heroPrompt} onOpenSummary={openSummary} />
 
       <SectionHeading>{t.report.sections.summary}</SectionHeading>
       <CareSummaryGrid metrics={reportMetrics} />
@@ -39,7 +53,7 @@ export function ReportPanel() {
         <Button
           variant="ghost"
           size="sm"
-          className="h-7 gap-1.5 px-2.5 text-white/52 hover:text-white"
+          className={reportPanelStyles.refreshButton}
           onClick={refreshReport}
           aria-label={t.report.timeline.refresh}
           title={t.report.timeline.refresh}
@@ -62,6 +76,17 @@ export function ReportPanel() {
         keywords={insight.keywords}
         closingNote={insight.closingNote}
       />
+
+      {summaryMounted ? (
+        <DailyCareSummaryOverlay
+          insight={insight}
+          metrics={reportMetrics}
+          moments={workTimeline}
+          labels={t.report}
+          nickname={settings.nickname}
+          onClose={closeSummary}
+        />
+      ) : null}
     </section>
   );
 }

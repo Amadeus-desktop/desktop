@@ -95,6 +95,14 @@ export const amadeusTailwindPlugin = plugin(({ addBase, addUtilities }) => {
     "[data-tauri] .motion-safe-animate": {
       animation: "none !important",
     },
+    "html[data-daily-care-overlay='open'] body": {
+      overflow: "hidden",
+    },
+    "html[data-daily-care-overlay='open'] .window-controls": {
+      position: "relative",
+      zIndex: "1300",
+      pointerEvents: "auto",
+    },
   });
 
   addUtilities({

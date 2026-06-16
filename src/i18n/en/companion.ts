@@ -16,6 +16,7 @@ export const companion: CompanionMessages = {
   nudge: {
     close: "Close note",
     ignore: "I'm okay for now",
+    open: "Open to hear it",
   },
   chat: {
     close: "Close chat",
@@ -33,13 +34,9 @@ export const companion: CompanionMessages = {
     close: "Close Daily Care",
     intro: "Want to look back at what you pushed through?",
     togetherTime: "Time together",
-    togetherTimeValue: "2h 40m",
     noteCount: "Notes from Amadeus",
-    noteCountValue: "3",
     keywords: "Today's mood keywords",
-    keywordValue: "Endurance · Stuck · Restart",
     closing: "A short note from Amadeus",
-    closingMessage: "It doesn't have to be smooth. Starting again today is already enough.",
   },
   dev: {
     mate: "Mate",

@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import { glassStyles } from "../theme/shellStyles";
-import { WindowControls } from "./WindowControls";
 import { WindowDragStrip } from "./WindowDragStrip";
 
 type SidebarProps = {
@@ -14,9 +13,8 @@ export function Sidebar({ brand, children, footer }: SidebarProps) {
     <aside
       className={`tauri-no-drag flex h-full w-full min-w-0 flex-col gap-0.5 px-2 py-3 max-sm:border-b max-sm:border-white/8 max-sm:py-2 ${glassStyles.sidebar}`}
     >
-      <div className="flex w-full items-center pb-2">
-        <WindowControls />
-      </div>
+      {/* WindowControls live on MacWindow so Daily Care overlay cannot block them. */}
+      <div className="h-7 shrink-0 pb-2" aria-hidden="true" />
       {brand}
       <nav className="flex flex-col gap-1 max-sm:flex-row max-sm:overflow-x-auto">
         {children}

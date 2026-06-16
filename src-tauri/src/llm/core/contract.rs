@@ -60,7 +60,7 @@ impl LlmInputEnvelope {
                 envelope.score_summary = None;
             }
             ProviderInputGrade::ApiRedacted => {
-                envelope.trigger_reason.clear();
+                envelope.trigger_reason = public_trigger_reason(&envelope.trigger_reason);
                 envelope.tone_hint.clear();
                 envelope.redacted_window_title = None;
                 envelope.redacted_ocr_summary = None;
@@ -69,6 +69,19 @@ impl LlmInputEnvelope {
             ProviderInputGrade::LocalRedacted => {}
         }
         envelope
+    }
+}
+
+fn public_trigger_reason(reason: &str) -> String {
+    let is_public_reason = !reason.is_empty()
+        && reason.len() <= 80
+        && reason.chars().all(|character| {
+            character.is_ascii_lowercase() || character.is_ascii_digit() || character == '_'
+        });
+    if is_public_reason {
+        reason.to_string()
+    } else {
+        String::new()
     }
 }
 

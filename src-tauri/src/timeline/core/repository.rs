@@ -326,12 +326,12 @@ impl TimelineRepository {
     pub fn list_timeline_events(&self, limit: i64) -> Result<Vec<TimelineEvent>, TimelineError> {
         let safe_limit = limit.clamp(1, 100);
         let mut statement = self.connection.prepare(
-            "SELECT id, occurred_at, kind, title, subtitle FROM (
-                SELECT id, occurred_at, 'reaction' AS kind, reaction_type AS title, COALESCE(utterance_event_id, '') AS subtitle FROM user_reactions
+            "SELECT id, occurred_at, kind, title, subtitle, metadata_json FROM (
+                SELECT id, occurred_at, 'reaction' AS kind, reaction_type AS title, COALESCE(utterance_event_id, '') AS subtitle, '{}' AS metadata_json FROM user_reactions
                 UNION ALL
-                SELECT id, occurred_at, 'utterance' AS kind, message AS title, trigger_type || ' · ' || provider AS subtitle FROM utterance_events
+                SELECT id, occurred_at, 'utterance' AS kind, message AS title, trigger_type || ' · ' || provider AS subtitle, '{}' AS metadata_json FROM utterance_events
                 UNION ALL
-                SELECT id, occurred_at, 'context' AS kind, app_name AS title, window_title AS subtitle FROM context_events
+                SELECT id, occurred_at, 'context' AS kind, app_name AS title, window_title AS subtitle, metadata_json FROM context_events
             )
             ORDER BY occurred_at DESC
             LIMIT ?1",
@@ -343,6 +343,7 @@ impl TimelineRepository {
                 kind: row.get(2)?,
                 title: row.get(3)?,
                 subtitle: row.get(4)?,
+                metadata_json: row.get(5)?,
             })
         })?;
         rows.collect::<Result<Vec<_>, _>>()

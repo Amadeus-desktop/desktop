@@ -7,6 +7,56 @@ export const report: ReportMessages = {
   intro: {
     prompt: "You worked hard today. Want to look back together?",
   },
+  summaryOverlay: {
+    preface: "You made it through today.",
+    title: "Want to gently look back\nat what happened?",
+    description: "Not as a scorecard, just a quiet summary of the day that remained.",
+    close: "Close daily summary",
+    defaultName: "you",
+    navigation: {
+      next: "Next",
+      back: "Back",
+      finish: "Close for today",
+    },
+    stepLabels: {
+      welcome: "Hello",
+      summary: "What I noticed",
+      mood: "Mood words",
+      moments: "Traces",
+      closing: "Closing",
+    },
+    steps: {
+      welcome: {
+        eyebrow: "Daily Care",
+        title: "Want to look back\nat what today held?",
+        description: "Not the numbers first. I'll start with the flow I saw beside you.",
+        cta: "Let's look",
+      },
+      narrative: {
+        eyebrow: "From beside you",
+        title: "What stayed from today",
+      },
+      activity: {
+        eyebrow: "Trace from today",
+        longStay: "A long stretch",
+        trace: "A small trace",
+        kinds: {
+          work: "Work",
+          break: "Break",
+          unknown: "Stayed here",
+        },
+      },
+      keywords: {
+        eyebrow: "Today's mood",
+        title: "Today felt like this",
+        description: "Just a few words to hold onto.",
+      },
+      closing: {
+        eyebrow: "Closing",
+        title: "From your companion",
+      },
+    },
+  },
   sections: {
     summary: "Time together today",
     moments: "Today's moments",

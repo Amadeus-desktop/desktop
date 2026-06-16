@@ -16,6 +16,7 @@ export const companion: CompanionMessages = {
   nudge: {
     close: "메모 닫기",
     ignore: "지금은 괜찮아",
+    open: "열어서 듣기",
   },
   chat: {
     close: "대화 닫기",
@@ -33,13 +34,9 @@ export const companion: CompanionMessages = {
     close: "Daily Care 닫기",
     intro: "네가 노력한 거 같이 확인해볼까?",
     togetherTime: "함께 있었던 시간",
-    togetherTimeValue: "2시간 40분",
     noteCount: "아마가 남긴 메모",
-    noteCountValue: "3개",
     keywords: "오늘의 감정 키워드",
-    keywordValue: "버팀 · 막힘 · 다시 시작",
     closing: "아마의 짧은 메모",
-    closingMessage: "끝까지 매끈하지 않아도 괜찮아. 오늘은 다시 시작한 것만으로도 충분히 남아.",
   },
   dev: {
     mate: "메이트",

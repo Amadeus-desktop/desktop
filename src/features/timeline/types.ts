@@ -125,4 +125,5 @@ export type TimelineEvent = {
   kind: TimelineEventKind;
   title: string;
   subtitle: string;
+  metadataJson: string;
 };

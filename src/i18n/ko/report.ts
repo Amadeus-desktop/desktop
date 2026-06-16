@@ -7,6 +7,56 @@ export const report: ReportMessages = {
   intro: {
     prompt: "오늘 꽤 힘냈어. 네가 노력한 거 같이 확인해볼까?",
   },
+  summaryOverlay: {
+    preface: "오늘도 힘냈어.",
+    title: "오늘 뭐 했는지\n천천히 확인해볼까?",
+    description: "평가표처럼 쪼개지 않고, 오늘 남은 흐름만 조용히 묶어봤어.",
+    close: "하루 총산 닫기",
+    defaultName: "너",
+    navigation: {
+      next: "다음",
+      back: "이전",
+      finish: "오늘 마무리하기",
+    },
+    stepLabels: {
+      welcome: "인사",
+      summary: "같이 본 흐름",
+      mood: "감정 키워드",
+      moments: "남은 흔적",
+      closing: "마무리",
+    },
+    steps: {
+      welcome: {
+        eyebrow: "Daily Care",
+        title: "오늘 뭐 했는지\n같이 확인해볼까?",
+        description: "숫자 말고, 내가 곁에서 본 흐름부터 묶어볼게.",
+        cta: "볼까?",
+      },
+      narrative: {
+        eyebrow: "곁에서 본 오늘",
+        title: "오늘 남은 흐름",
+      },
+      activity: {
+        eyebrow: "오늘의 흔적",
+        longStay: "오래 머문 흐름",
+        trace: "짧게 남은 흔적",
+        kinds: {
+          work: "작업",
+          break: "쉬어감",
+          unknown: "머문 곳",
+        },
+      },
+      keywords: {
+        eyebrow: "오늘의 감정",
+        title: "오늘은 이런 날이었어",
+        description: "키워드만 가볍게 남겨뒀어.",
+      },
+      closing: {
+        eyebrow: "마무리",
+        title: "companion의 한마디",
+      },
+    },
+  },
   sections: {
     summary: "오늘 함께한 시간",
     moments: "오늘의 순간들",

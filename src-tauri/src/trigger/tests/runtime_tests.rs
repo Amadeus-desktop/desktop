@@ -1,9 +1,10 @@
 use super::*;
 use crate::trigger::scoring::{
-    should_capture_ocr_for_trigger, should_probe_unknown_ocr_for_context,
+    llm_request_for_trigger_input, should_capture_ocr_for_trigger,
+    should_probe_unknown_ocr_for_context,
 };
 use crate::{
-    macos_context::AppCategory,
+    macos_context::{AppCategory, BrowserTabContext, BrowserUrlClass},
     settings::{talk_frequency_trigger_sensitivity, AppSettings},
 };
 use std::time::Duration;
@@ -159,6 +160,62 @@ fn trigger_utterance_request_includes_redacted_ocr_summary_when_available() {
         request.redacted_ocr_summary,
         Some("redacted error summary".to_string())
     );
+}
+
+#[test]
+fn trigger_utterance_request_includes_persona_and_safe_history_summary() {
+    let mut current = snapshot(AppCategory::NonWork, 0.0, 30_000);
+    current.browser_context = Some(BrowserTabContext {
+        browser_name: "Google Chrome".to_string(),
+        url_host: Some("youtube.com".to_string()),
+        url_class: BrowserUrlClass::Video,
+        source: "chrome_apple_script".to_string(),
+    });
+    let mut history = ProcessHistoryWindow::default();
+    history.work_cluster_duration_ms = 4 * 60 * 1000;
+    history.app_switch_count = 2;
+    history.non_work_single_app_max_duration_ms = 30_000;
+    let input = TriggerInput {
+        snapshot: current,
+        privacy: normal_privacy("Google Chrome"),
+        history: Some(history),
+        recent_utterance_minutes_ago: None,
+        repeated_app_utterance_blocked: false,
+        work_session_duration_ms: 0,
+        dismissed_recent_count: 0,
+        utterances_today: 0,
+    };
+    let candidate = TriggerCandidate {
+        trigger_type: TriggerType::Drift,
+        message: "fallback".to_string(),
+        reason: "non_work_duration_detected".to_string(),
+        base_score: 64,
+    };
+    let evaluation = TriggerEvaluation {
+        candidate: Some(candidate.clone()),
+        speakability_score: 64,
+        action: TriggerAction::Bubble,
+        should_persist: true,
+        suppression_reason: None,
+    };
+    let mut settings = AppSettings::default();
+    settings.companion_persona_id = "makise-kurisu".to_string();
+
+    let request = llm_request_for_trigger_input(&input, &evaluation, &candidate, &settings, None);
+
+    assert!(request
+        .persona_summary
+        .as_deref()
+        .expect("persona summary")
+        .contains("마키세 크리스"));
+    let safe_summary = request
+        .safe_memory_summary
+        .as_deref()
+        .expect("safe history summary");
+    assert!(safe_summary.contains("recent_work_cluster_minutes=4"));
+    assert!(safe_summary.contains("recent_app_switches=2"));
+    assert!(safe_summary.contains("browser_url_class=Video"));
+    assert!(safe_summary.contains("browser_host=youtube.com"));
 }
 
 #[test]
