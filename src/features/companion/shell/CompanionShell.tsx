@@ -62,6 +62,7 @@ export function CompanionShell() {
       {presentationEnabled && shell.mode === "daily_care" ? (
         <DailyCareNotePreview
           timelineEvents={shell.timelineEvents}
+          workSessions={shell.workSessions}
           devToolsOpen={devToolsOpen}
           labels={shell.t}
           onClose={() => void shell.closeDailyCare()}

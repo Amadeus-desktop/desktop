@@ -1,4 +1,4 @@
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, OptionalExtension};
 use std::{
     path::Path,
     time::{SystemTime, UNIX_EPOCH},
@@ -11,8 +11,11 @@ use super::{
     CreateContextEventInput, CreateLocalMemoryInput, CreateUserReactionInput,
     CreateUtteranceEventInput, EnqueueSyncPayloadInput, GetOrCreateConversationSessionInput,
     ListConversationMessagesInput, LocalMemory, RecordActivityObservationInput, SyncQueueRow,
-    TimelineError, TimelineEvent, UserReaction, UtteranceEvent,
+    TimelineError, TimelineEvent, UserReaction, UtteranceEvent, WorkSession,
 };
+
+const WORK_SESSION_MERGE_GAP_MS: i64 = 15 * 60 * 1000;
+const WORK_SESSION_MAX_BACKFILL_MS: i64 = 4 * 60 * 60 * 1000;
 
 pub struct TimelineRepository {
     connection: Connection,
@@ -206,6 +209,7 @@ impl TimelineRepository {
                 observation.metadata_json,
             ],
         )?;
+        self.cache_work_session_for_observation(&observation)?;
         Ok(observation)
     }
 
@@ -454,6 +458,96 @@ impl TimelineRepository {
             .map_err(TimelineError::from)
     }
 
+    pub fn list_work_sessions(&self, limit: i64) -> Result<Vec<WorkSession>, TimelineError> {
+        let safe_limit = limit.clamp(1, 100);
+        let mut statement = self.connection.prepare(
+            "SELECT id, started_at_ms, ended_at_ms, summary_redacted, dominant_app_category, retention_policy, redaction_level, source_kind, expires_at_ms, created_at_ms
+             FROM work_sessions
+             ORDER BY COALESCE(ended_at_ms, started_at_ms) DESC
+             LIMIT ?1",
+        )?;
+        let rows = statement.query_map(params![safe_limit], work_session_from_row)?;
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(TimelineError::from)
+    }
+
+    fn cache_work_session_for_observation(
+        &mut self,
+        observation: &ActivityObservation,
+    ) -> Result<(), TimelineError> {
+        if !is_cacheable_work_observation(observation) {
+            return Ok(());
+        }
+
+        let observed_at = observation.observed_at_ms;
+        let duration = observation
+            .frontmost_duration_ms
+            .clamp(0, WORK_SESSION_MAX_BACKFILL_MS);
+        let started_at = observed_at.saturating_sub(duration);
+        let label = work_session_label(observation);
+        let source_kind = work_session_source_kind(observation);
+        let existing = self
+            .connection
+            .query_row(
+                "SELECT id, started_at_ms, summary_redacted, created_at_ms
+                 FROM work_sessions
+                 WHERE COALESCE(ended_at_ms, started_at_ms) >= ?1
+                   AND retention_policy = 'Timeline'
+                   AND redaction_level = 'SummaryRedacted'
+                 ORDER BY COALESCE(ended_at_ms, started_at_ms) DESC
+                 LIMIT 1",
+                params![started_at.saturating_sub(WORK_SESSION_MERGE_GAP_MS)],
+                |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, i64>(1)?,
+                        row.get::<_, Option<String>>(2)?,
+                        row.get::<_, i64>(3)?,
+                    ))
+                },
+            )
+            .optional()?;
+
+        if let Some((id, existing_started_at, summary, _created_at)) = existing {
+            let summary_redacted = merge_work_session_summary(summary.as_deref(), &label);
+            self.connection.execute(
+                "UPDATE work_sessions
+                 SET started_at_ms = ?1,
+                     ended_at_ms = ?2,
+                     summary_redacted = ?3,
+                     dominant_app_category = ?4,
+                     source_kind = ?5
+                 WHERE id = ?6",
+                params![
+                    existing_started_at.min(started_at),
+                    observed_at,
+                    summary_redacted,
+                    observation.app_category,
+                    source_kind,
+                    id
+                ],
+            )?;
+            return Ok(());
+        }
+
+        let (id, created_at_ms) = self.next_marker("work")?;
+        let summary_redacted = merge_work_session_summary(None, &label);
+        self.connection.execute(
+            "INSERT INTO work_sessions (id, started_at_ms, ended_at_ms, summary_redacted, dominant_app_category, retention_policy, redaction_level, source_kind, expires_at_ms, created_at_ms)
+             VALUES (?1, ?2, ?3, ?4, ?5, 'Timeline', 'SummaryRedacted', ?6, NULL, ?7)",
+            params![
+                id,
+                started_at,
+                observed_at,
+                summary_redacted,
+                observation.app_category,
+                source_kind,
+                created_at_ms
+            ],
+        )?;
+        Ok(())
+    }
+
     pub fn clear_local_data(&mut self) -> Result<usize, TimelineError> {
         let transaction = self.connection.transaction()?;
         let mut deleted = 0;
@@ -541,6 +635,109 @@ fn activity_observation_from_row(
         source_kind: row.get(16)?,
         metadata_json: row.get(17)?,
     })
+}
+
+fn work_session_from_row(row: &rusqlite::Row<'_>) -> Result<WorkSession, rusqlite::Error> {
+    Ok(WorkSession {
+        id: row.get(0)?,
+        started_at_ms: row.get(1)?,
+        ended_at_ms: row.get(2)?,
+        summary_redacted: row.get(3)?,
+        dominant_app_category: row.get(4)?,
+        retention_policy: row.get(5)?,
+        redaction_level: row.get(6)?,
+        source_kind: row.get(7)?,
+        expires_at_ms: row.get(8)?,
+        created_at_ms: row.get(9)?,
+    })
+}
+
+fn is_cacheable_work_observation(observation: &ActivityObservation) -> bool {
+    if observation.sensitive || observation.capture_suppressed {
+        return false;
+    }
+    observation.app_category == "Work" || observation.browser_url_class.as_deref() == Some("Work")
+}
+
+fn work_session_source_kind(observation: &ActivityObservation) -> &'static str {
+    let metadata = parse_metadata_json(&observation.metadata_json);
+    if metadata
+        .get("ocrContextClass")
+        .and_then(|value| value.as_str())
+        .is_some()
+    {
+        return "Ocr";
+    }
+    "Process"
+}
+
+fn work_session_label(observation: &ActivityObservation) -> String {
+    let metadata = parse_metadata_json(&observation.metadata_json);
+    let ocr_context_class = metadata
+        .get("ocrContextClass")
+        .and_then(|value| value.as_str())
+        .unwrap_or("");
+    let app_name = observation.app_name.trim();
+    let app_name_lower = app_name.to_lowercase();
+
+    if app_name.contains("한글") {
+        return "한글 문서 작업".to_string();
+    }
+    if app_name_lower.contains("zed")
+        || app_name_lower.contains("code")
+        || app_name_lower.contains("cursor")
+        || app_name_lower.contains("ghostty")
+        || app_name_lower.contains("terminal")
+    {
+        return "코드 작업".to_string();
+    }
+    if app_name_lower.contains("obsidian") || app_name_lower.contains("notion") {
+        return "노트 정리".to_string();
+    }
+    if let Some(host) = observation.browser_url_host.as_deref() {
+        let host = host.trim().trim_start_matches("www.");
+        if host.contains("github") || host.contains("gitlab") {
+            return "프로젝트 코드 확인".to_string();
+        }
+        if host.contains("supabase") {
+            return "백엔드 설정 확인".to_string();
+        }
+        if host.contains("docs") {
+            return "문서 참고".to_string();
+        }
+        if !host.is_empty() {
+            return format!("{host} 작업");
+        }
+    }
+    match ocr_context_class {
+        "CodeError" => "코드 오류 확인".to_string(),
+        "WorkDocument" => "문서 작업".to_string(),
+        _ if !app_name.is_empty() => format!("{app_name} 작업"),
+        _ => "작업".to_string(),
+    }
+}
+
+fn merge_work_session_summary(existing: Option<&str>, next_label: &str) -> String {
+    let mut labels = existing
+        .and_then(|summary| summary.strip_suffix(" 중심으로 작업함"))
+        .map(|body| {
+            body.split(", ")
+                .filter(|label| !label.trim().is_empty())
+                .map(str::to_string)
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    if !labels.iter().any(|label| label == next_label) {
+        labels.push(next_label.to_string());
+    }
+    if labels.len() > 3 {
+        labels.truncate(3);
+    }
+    format!("{} 중심으로 작업함", labels.join(", "))
+}
+
+fn parse_metadata_json(metadata_json: &str) -> serde_json::Value {
+    serde_json::from_str(metadata_json).unwrap_or_else(|_| serde_json::json!({}))
 }
 
 fn validate_conversation_message_input(

@@ -16,6 +16,7 @@ import type {
   TimelineEvent,
   UserReaction,
   UtteranceEvent,
+  WorkSession,
 } from "../features/timeline/types";
 
 const events: TimelineEvent[] = [];
@@ -183,6 +184,10 @@ export function listMockTimelineEvents(limit = 20): TimelineEvent[] {
 }
 
 export function listMockActivityObservations(): ActivityObservation[] {
+  return [];
+}
+
+export function listMockWorkSessions(): WorkSession[] {
   return [];
 }
 

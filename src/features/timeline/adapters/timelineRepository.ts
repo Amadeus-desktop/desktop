@@ -9,6 +9,7 @@ import {
   getOrCreateMockConversationSession,
   listMockActivityObservations,
   listMockTimelineEvents,
+  listMockWorkSessions,
 } from "../../../mocks/timeline";
 import { isTauriRuntime } from "../../../lib/tauri/runtime";
 import type {
@@ -29,6 +30,7 @@ import type {
   TimelineEvent,
   UserReaction,
   UtteranceEvent,
+  WorkSession,
 } from "../types";
 
 export async function createContextEvent(
@@ -131,6 +133,14 @@ export async function listActivityObservations(
   }
 
   return listMockActivityObservations();
+}
+
+export async function listWorkSessions(limit = 30): Promise<WorkSession[]> {
+  if (isTauriRuntime()) {
+    return invoke<WorkSession[]>("list_work_sessions", { limit });
+  }
+
+  return listMockWorkSessions();
 }
 
 export async function clearLocalTimelineData(): Promise<number> {

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { getAppLocale } from "../../../i18n";
-import type { TimelineEvent } from "../../timeline/types";
+import type { TimelineEvent, WorkSession } from "../../timeline/types";
 import { buildDailyCareInsight } from "./insight";
 
 const today = new Date("2026-06-17T14:00:00+09:00").getTime();
@@ -19,6 +19,27 @@ function event(
     subtitle: "",
     metadataJson,
     occurredAt: today + offsetMinutes * 60_000,
+  };
+}
+
+function workSession(
+  id: string,
+  offsetMinutes: number,
+  durationMinutes: number,
+  summaryRedacted: string,
+): WorkSession {
+  const startedAtMs = today + offsetMinutes * 60_000;
+  return {
+    id,
+    startedAtMs,
+    endedAtMs: startedAtMs + durationMinutes * 60_000,
+    summaryRedacted,
+    dominantAppCategory: "Work",
+    retentionPolicy: "Timeline",
+    redactionLevel: "SummaryRedacted",
+    sourceKind: "Process",
+    expiresAtMs: null,
+    createdAtMs: startedAtMs,
   };
 }
 
@@ -118,6 +139,42 @@ describe("buildDailyCareInsight", () => {
       expect.objectContaining({ label: "Zed", kind: "work" }),
       expect.objectContaining({ label: "youtube.com", kind: "break" }),
     ]);
+    vi.useRealTimers();
+  });
+
+  it("uses redacted work session cache before app-level activity labels", () => {
+    vi.setSystemTime(today + 120 * 60_000);
+    const events = [
+      event(
+        "context-work",
+        "context",
+        0,
+        "Zed",
+        JSON.stringify({
+          category: "Work",
+          frontmostDurationMs: 10 * 60_000,
+        }),
+      ),
+    ];
+
+    const insight = buildDailyCareInsight(events, getAppLocale("ko"), {
+      workSessions: [
+        workSession(
+          "work-1",
+          0,
+          55,
+          "코드 작업, 프로젝트 코드 확인 중심으로 작업함",
+        ),
+      ],
+    });
+
+    expect(insight.activityDetails[0]).toMatchObject({
+      label: "코드 작업, 프로젝트 코드 확인",
+      kind: "work",
+      totalDurationMs: 55 * 60_000,
+    });
+    expect(insight.activityDetails[0].summary).toContain("하루 기록");
+    expect(insight.companionNarrative).toContain("코드 작업");
     vi.useRealTimers();
   });
 });

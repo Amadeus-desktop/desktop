@@ -8,7 +8,7 @@ import {
   formatReportCount,
   formatReportDuration,
 } from "../../../domain/report";
-import type { TimelineEvent } from "../../timeline/types";
+import type { TimelineEvent, WorkSession } from "../../timeline/types";
 import type { DailyCareActivityDetail, DailyCareInsight, ReportMetric } from "../types";
 
 export function buildReportMetrics(
@@ -49,8 +49,12 @@ export function buildReportMetrics(
 export function buildDailyCareInsight(
   events: TimelineEvent[],
   locale: AppLocale,
+  options: { workSessions?: WorkSession[] } = {},
 ): DailyCareInsight {
   const todayEvents = filterEventsForToday(events);
+  const todayWorkSessions = filterWorkSessionsForToday(
+    options.workSessions ?? [],
+  );
   const nudges = countUtterancesToday(todayEvents);
   const returns = countReturnsToday(todayEvents) + countChatOpensToday(todayEvents);
   const tags = locale.report.emotionalKeywords.tags;
@@ -73,7 +77,10 @@ export function buildDailyCareInsight(
   } else if (nudges >= 1 || returns >= 1) {
     closingNote = locale.report.closingNote.gentle;
   }
-  const activityDetails = buildActivityDetails(todayEvents);
+  const activityDetails =
+    todayWorkSessions.length > 0
+      ? buildActivityDetailsFromWorkSessions(todayWorkSessions)
+      : buildActivityDetails(todayEvents);
 
   return {
     heroPrompt: locale.report.intro.prompt,
@@ -82,6 +89,35 @@ export function buildDailyCareInsight(
     companionNarrative: buildCompanionNarrative(activityDetails, returns, locale),
     activityDetails,
   };
+}
+
+function buildActivityDetailsFromWorkSessions(
+  sessions: WorkSession[],
+): DailyCareActivityDetail[] {
+  return sessions
+    .filter((session) => session.redactionLevel === "SummaryRedacted")
+    .filter((session) => session.retentionPolicy === "Timeline")
+    .map((session) => {
+      const summary = session.summaryRedacted?.trim() || "작업 흐름이 남아 있어.";
+      const label = workSessionLabel(summary);
+      return {
+        id: session.id,
+        label,
+        kind: "work" as const,
+        totalDurationMs: Math.max(
+          0,
+          (session.endedAtMs ?? session.startedAtMs) - session.startedAtMs,
+        ),
+        eventCount: 1,
+        summary: workSessionSummary(summary),
+      };
+    })
+    .sort(
+      (left, right) =>
+        right.totalDurationMs - left.totalDurationMs ||
+        right.eventCount - left.eventCount,
+    )
+    .slice(0, 4);
 }
 
 type ContextMetadata = {
@@ -210,4 +246,27 @@ function buildCompanionNarrative(
   }
 
   return `오늘은 ${topWork.label} 쪽 작업을 오래 붙잡고 있었구나.${returnClause} 그냥 숫자보다, 그 흐름이 더 기억에 남아.`;
+}
+
+function filterWorkSessionsForToday(
+  sessions: WorkSession[],
+  nowMs = Date.now(),
+): WorkSession[] {
+  const start = new Date(nowMs);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 1);
+  return sessions.filter((session) => {
+    const sessionEnd = session.endedAtMs ?? session.startedAtMs;
+    return sessionEnd >= start.getTime() && session.startedAtMs < end.getTime();
+  });
+}
+
+function workSessionLabel(summary: string): string {
+  return summary.replace(/ 중심으로 작업함$/, "").trim() || "작업";
+}
+
+function workSessionSummary(summary: string): string {
+  const label = workSessionLabel(summary);
+  return `${label} 흐름이 하루 기록으로 남아 있어.`;
 }

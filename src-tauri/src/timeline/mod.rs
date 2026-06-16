@@ -5,14 +5,14 @@ pub use commands::{
     append_conversation_message, clear_local_timeline_data, create_context_event,
     create_local_memory, create_user_reaction, create_utterance_event, enqueue_sync_payload,
     get_or_create_conversation_session, list_activity_observations,
-    list_conversation_messages_for_persona, list_timeline_events,
+    list_conversation_messages_for_persona, list_timeline_events, list_work_sessions,
 };
 pub use core::{
     ActivityObservation, AppendConversationMessageInput, ContextEvent, ConversationMessage,
     ConversationSession, CreateContextEventInput, CreateLocalMemoryInput, CreateUserReactionInput,
     CreateUtteranceEventInput, EnqueueSyncPayloadInput, GetOrCreateConversationSessionInput,
     ListConversationMessagesInput, LocalMemory, RecordActivityObservationInput, SyncQueueRow,
-    TimelineEvent, TimelineRepository, TimelineState, UserReaction, UtteranceEvent,
+    TimelineEvent, TimelineRepository, TimelineState, UserReaction, UtteranceEvent, WorkSession,
 };
 
 pub(crate) use core::{CommandError, TimelineError};

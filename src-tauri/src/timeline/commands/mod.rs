@@ -5,7 +5,7 @@ use super::{
     ConversationMessage, ConversationSession, CreateContextEventInput, CreateLocalMemoryInput,
     CreateUserReactionInput, CreateUtteranceEventInput, EnqueueSyncPayloadInput,
     GetOrCreateConversationSessionInput, ListConversationMessagesInput, LocalMemory, SyncQueueRow,
-    TimelineError, TimelineEvent, TimelineState, UserReaction, UtteranceEvent,
+    TimelineError, TimelineEvent, TimelineState, UserReaction, UtteranceEvent, WorkSession,
 };
 
 #[tauri::command]
@@ -96,6 +96,14 @@ pub fn list_activity_observations(
     with_repository(&state, |repository| {
         repository.list_activity_observations(limit)
     })
+}
+
+#[tauri::command]
+pub fn list_work_sessions(
+    state: State<'_, TimelineState>,
+    limit: i64,
+) -> Result<Vec<WorkSession>, CommandError> {
+    with_repository(&state, |repository| repository.list_work_sessions(limit))
 }
 
 #[tauri::command]

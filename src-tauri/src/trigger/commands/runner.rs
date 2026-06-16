@@ -128,7 +128,13 @@ pub fn run_trigger_engine_once(
             .as_ref()
             .map(|observation| observation.context_class),
     );
-    record_activity_observation_for_trigger(&timeline_state, &snapshot, &privacy, &evaluation);
+    record_activity_observation_for_trigger(
+        &timeline_state,
+        &snapshot,
+        &privacy,
+        &evaluation,
+        ocr_observation.as_ref(),
+    );
     let (context_event, utterance_event) = if evaluation.should_persist {
         let captured_after_evaluation =
             ocr_observation.is_none() && should_capture_ocr_for_trigger(&privacy, &evaluation);
@@ -202,6 +208,7 @@ fn record_activity_observation_for_trigger(
     snapshot: &crate::macos_context::MacosContextSnapshot,
     privacy: &PrivacyAssessment,
     evaluation: &crate::trigger::TriggerEvaluation,
+    ocr_observation: Option<&OcrObservation>,
 ) {
     let browser_context = snapshot.browser_context.as_ref();
     let input = RecordActivityObservationInput {
@@ -232,6 +239,8 @@ fn record_activity_observation_for_trigger(
             "suppressionReason": evaluation.suppression_reason,
             "shouldPersist": evaluation.should_persist,
             "screenCapturePermission": get_screen_capture_permission_status(),
+            "ocrContextClass": ocr_observation.map(|observation| format!("{:?}", observation.context_class)),
+            "ocrSummaryRedacted": ocr_observation.map(|observation| observation.text_summary_redacted.clone()),
         })
         .to_string(),
     };

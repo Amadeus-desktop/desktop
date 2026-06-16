@@ -3,12 +3,13 @@ import { useI18n } from "../../../i18n";
 import { companionStyles } from "../ui/styles";
 import { CloseIcon } from "../ui/icons";
 import { LocalTimeline } from "../dev/LocalTimeline";
-import type { TimelineEvent } from "../../timeline/types";
+import type { TimelineEvent, WorkSession } from "../../timeline/types";
 import { buildDailyCareInsight } from "../../report/lib/insight";
 import { buildDailyCareStats } from "./dailyCareStats";
 
 type DailyCareNotePreviewProps = {
   timelineEvents: TimelineEvent[];
+  workSessions: WorkSession[];
   devToolsOpen: boolean;
   labels: CompanionLocale;
   onClose: () => void;
@@ -16,13 +17,14 @@ type DailyCareNotePreviewProps = {
 
 export function DailyCareNotePreview({
   timelineEvents,
+  workSessions,
   devToolsOpen,
   labels,
   onClose,
 }: DailyCareNotePreviewProps) {
   const locale = useI18n();
   const stats = buildDailyCareStats(timelineEvents, locale);
-  const insight = buildDailyCareInsight(timelineEvents, locale);
+  const insight = buildDailyCareInsight(timelineEvents, locale, { workSessions });
 
   return (
     <section className={companionStyles.chatPanel}>

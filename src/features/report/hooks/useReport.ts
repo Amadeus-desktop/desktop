@@ -2,14 +2,15 @@ import { useCallback, useMemo, useState } from "react";
 import { REPORT_TIMELINE_LIMIT } from "../../../domain/report";
 import { getLocale, LOCALE_TAGS, useI18n } from "../../../i18n";
 import { useLifecycleFetch } from "../../../lib/hooks/useLifecycleFetch";
-import { listTimelineEvents } from "../../timeline";
-import type { TimelineEvent, TimelineEventKind } from "../../timeline/types";
+import { listTimelineEvents, listWorkSessions } from "../../timeline";
+import type { TimelineEvent, TimelineEventKind, WorkSession } from "../../timeline/types";
 import { buildReportMetrics } from "../lib/insight";
 import type { WorkTimelineItem } from "../types";
 
 export function useReport() {
   const t = useI18n();
   const [events, setEvents] = useState<TimelineEvent[]>([]);
+  const [workSessions, setWorkSessions] = useState<WorkSession[]>([]);
   const [timelineState, setTimelineState] = useState<"loading" | "ready">(
     "loading",
   );
@@ -24,13 +25,18 @@ export function useReport() {
     deps: [t, refreshRevision],
     fetch: async (isActive) => {
       try {
-        const nextEvents = await listTimelineEvents(REPORT_TIMELINE_LIMIT);
+        const [nextEvents, nextWorkSessions] = await Promise.all([
+          listTimelineEvents(REPORT_TIMELINE_LIMIT),
+          listWorkSessions(30),
+        ]);
         if (!isActive()) return;
         setEvents(nextEvents);
+        setWorkSessions(nextWorkSessions);
         setTimelineState("ready");
       } catch {
         if (!isActive()) return;
         setEvents([]);
+        setWorkSessions([]);
         setTimelineState("ready");
       }
     },
@@ -47,6 +53,7 @@ export function useReport() {
 
   return {
     events,
+    workSessions,
     reportMetrics,
     workTimeline,
     timelineState,

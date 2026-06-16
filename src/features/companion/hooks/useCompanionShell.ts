@@ -31,7 +31,11 @@ export function useCompanionShell({
   } = useCompanionSessionState();
   const selectedPersonaId = normalizeCompanionMateId(settings.companionPersonaId);
   const [isSending, setIsSending] = useState(false);
-  const { events: timelineEvents, refreshTimeline } = useCompanionTimeline();
+  const {
+    events: timelineEvents,
+    workSessions,
+    refreshTimeline,
+  } = useCompanionTimeline();
 
   const selectedPersona = matesById[selectedPersonaId];
 
@@ -97,6 +101,7 @@ export function useCompanionShell({
     nudge,
     messages,
     timelineEvents,
+    workSessions,
     showPresence,
     isSending,
     modelRoute: settings.modelRoute,

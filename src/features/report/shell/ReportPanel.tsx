@@ -23,12 +23,16 @@ export function ReportPanel() {
   }, [settings.companionPersonaId, t]);
   const {
     events,
+    workSessions,
     reportMetrics,
     workTimeline,
     timelineState,
     refreshReport,
   } = useReport();
-  const insight = useMemo(() => buildDailyCareInsight(events, t), [events, t]);
+  const insight = useMemo(
+    () => buildDailyCareInsight(events, t, { workSessions }),
+    [events, t, workSessions],
+  );
 
   const openSummary = useCallback(() => {
     setSummaryMounted(true);

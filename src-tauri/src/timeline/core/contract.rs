@@ -159,6 +159,21 @@ pub struct ActivityObservation {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct WorkSession {
+    pub id: String,
+    pub started_at_ms: i64,
+    pub ended_at_ms: Option<i64>,
+    pub summary_redacted: Option<String>,
+    pub dominant_app_category: Option<String>,
+    pub retention_policy: String,
+    pub redaction_level: String,
+    pub source_kind: String,
+    pub expires_at_ms: Option<i64>,
+    pub created_at_ms: i64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ConversationSession {
     pub id: String,
     pub cloud_conversation_id: String,

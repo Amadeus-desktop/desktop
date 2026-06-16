@@ -76,6 +76,19 @@ export type ActivityObservation = {
   metadataJson: string;
 };
 
+export type WorkSession = {
+  id: string;
+  startedAtMs: number;
+  endedAtMs?: number | null;
+  summaryRedacted?: string | null;
+  dominantAppCategory?: string | null;
+  retentionPolicy: string;
+  redactionLevel: string;
+  sourceKind: string;
+  expiresAtMs?: number | null;
+  createdAtMs: number;
+};
+
 export type UtteranceEvent = CreateUtteranceEventInput & {
   id: string;
   occurredAt: number;

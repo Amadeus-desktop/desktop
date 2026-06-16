@@ -7,6 +7,7 @@ export {
   listActivityObservations,
   listConversationMessagesForPersona,
   listTimelineEvents,
+  listWorkSessions,
 } from "./adapters/timelineRepository";
 export type {
   AppendConversationMessageInput,
@@ -23,4 +24,5 @@ export type {
   TimelineEventKind,
   UserReaction,
   UtteranceEvent,
+  WorkSession,
 } from "./types";
