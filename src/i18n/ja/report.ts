@@ -13,6 +13,8 @@ export const report: ReportMessages = {
     description: "採点するのではなく、今日残った流れだけを静かにまとめています。",
     close: "一日のまとめを閉じる",
     defaultName: "きみ",
+    typing: "入力中",
+    status: "今日そばで見た流れ",
     navigation: {
       next: "次へ",
       back: "戻る",
@@ -24,6 +26,9 @@ export const report: ReportMessages = {
       mood: "感情キーワード",
       moments: "残った跡",
       closing: "締め",
+    },
+    replies: {
+      acknowledge: "そうだったんだ",
     },
     steps: {
       welcome: {

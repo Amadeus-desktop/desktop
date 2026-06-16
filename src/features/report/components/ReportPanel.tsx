@@ -1,7 +1,8 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { Button, PanelHeader, SectionHeading } from "../../../ui";
 import { useI18n } from "../../../i18n";
+import { getCompanionMates, normalizeCompanionMateId } from "../../../domain/mate";
 import { useAppSettings } from "../../settings";
 import { CareSummaryGrid } from "./CareSummaryGrid";
 import { DailyCareClosing } from "./DailyCareClosing";
@@ -16,6 +17,10 @@ export function ReportPanel() {
   const t = useI18n();
   const { settings } = useAppSettings();
   const [summaryMounted, setSummaryMounted] = useState(false);
+  const companion = useMemo(() => {
+    const mates = getCompanionMates(t);
+    return mates[normalizeCompanionMateId(settings.companionPersonaId)];
+  }, [settings.companionPersonaId, t]);
   const {
     events,
     reportMetrics,
@@ -84,6 +89,8 @@ export function ReportPanel() {
           moments={workTimeline}
           labels={t.report}
           nickname={settings.nickname}
+          companionName={companion.name}
+          mateIcon={settings.companionMateIcon}
           onClose={closeSummary}
         />
       ) : null}

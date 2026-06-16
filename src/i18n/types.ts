@@ -230,6 +230,8 @@ export type AppLocale = {
       description: string;
       close: string;
       defaultName: string;
+      typing: string;
+      status: string;
       navigation: {
         next: string;
         back: string;
@@ -241,6 +243,9 @@ export type AppLocale = {
         mood: string;
         moments: string;
         closing: string;
+      };
+      replies: {
+        acknowledge: string;
       };
       steps: {
         welcome: {

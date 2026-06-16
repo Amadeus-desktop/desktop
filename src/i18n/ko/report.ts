@@ -13,6 +13,8 @@ export const report: ReportMessages = {
     description: "평가표처럼 쪼개지 않고, 오늘 남은 흐름만 조용히 묶어봤어.",
     close: "하루 총산 닫기",
     defaultName: "너",
+    typing: "입력 중",
+    status: "오늘 곁에서 본 흐름",
     navigation: {
       next: "다음",
       back: "이전",
@@ -24,6 +26,9 @@ export const report: ReportMessages = {
       mood: "감정 키워드",
       moments: "남은 흔적",
       closing: "마무리",
+    },
+    replies: {
+      acknowledge: "그랬구나",
     },
     steps: {
       welcome: {

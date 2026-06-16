@@ -13,6 +13,8 @@ export const report: ReportMessages = {
     description: "Not as a scorecard, just a quiet summary of the day that remained.",
     close: "Close daily summary",
     defaultName: "you",
+    typing: "Typing",
+    status: "Today's flow from beside you",
     navigation: {
       next: "Next",
       back: "Back",
@@ -24,6 +26,9 @@ export const report: ReportMessages = {
       mood: "Mood words",
       moments: "Traces",
       closing: "Closing",
+    },
+    replies: {
+      acknowledge: "I see",
     },
     steps: {
       welcome: {

@@ -1,11 +1,14 @@
 import type { ReactNode } from "react";
-import { Group, Panel, Separator, useDefaultLayout } from "react-resizable-panels";
+import { Group, Panel, Separator, type Layout } from "react-resizable-panels";
 import { cn } from "../../lib/utils/cn";
 import { useMatchMedia } from "../../lib/hooks/useMatchMedia";
 import {
+  readControlCenterPanelLayout,
+  writeControlCenterPanelLayout,
+} from "../layout/controlCenterPreferences";
+import {
   APP_SHELL_LAYOUT_ID,
   APP_SHELL_PANEL_IDS,
-  APP_SHELL_PANEL_ID_LIST,
   defaultAppShellLayout,
   mainPanelPolicy,
   sidebarPanelPolicy,
@@ -23,11 +26,7 @@ export function ResizableColumns({
   className,
 }: ResizableColumnsProps) {
   const isCompactLayout = useMatchMedia("(max-width: 640px)");
-  const { defaultLayout, onLayoutChanged } = useDefaultLayout({
-    id: APP_SHELL_LAYOUT_ID,
-    storage: localStorage,
-    panelIds: [...APP_SHELL_PANEL_ID_LIST],
-  });
+  const defaultLayout = readControlCenterPanelLayout() ?? defaultAppShellLayout;
 
   return (
     <Group
@@ -35,8 +34,10 @@ export function ResizableColumns({
       orientation="horizontal"
       disabled={isCompactLayout}
       className={cn("h-full w-full min-h-0", className)}
-      defaultLayout={defaultLayout ?? defaultAppShellLayout}
-      onLayoutChanged={onLayoutChanged}
+      defaultLayout={defaultLayout}
+      onLayoutChanged={(layout: Layout) => {
+        writeControlCenterPanelLayout(layout);
+      }}
       resizeTargetMinimumSize={{ fine: 12, coarse: 28 }}
     >
       <Panel

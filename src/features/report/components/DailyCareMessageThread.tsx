@@ -1,3 +1,4 @@
+import type { RefObject } from "react";
 import type { AppLocale } from "../../../i18n";
 import type { MateIconKind } from "../../../domain/mate";
 import { cn } from "../../../lib/utils/cn";
@@ -15,7 +16,7 @@ type DailyCareMessageThreadProps = {
   userName: string;
   isTyping: boolean;
   labels: AppLocale["report"];
-  bodyRef: React.RefObject<HTMLDivElement | null>;
+  bodyRef: RefObject<HTMLDivElement | null>;
 };
 
 function shouldShowSenderName(

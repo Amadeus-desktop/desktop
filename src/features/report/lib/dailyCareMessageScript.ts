@@ -52,8 +52,7 @@ export function buildDailyCareTurns(
 ): DailyCareTurn[] {
   const { summaryOverlay: overlay } = labels;
 
-  return steps.map((step, index) => {
-    const isLast = index === steps.length - 1;
+  return steps.map((step) => {
     const continueLabel = overlay.navigation.next;
     const finishLabel = overlay.navigation.finish;
 
@@ -62,10 +61,8 @@ export function buildDailyCareTurns(
         return {
           id: step.id,
           companionItems: [
-            textMessage(
-              `${step.id}-intro`,
-              splitCompanionBubbles(overlay.steps.welcome.title)[0] ??
-                overlay.steps.welcome.title.replace(/\n/g, " "),
+            ...splitCompanionBubbles(overlay.steps.welcome.title).map((text, bubbleIndex) =>
+              textMessage(`${step.id}-title-${bubbleIndex}`, text),
             ),
             textMessage(`${step.id}-detail`, overlay.steps.welcome.description),
           ],
@@ -117,12 +114,6 @@ export function buildDailyCareTurns(
             textMessage(`${step.id}-${bubbleIndex}`, text),
           ),
           replies: [{ id: "finish", label: finishLabel }],
-        };
-      default:
-        return {
-          id: step.id,
-          companionItems: [],
-          replies: [{ id: "continue", label: isLast ? finishLabel : continueLabel }],
         };
     }
   });
