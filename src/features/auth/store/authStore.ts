@@ -8,6 +8,7 @@ import {
   resetOnboardingProgress,
 } from "../../onboarding";
 import { requestMainWindowLayout } from "../../lifecycle";
+import { MAIN_WINDOW_ANIMATION_DURATION_MS } from "../lib/mainWindowLayout";
 import {
   AMADEUS_AUTH_CALLBACK_EVENT,
   consumePendingAuthCallback,
@@ -22,8 +23,8 @@ import { isMainAuthCallbackOwner } from "../lib/authCallbackOwnership";
 import type { AuthSnapshot, AuthUser, LogoutPhase } from "../types";
 
 import {
-  ONBOARDING_COMPLETE_DELAY_MS,
-  ONBOARDING_PREPARE_DELAY_MS,
+  LOGOUT_COMPLETE_DELAY_MS,
+  LOGOUT_PREPARE_DELAY_MS,
   sleep,
 } from "../../onboarding/lib/transitionTiming";
 
@@ -172,6 +173,7 @@ bootstrapAuth();
 export async function signInWithGoogleAuth(): Promise<AuthUser | null> {
   if (isMainAuthCallbackOwner()) {
     startDeepLinkAuthListener();
+    await ensureDevAuthCallbackServer();
   }
   const user = await signInWithGoogle();
   if (!user) return null;
@@ -182,7 +184,6 @@ export async function signInWithGoogleAuth(): Promise<AuthUser | null> {
       await requestMainWindowLayout({
         mode: "control-center",
         reason: "login-complete",
-        animated: true,
         priority: 30,
       });
     } catch (error) {
@@ -266,7 +267,6 @@ async function consumeAuthDeepLinks(urls: string[]) {
         await requestMainWindowLayout({
           mode: "control-center",
           reason: "auth-callback",
-          animated: true,
           priority: 30,
         });
       }
@@ -325,6 +325,7 @@ export async function signOutWithTransition() {
         mode: "onboarding",
         reason: "logout",
         animated: true,
+        durationMs: MAIN_WINDOW_ANIMATION_DURATION_MS,
         priority: 40,
       });
     } catch (error) {
@@ -342,9 +343,9 @@ export async function signOutWithTransition() {
       }
     }
 
-    await sleep(ONBOARDING_PREPARE_DELAY_MS);
+    await sleep(LOGOUT_PREPARE_DELAY_MS);
     setLogoutPhase("complete");
-    await sleep(ONBOARDING_COMPLETE_DELAY_MS);
+    await sleep(LOGOUT_COMPLETE_DELAY_MS);
 
     try {
       await signOutSupabase();

@@ -13,13 +13,7 @@ import {
 
 export type MainWindowLayoutMode = "control-center" | "onboarding";
 const enqueueMainWindowLayout = createSerializedAsyncQueue();
-
-type LogicalRect = {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-};
+export const MAIN_WINDOW_ANIMATION_DURATION_MS = 420;
 
 function getMainWebviewWindow() {
   if (!isTauriRuntime()) return null;
@@ -40,31 +34,18 @@ async function ensureMainWindowVisible(
   }
 }
 
-async function readMainWindowOuterLogicalRect(): Promise<LogicalRect | null> {
+export async function readMainWindowLogicalSize() {
   const webviewWindow = getMainWebviewWindow();
   if (!webviewWindow) return null;
 
-  const [position, size, scaleFactor] = await Promise.all([
-    webviewWindow.outerPosition(),
+  const [size, scaleFactor] = await Promise.all([
     webviewWindow.outerSize(),
     webviewWindow.scaleFactor(),
   ]);
 
   return {
-    x: position.x / scaleFactor,
-    y: position.y / scaleFactor,
-    width: size.width / scaleFactor,
-    height: size.height / scaleFactor,
-  };
-}
-
-export async function readMainWindowLogicalSize() {
-  const rect = await readMainWindowOuterLogicalRect();
-  if (!rect) return null;
-
-  return {
-    width: Math.round(rect.width),
-    height: Math.round(rect.height),
+    width: Math.round(size.width / scaleFactor),
+    height: Math.round(size.height / scaleFactor),
   };
 }
 
@@ -75,10 +56,31 @@ export async function centerMainWindowOnMonitor() {
   await webviewWindow.center();
 }
 
+async function applyMinSizeForMode(
+  webviewWindow: NonNullable<ReturnType<typeof getMainWebviewWindow>>,
+  mode: MainWindowLayoutMode,
+) {
+  if (mode === "onboarding") {
+    await webviewWindow.setMinSize(
+      new LogicalSize(
+        onboardingWindowPolicy.minWidth,
+        onboardingWindowPolicy.minHeight,
+      ),
+    );
+    return;
+  }
+
+  await webviewWindow.setMinSize(
+    new LogicalSize(
+      controlCenterWindowPolicy.minWidth,
+      controlCenterWindowPolicy.minHeight,
+    ),
+  );
+}
+
 async function setMainWindowLogicalSizeOnMonitor(
   width: number,
   height: number,
-  animated = false,
 ) {
   const webviewWindow = getMainWebviewWindow();
   if (!webviewWindow) return;
@@ -87,7 +89,6 @@ async function setMainWindowLogicalSizeOnMonitor(
     await invoke("set_main_window_logical_size_command", {
       width,
       height,
-      animated,
     });
     return;
   }
@@ -101,10 +102,7 @@ export function clampControlCenterSize(
   height: number,
 ): ControlCenterWindowSize {
   return {
-    width: Math.max(
-      controlCenterWindowPolicy.minWidth,
-      Math.min(width, 1600),
-    ),
+    width: Math.max(controlCenterWindowPolicy.minWidth, Math.min(width, 1600)),
     height: Math.max(
       controlCenterWindowPolicy.minHeight,
       Math.min(height, 1200),
@@ -112,71 +110,69 @@ export function clampControlCenterSize(
   };
 }
 
-export async function applyMainWindowLayoutMode(
-  mode: MainWindowLayoutMode,
-  animated = false,
-) {
+function resolveMainWindowTargetSize(mode: MainWindowLayoutMode) {
+  if (mode === "onboarding") {
+    return {
+      width: onboardingWindowPolicy.width,
+      height: onboardingWindowPolicy.height,
+    };
+  }
+
+  const saved = readControlCenterWindowSize();
+  return clampControlCenterSize(
+    saved?.width ?? controlCenterWindowPolicy.defaultWidth,
+    saved?.height ?? controlCenterWindowPolicy.defaultHeight,
+  );
+}
+
+export async function applyMainWindowLayoutMode(mode: MainWindowLayoutMode) {
   const webviewWindow = getMainWebviewWindow();
   if (!webviewWindow) return;
   const beganAt = performance.now();
 
   await ensureMainWindowVisible(webviewWindow);
+  await applyMinSizeForMode(webviewWindow, mode);
   logger.info("window", "main layout apply started", { mode });
 
-  if (mode === "onboarding") {
-    await webviewWindow.setMinSize(
-      new LogicalSize(
-        onboardingWindowPolicy.minWidth,
-        onboardingWindowPolicy.minHeight,
-      ),
-    );
-    await setMainWindowLogicalSizeOnMonitor(
-      onboardingWindowPolicy.width,
-      onboardingWindowPolicy.height,
-      animated,
-    );
-    logger.info("window", "main layout apply completed", {
-      mode,
-      animated,
-      durationMs: Math.round(performance.now() - beganAt),
-      width: onboardingWindowPolicy.width,
-      height: onboardingWindowPolicy.height,
-    });
-    return;
-  }
-
-  const saved = readControlCenterWindowSize();
-  const next = clampControlCenterSize(
-    saved?.width ?? controlCenterWindowPolicy.defaultWidth,
-    saved?.height ?? controlCenterWindowPolicy.defaultHeight,
-  );
-
-  await webviewWindow.setMinSize(
-    new LogicalSize(
-      controlCenterWindowPolicy.minWidth,
-      controlCenterWindowPolicy.minHeight,
-    ),
-  );
-  await setMainWindowLogicalSizeOnMonitor(next.width, next.height, animated);
+  const target = resolveMainWindowTargetSize(mode);
+  await setMainWindowLogicalSizeOnMonitor(target.width, target.height);
   logger.info("window", "main layout apply completed", {
     mode,
-    animated,
     durationMs: Math.round(performance.now() - beganAt),
-    width: next.width,
-    height: next.height,
+    width: target.width,
+    height: target.height,
   });
 }
 
 export async function animateMainWindowLayoutMode(
   mode: MainWindowLayoutMode,
-  durationMs = 480,
+  durationMs = MAIN_WINDOW_ANIMATION_DURATION_MS,
 ) {
-  logger.info("window", "main native resize animation requested", {
+  const webviewWindow = getMainWebviewWindow();
+  if (!webviewWindow) return;
+
+  await ensureMainWindowVisible(webviewWindow);
+  await applyMinSizeForMode(webviewWindow, mode);
+  const target = resolveMainWindowTargetSize(mode);
+
+  if (!isTauriRuntime()) {
+    await applyMainWindowLayoutMode(mode);
+    return;
+  }
+
+  logger.info("window", "main layout native animation started", {
     mode,
     durationMs,
-    policy: "native-window-frame",
+    width: target.width,
+    height: target.height,
+    policy: "center-anchored-native",
   });
-  await applyMainWindowLayoutMode(mode, true);
+
+  await invoke("animate_main_window_logical_size_command", {
+    width: target.width,
+    height: target.height,
+    durationMs,
+  });
 }
 
 export function requestMainWindowLayoutMode(mode: MainWindowLayoutMode) {
@@ -187,7 +183,9 @@ export function requestAnimatedMainWindowLayoutMode(
   mode: MainWindowLayoutMode,
   durationMs?: number,
 ) {
-  return enqueueMainWindowLayout(() => animateMainWindowLayoutMode(mode, durationMs));
+  return enqueueMainWindowLayout(() =>
+    animateMainWindowLayoutMode(mode, durationMs),
+  );
 }
 
 export async function animateMainWindowToOnboarding(durationMs = 480) {

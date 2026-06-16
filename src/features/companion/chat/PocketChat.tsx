@@ -7,21 +7,21 @@ import { ChatAvatar } from "./components/ChatAvatar";
 import { ChatBubble } from "./components/ChatBubble";
 import { CompanionPanelLayout } from "./components/CompanionPanelLayout";
 import { ContextStatus } from "./components/ContextStatus";
-import { PersonaSwitcher } from "../dev/PersonaSwitcher";
+import { MateSwitcher } from "../dev/MateSwitcher";
 import { LocalTimeline } from "../dev/LocalTimeline";
+import type { CompanionMateId } from "../../../domain/mate";
 import type {
   CompanionMessage,
   CompanionMode,
   Persona,
-  PersonaId,
 } from "../types";
 import type { TimelineEvent } from "../../timeline/types";
 
 type PocketChatProps = {
   mode: CompanionMode;
   persona: Persona;
-  personas: Persona[];
-  selectedPersonaId: PersonaId;
+  mates: Persona[];
+  selectedPersonaId: CompanionMateId;
   messages: CompanionMessage[];
   draft: string;
   timelineEvents: TimelineEvent[];
@@ -31,14 +31,14 @@ type PocketChatProps = {
   onDraftChange: (value: string) => void;
   onSubmit: () => void;
   onClose: () => void;
-  onPersonaSelect: (personaId: PersonaId) => void;
+  onMateSelect: (personaId: CompanionMateId) => void;
   onOpenDailyCare: () => void;
 };
 
 export function PocketChat({
   mode,
   persona,
-  personas,
+  mates,
   selectedPersonaId,
   messages,
   draft,
@@ -49,7 +49,7 @@ export function PocketChat({
   onDraftChange,
   onSubmit,
   onClose,
-  onPersonaSelect,
+  onMateSelect,
   onOpenDailyCare,
 }: PocketChatProps) {
   const deep = mode === "deep";
@@ -113,11 +113,11 @@ export function PocketChat({
       dev={
         devToolsOpen ? (
           <div className="space-y-2">
-            <PersonaSwitcher
-              personas={personas}
+            <MateSwitcher
+              mates={mates}
               selectedPersonaId={selectedPersonaId}
-              onSelect={onPersonaSelect}
-              label={labels.dev.persona}
+              onSelect={onMateSelect}
+              label={labels.dev.mate}
             />
             <LocalTimeline events={timelineEvents} labels={labels.dev} />
           </div>

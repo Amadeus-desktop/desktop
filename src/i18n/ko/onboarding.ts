@@ -38,11 +38,12 @@ export const onboarding: OnboardingMessages = {
       },
     },
   },
-  setup: {
-    headline: "누구와 함께할까요?",
-    subheadline: "말투만 달라요. 곁에 있는 마음은 같아요.",
-    continue: "곁에 두기",
-  },
+    setup: {
+      headline: "누구와 함께할까요?",
+      subheadline: "아이콘만 골라요. 말투·성격은 캐릭터 설정에서 바꿀 수 있어요.",
+      mateLabel: "메이트",
+      continue: "곁에 두기",
+    },
   preparing: {
     eyebrow: "잠깐만",
     title: "설정 준비 중이에요",

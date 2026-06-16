@@ -1,6 +1,7 @@
 use crate::{
     macos_window::{
-        set_main_window_logical_size, start_main_window_drag, sync_companion_window_position_only,
+        animate_main_window_logical_size, set_main_window_logical_size, start_main_window_drag,
+        sync_companion_window_position_only,
     },
     observability::{info as log_info, LogArea},
 };
@@ -21,13 +22,27 @@ pub fn set_main_window_logical_size_command(
     app: tauri::AppHandle,
     width: f64,
     height: f64,
-    animated: bool,
 ) -> Result<(), String> {
     log_info(
         LogArea::Window,
+        format!("main window native size requested: width={width} height={height}"),
+    );
+    set_main_window_logical_size(&app, width, height)
+}
+
+#[tauri::command]
+pub fn animate_main_window_logical_size_command(
+    app: tauri::AppHandle,
+    width: f64,
+    height: f64,
+    duration_ms: Option<u64>,
+) -> Result<(), String> {
+    let duration_ms = duration_ms.unwrap_or(420);
+    log_info(
+        LogArea::Window,
         format!(
-            "main window native size requested: width={width} height={height} animated={animated}"
+            "main window native animation requested: width={width} height={height} duration_ms={duration_ms}"
         ),
     );
-    set_main_window_logical_size(&app, width, height, animated)
+    animate_main_window_logical_size(&app, width, height, duration_ms)
 }

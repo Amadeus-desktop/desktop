@@ -1,6 +1,6 @@
 use std::{
-    io::{Read, Write},
-    net::{TcpListener, TcpStream},
+    io::{ErrorKind, Read, Write},
+    net::{SocketAddr, TcpListener, TcpStream},
     sync::{
         atomic::{AtomicBool, Ordering},
         Mutex,
@@ -21,9 +21,35 @@ const DEV_AUTH_CALLBACK_PORT: u16 = 17421;
 const DEV_AUTH_CALLBACK_URL: &str = "http://127.0.0.1:17421/auth/callback";
 const AUTH_CALLBACK_EVENT: &str = "amadeus-auth-callback";
 const DEV_AUTH_CALLBACK_TTL: Duration = Duration::from_secs(300);
+const DEV_AUTH_CALLBACK_ACCEPT_POLL_MS: u64 = 50;
+const DEV_AUTH_CALLBACK_READ_TIMEOUT: Duration = Duration::from_secs(5);
 static DEV_AUTH_CALLBACK_SERVER_RUNNING: AtomicBool = AtomicBool::new(false);
 static DEV_AUTH_CALLBACK_SERVER_DEADLINE: Mutex<Option<Instant>> = Mutex::new(None);
 static PENDING_AUTH_CALLBACK_URL: Mutex<Option<String>> = Mutex::new(None);
+
+fn dev_auth_callback_addr() -> SocketAddr {
+    format!("127.0.0.1:{DEV_AUTH_CALLBACK_PORT}")
+        .parse()
+        .expect("dev auth callback address should parse")
+}
+
+fn is_transient_io_error(error: &std::io::Error) -> bool {
+    matches!(error.kind(), ErrorKind::WouldBlock | ErrorKind::Interrupted)
+        || error.raw_os_error() == Some(35)
+}
+
+fn dev_auth_callback_server_is_reachable() -> bool {
+    TcpStream::connect_timeout(&dev_auth_callback_addr(), Duration::from_millis(150)).is_ok()
+}
+
+fn mark_dev_auth_callback_server_stopped(reason: &str) {
+    DEV_AUTH_CALLBACK_SERVER_RUNNING.store(false, Ordering::SeqCst);
+    clear_dev_auth_callback_deadline();
+    log_info(
+        LogArea::Auth,
+        format!("dev auth callback server stopped: reason={reason}"),
+    );
+}
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct AuthCallbackPayload {
@@ -78,27 +104,49 @@ pub fn consume_pending_auth_callback(
 #[tauri::command]
 pub fn start_dev_auth_callback_server(app: tauri::AppHandle) -> Result<String, String> {
     let deadline = extend_dev_auth_callback_deadline(Instant::now());
+    if DEV_AUTH_CALLBACK_SERVER_RUNNING.load(Ordering::SeqCst) {
+        if dev_auth_callback_server_is_reachable() {
+            log_info(
+                LogArea::Auth,
+                format!(
+                    "dev auth callback server already running; deadline extended by {}s",
+                    DEV_AUTH_CALLBACK_TTL.as_secs()
+                ),
+            );
+            return Ok(DEV_AUTH_CALLBACK_URL.to_string());
+        }
+
+        log_info(
+            LogArea::Auth,
+            "dev auth callback server marked running but unreachable; restarting",
+        );
+        mark_dev_auth_callback_server_stopped("stale-running-flag");
+    }
+
     if DEV_AUTH_CALLBACK_SERVER_RUNNING
         .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
         .is_err()
     {
-        log_info(
-            LogArea::Auth,
-            format!(
-                "dev auth callback server already running; deadline extended by {}s",
-                DEV_AUTH_CALLBACK_TTL.as_secs()
-            ),
-        );
-        return Ok(DEV_AUTH_CALLBACK_URL.to_string());
+        if dev_auth_callback_server_is_reachable() {
+            log_info(
+                LogArea::Auth,
+                format!(
+                    "dev auth callback server already running; deadline extended by {}s",
+                    DEV_AUTH_CALLBACK_TTL.as_secs()
+                ),
+            );
+            return Ok(DEV_AUTH_CALLBACK_URL.to_string());
+        }
+
+        mark_dev_auth_callback_server_stopped("start-race-unreachable");
     }
 
     let bind_timer = StartupPhaseTimer::start("dev_auth_callback_bind");
-    let listener =
-        TcpListener::bind(format!("127.0.0.1:{DEV_AUTH_CALLBACK_PORT}")).map_err(|error| {
-            DEV_AUTH_CALLBACK_SERVER_RUNNING.store(false, Ordering::SeqCst);
-            format!("dev auth callback bind failed: {error}")
-        })?;
-    listener.set_nonblocking(false).map_err(|error| {
+    let listener = TcpListener::bind(dev_auth_callback_addr()).map_err(|error| {
+        DEV_AUTH_CALLBACK_SERVER_RUNNING.store(false, Ordering::SeqCst);
+        format!("dev auth callback bind failed: {error}")
+    })?;
+    listener.set_nonblocking(true).map_err(|error| {
         DEV_AUTH_CALLBACK_SERVER_RUNNING.store(false, Ordering::SeqCst);
         format!("dev auth callback configure failed: {error}")
     })?;
@@ -113,14 +161,14 @@ pub fn start_dev_auth_callback_server(app: tauri::AppHandle) -> Result<String, S
     );
 
     thread::spawn(move || {
-        if let Err(error) = serve_dev_auth_callback(app, listener) {
+        let result = serve_dev_auth_callback(app, listener);
+        if let Err(error) = result {
             log_error(
                 LogArea::Auth,
                 format!("dev auth callback server failed: {error}"),
             );
         }
-        DEV_AUTH_CALLBACK_SERVER_RUNNING.store(false, Ordering::SeqCst);
-        clear_dev_auth_callback_deadline();
+        mark_dev_auth_callback_server_stopped("serve-loop-exited");
     });
 
     Ok(DEV_AUTH_CALLBACK_URL.to_string())
@@ -184,8 +232,6 @@ fn dev_auth_callback_deadline_expired(now: Instant) -> bool {
 }
 
 fn serve_dev_auth_callback(app: tauri::AppHandle, listener: TcpListener) -> std::io::Result<()> {
-    listener.set_nonblocking(true)?;
-
     loop {
         if dev_auth_callback_deadline_expired(Instant::now()) {
             log_info(LogArea::Auth, "dev auth callback server deadline reached");
@@ -194,25 +240,72 @@ fn serve_dev_auth_callback(app: tauri::AppHandle, listener: TcpListener) -> std:
 
         match listener.accept() {
             Ok((mut stream, _)) => {
-                if handle_dev_auth_callback_stream(&app, &mut stream)? {
-                    return Ok(());
+                if let Err(error) = stream.set_nonblocking(false) {
+                    log_error(
+                        LogArea::Auth,
+                        format!("dev auth callback stream configure failed: {error}"),
+                    );
+                    continue;
+                }
+
+                match handle_dev_auth_callback_stream(&app, &mut stream) {
+                    Ok(true) => return Ok(()),
+                    Ok(false) => {}
+                    Err(error) if is_transient_io_error(&error) => {
+                        log_info(
+                            LogArea::Auth,
+                            format!("dev auth callback transient stream error ignored: {error}"),
+                        );
+                    }
+                    Err(error) => {
+                        log_error(
+                            LogArea::Auth,
+                            format!("dev auth callback stream error ignored: {error}"),
+                        );
+                    }
                 }
             }
-            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
-                thread::sleep(Duration::from_millis(50));
+            Err(error) if is_transient_io_error(&error) => {
+                thread::sleep(Duration::from_millis(DEV_AUTH_CALLBACK_ACCEPT_POLL_MS));
             }
             Err(error) => return Err(error),
         }
     }
 }
 
+fn read_http_request(stream: &mut TcpStream) -> std::io::Result<String> {
+    stream.set_read_timeout(Some(DEV_AUTH_CALLBACK_READ_TIMEOUT))?;
+    let mut buffer = Vec::with_capacity(512);
+
+    loop {
+        let mut chunk = [0_u8; 1024];
+        match stream.read(&mut chunk) {
+            Ok(0) => break,
+            Ok(bytes_read) => {
+                buffer.extend_from_slice(&chunk[..bytes_read]);
+                if buffer.windows(4).any(|window| window == b"\r\n\r\n") {
+                    break;
+                }
+                if buffer.len() >= 8192 {
+                    break;
+                }
+            }
+            Err(error) if error.kind() == ErrorKind::TimedOut => break,
+            Err(error) if is_transient_io_error(&error) => {
+                thread::sleep(Duration::from_millis(10));
+            }
+            Err(error) => return Err(error),
+        }
+    }
+
+    Ok(String::from_utf8_lossy(&buffer).into_owned())
+}
+
 fn handle_dev_auth_callback_stream(
     app: &tauri::AppHandle,
     stream: &mut TcpStream,
 ) -> std::io::Result<bool> {
-    let mut buffer = [0_u8; 4096];
-    let bytes_read = stream.read(&mut buffer)?;
-    let request = String::from_utf8_lossy(&buffer[..bytes_read]);
+    let request = read_http_request(stream)?;
 
     match classify_dev_auth_callback_request(&request) {
         DevAuthCallbackRequest::Favicon => {

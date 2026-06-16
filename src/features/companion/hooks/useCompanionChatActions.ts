@@ -5,11 +5,11 @@ import { recordTriggerReactionForScoring } from "../../trigger";
 import { generatePocketIntro } from "../lib/pocketIntro";
 import { patchCompanionSession } from "../lib/companionSessionStore";
 import { resolveCompanionReply } from "../lib/reply";
+import type { CompanionMateId } from "../../../domain/mate";
 import type {
   CompanionMessage,
   CompanionMode,
   Persona,
-  PersonaId,
 } from "../types";
 
 type TransitionMode = (mode: CompanionMode) => Promise<void>;
@@ -21,7 +21,7 @@ type UseCompanionChatActionsOptions = {
   draft: string;
   isSending: boolean;
   selectedPersona: Persona;
-  personas: Record<PersonaId, Persona>;
+  personas: Record<CompanionMateId, Persona>;
   settings: GeneralSettings;
   setDraft: (draft: string) => void;
   setMessages: (
@@ -115,7 +115,7 @@ export function useCompanionChatActions({
   }, [transitionMode]);
 
   const selectPersona = useCallback(
-    (personaId: PersonaId) => {
+    (personaId: CompanionMateId) => {
       patchAppSettings({ companionPersonaId: personaId });
 
       if (mode !== "pocket") return;

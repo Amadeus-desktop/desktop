@@ -7,7 +7,7 @@ describe("normalizeGeneralSettings", () => {
       companionPersonaId: "nature_healing" as typeof initialSettings.companionPersonaId,
     });
 
-    expect(settings.companionPersonaId).toBe("soft_care");
+    expect(settings.companionPersonaId).toBe("warm_friend");
   });
 
   it("falls back invalid appearance and accent values to defaults", () => {

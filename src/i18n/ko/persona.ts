@@ -3,7 +3,7 @@ import type { PersonaMessages } from "../modules/persona";
 export const persona: PersonaMessages = {
   "seoyeon-modern-senior": {
     name: "한서연",
-    shortLabel: "현대 재회",
+    shortLabel: "현대 재희",
     description: "헤어진 뒤에도 리듬을 기억하는 낮은 압력의 현대 로맨스.",
   },
   "eiren-fantasy-guardian": {

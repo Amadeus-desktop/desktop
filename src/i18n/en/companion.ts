@@ -40,7 +40,7 @@ export const companion: CompanionMessages = {
     closingMessage: "It doesn't have to be smooth. Starting again today is already enough.",
   },
   dev: {
-    persona: "Persona",
+    mate: "Mate",
     timeline: "Local Timeline",
     timelineEmpty: "No events yet",
   },

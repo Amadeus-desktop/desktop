@@ -40,7 +40,7 @@ export const companion: CompanionMessages = {
     closingMessage: "끝까지 매끈하지 않아도 괜찮아. 오늘은 다시 시작한 것만으로도 충분히 남아.",
   },
   dev: {
-    persona: "페르소나",
+    mate: "메이트",
     timeline: "Local Timeline",
     timelineEmpty: "아직 기록 없음",
   },

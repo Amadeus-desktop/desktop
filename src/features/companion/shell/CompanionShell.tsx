@@ -30,7 +30,7 @@ export function CompanionShell() {
         <PocketChat
           mode={shell.mode}
           persona={shell.selectedPersona}
-          personas={shell.personaList}
+          mates={shell.mateList}
           selectedPersonaId={shell.selectedPersonaId}
           messages={shell.messages}
           draft={shell.draft}
@@ -41,7 +41,7 @@ export function CompanionShell() {
           onDraftChange={shell.setDraft}
           onSubmit={() => void shell.sendMessage()}
           onClose={() => void shell.closePocket()}
-          onPersonaSelect={shell.selectPersona}
+          onMateSelect={shell.selectPersona}
           onOpenDailyCare={() => void shell.openDailyCare()}
         />
       ) : null}

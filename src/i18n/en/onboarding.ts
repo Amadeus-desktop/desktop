@@ -40,7 +40,8 @@ export const onboarding: OnboardingMessages = {
   },
   setup: {
     headline: "Who stays with you?",
-    subheadline: "Different tone, same quiet presence.",
+    subheadline: "Pick an icon only. Tone and personality live in Character settings.",
+    mateLabel: "Mate",
     continue: "Keep beside me",
   },
   preparing: {

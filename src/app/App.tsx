@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "../lib/utils/cn";
 import { ControlCenter } from "../features/control-center";
 import { useControlCenterWindow } from "../features/control-center/hooks/useControlCenterWindow";
@@ -12,6 +12,7 @@ import { ensureSettingsSync } from "../features/settings";
 import { useTauriDevTools } from "../lib/tauri/useTauriDevTools";
 import { logger } from "../observability/logger";
 import { scheduleFrontendFirstPaintRecord } from "../features/lifecycle";
+import { isTauriRuntime } from "../lib/tauri/runtime";
 import { useShellTheme } from "../ui";
 
 function App() {
@@ -23,6 +24,19 @@ function App() {
   const showOnboardingShell =
     logoutTransitioning || onboarding.showOnboardingShell;
   const { isComplete } = onboarding;
+  const [shellContentVisible, setShellContentVisible] = useState(true);
+  const previousShowOnboardingShell = useRef(showOnboardingShell);
+
+  useEffect(() => {
+    if (previousShowOnboardingShell.current === showOnboardingShell) return;
+
+    previousShowOnboardingShell.current = showOnboardingShell;
+    setShellContentVisible(false);
+    const frame = window.requestAnimationFrame(() => {
+      setShellContentVisible(true);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [showOnboardingShell]);
 
   useAuthWindow(
     showOnboardingShell,
@@ -49,11 +63,16 @@ function App() {
   return (
     <main
       className={cn(
-        "relative flex h-dvh w-dvw overflow-hidden bg-transparent text-white",
-        showOnboardingShell ? "p-0" : "p-3 max-sm:p-2.5",
+        "relative flex h-dvh w-dvw overflow-hidden bg-transparent p-0 text-white",
       )}
     >
-      <div className="tauri-no-drag relative z-10 h-full min-h-0 w-full">
+      <div
+        className={cn(
+          "tauri-no-drag relative z-10 h-full min-h-0 w-full",
+          isTauriRuntime() && "transition-opacity duration-200 ease-out",
+          isTauriRuntime() && !shellContentVisible && "opacity-0",
+        )}
+      >
         {showOnboardingShell ? (
           <OnboardingFlow
             currentStep={onboarding.currentStep}

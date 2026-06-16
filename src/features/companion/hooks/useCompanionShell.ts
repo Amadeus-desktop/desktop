@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { getPersonas } from "../../../domain/persona/registry";
+import { getCompanionMates, getCompanionMateList, normalizeCompanionMateId } from "../../../domain/mate";
 import { useI18n } from "../../../i18n";
 import { useAppSettings } from "../../settings";
 import { patchCompanionSession, resetCompanionSession } from "../lib/companionSessionStore";
@@ -19,7 +19,8 @@ export function useCompanionShell({
   const locale = useI18n();
   const { settings } = useAppSettings();
   const t = locale.companion;
-  const personas = useMemo(() => getPersonas(locale), [locale]);
+  const matesById = useMemo(() => getCompanionMates(locale), [locale]);
+  const mateList = useMemo(() => getCompanionMateList(locale), [locale]);
   const {
     mode,
     draft,
@@ -30,12 +31,11 @@ export function useCompanionShell({
     activeUtteranceId,
     transitionMode,
   } = useCompanionSessionState();
-  const selectedPersonaId = settings.companionPersonaId;
+  const selectedPersonaId = normalizeCompanionMateId(settings.companionPersonaId);
   const [isSending, setIsSending] = useState(false);
   const { events: timelineEvents, refreshTimeline } = useCompanionTimeline();
 
-  const selectedPersona = personas[selectedPersonaId];
-  const personaList = useMemo(() => Object.values(personas), [personas]);
+  const selectedPersona = matesById[selectedPersonaId];
 
   const canPresentTrigger =
     mode === "quiet" || mode === "sleep";
@@ -81,7 +81,7 @@ export function useCompanionShell({
     draft,
     isSending,
     selectedPersona,
-    personas,
+    personas: matesById,
     settings,
     setDraft,
     setMessages,
@@ -96,7 +96,7 @@ export function useCompanionShell({
     mode,
     t,
     selectedPersona,
-    personaList,
+    mateList,
     selectedPersonaId,
     draft,
     nudge,

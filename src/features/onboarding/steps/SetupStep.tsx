@@ -1,7 +1,10 @@
 import { useState } from "react";
-import { getPersonaList } from "../../../domain/persona/registry";
+import {
+  getCompanionMateList,
+  normalizeCompanionMateId,
+  type CompanionMateId,
+} from "../../../domain/mate";
 import { getPersonaAccent } from "../../../domain/persona/theme";
-import type { PersonaId } from "../../../domain/persona/types";
 import { useI18n } from "../../../i18n";
 import { cn } from "../../../lib/utils/cn";
 import { patchAppSettings, useSettings } from "../../settings";
@@ -19,14 +22,14 @@ export function SetupStep({ onComplete, continuing = false }: SetupStepProps) {
   const t = useI18n();
   const s = t.onboarding.setup;
   const { companionPersonaId } = useSettings();
-  const personas = getPersonaList(t);
-  const [personaId, setPersonaId] = useState<PersonaId>(companionPersonaId);
-
-  const selected = personas.find((persona) => persona.id === personaId) ?? personas[0];
+  const mates = getCompanionMateList(t);
+  const [mateId, setMateId] = useState<CompanionMateId>(
+    normalizeCompanionMateId(companionPersonaId),
+  );
 
   function handleComplete() {
     patchAppSettings({
-      companionPersonaId: personaId,
+      companionPersonaId: mateId,
     });
     onComplete();
   }
@@ -34,17 +37,20 @@ export function SetupStep({ onComplete, continuing = false }: SetupStepProps) {
   return (
     <OnboardingStepFrame compact eyebrow={t.onboarding.steps.setup} title={s.headline} description={s.subheadline}>
       <div className="space-y-3">
+        <p className={cn("text-center text-[11px] font-medium", shellText.muted)}>
+          {s.mateLabel}
+        </p>
         <div className="grid grid-cols-2 gap-2">
-          {personas.map((persona) => {
-            const isSelected = persona.id === personaId;
-            const accent = getPersonaAccent(persona.id);
+          {mates.map((mate) => {
+            const isSelected = mate.id === mateId;
+            const accent = getPersonaAccent(mate.id);
 
             return (
               <button
-                key={persona.id}
+                key={mate.id}
                 type="button"
                 aria-pressed={isSelected}
-                onClick={() => setPersonaId(persona.id as PersonaId)}
+                onClick={() => setMateId(mate.id as CompanionMateId)}
                 className={cn(
                   "flex flex-col items-center gap-1.5 rounded-[16px] border px-2 py-2.5 transition active:scale-[0.98]",
                   isSelected
@@ -58,7 +64,7 @@ export function SetupStep({ onComplete, continuing = false }: SetupStepProps) {
                 }
               >
                 <PersonaPresenceIcon
-                  personaId={persona.id}
+                  personaId={mate.id}
                   size="sm"
                   shape="square"
                   variant={isSelected ? "filled" : "outline"}
@@ -70,20 +76,11 @@ export function SetupStep({ onComplete, continuing = false }: SetupStepProps) {
                     isSelected ? "text-[color:var(--accent-soft)]" : shellText.primary,
                   )}
                 >
-                  {persona.name}
-                </span>
-                <span className={cn("truncate w-full text-center text-[9px] leading-tight", shellText.faint)}>
-                  {persona.shortLabel}
+                  {mate.shortLabel}
                 </span>
               </button>
             );
           })}
-        </div>
-
-        <div
-          className="rounded-[14px] border border-[color:rgb(var(--accent-rgb)/0.16)] bg-[color:rgb(var(--accent-rgb)/0.05)] px-3 py-2.5 text-center"
-        >
-          <p className={cn("text-[11px] leading-relaxed", shellText.muted)}>{selected.description}</p>
         </div>
 
         <OnboardingCtaButton disabled={continuing} onClick={handleComplete}>

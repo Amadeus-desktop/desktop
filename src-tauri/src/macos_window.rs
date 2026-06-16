@@ -167,66 +167,133 @@ pub fn set_main_window_logical_size(
     app: &AppHandle,
     width: f64,
     height: f64,
-    animated: bool,
 ) -> Result<(), String> {
     let window = app
         .get_webview_window("main")
         .ok_or_else(|| "set_main_window_logical_size: main window missing".to_string())?;
 
+    window
+        .set_size(LogicalSize::new(width, height))
+        .map_err(|error| format!("set_main_window_logical_size: set_size failed: {error}"))?;
+    center_main_window_on_monitor(&window)?;
     #[cfg(target_os = "macos")]
-    {
-        set_macos_window_logical_size(&window, width, height, animated)
-    }
+    refresh_macos_webview_layers(&window);
+    Ok(())
+}
 
-    #[cfg(not(target_os = "macos"))]
-    {
-        let _ = animated;
-        window
-            .set_size(LogicalSize::new(width, height))
-            .map_err(|error| format!("set_main_window_logical_size: set_size failed: {error}"))?;
-        window.center().map_err(|error| {
-            format!("set_main_window_logical_size: center failed after set_size: {error}")
-        })?;
-        Ok(())
-    }
+fn center_main_window_on_monitor(window: &WebviewWindow) -> Result<(), String> {
+    use tauri::PhysicalPosition;
+
+    let monitor = window
+        .current_monitor()
+        .map_err(|error| format!("center_main_window_on_monitor: monitor lookup failed: {error}"))?
+        .ok_or_else(|| "center_main_window_on_monitor: current_monitor() unavailable".to_string())?;
+
+    let work_area = monitor.work_area();
+    let outer = window
+        .outer_size()
+        .map_err(|error| format!("center_main_window_on_monitor: outer_size failed: {error}"))?;
+
+    let x = work_area.position.x + (work_area.size.width as i32 - outer.width as i32) / 2;
+    let y = work_area.position.y + (work_area.size.height as i32 - outer.height as i32) / 2;
+
+    window.set_position(PhysicalPosition::new(x, y)).map_err(|error| {
+        format!("center_main_window_on_monitor: set_position failed: {error}")
+    })
 }
 
 #[cfg(target_os = "macos")]
-fn set_macos_window_logical_size(
-    window: &WebviewWindow,
+fn center_anchored_main_window_frame(
+    ns_window: &objc2_app_kit::NSWindow,
     width: f64,
     height: f64,
-    animated: bool,
-) -> Result<(), String> {
-    if !animated {
-        window
-            .set_size(LogicalSize::new(width, height))
-            .map_err(|error| format!("set_macos_window_logical_size: set_size failed: {error}"))?;
-        window.center().map_err(|error| {
-            format!("set_macos_window_logical_size: center failed after set_size: {error}")
-        })?;
-        refresh_macos_webview_layers(window);
-        return Ok(());
-    }
+) -> objc2_foundation::NSRect {
+    use objc2_foundation::{NSPoint, NSRect, NSSize};
 
-    let ptr = window.ns_window().map_err(|error| {
-        format!("set_macos_window_logical_size: ns_window unavailable: {error}")
-    })?;
+    let current = ns_window.frame();
+    let center_x = current.origin.x + current.size.width / 2.0;
+    let center_y = current.origin.y + current.size.height / 2.0;
+    let content_rect = NSRect::new(NSPoint::new(0.0, 0.0), NSSize::new(width, height));
+    let outer = ns_window.frameRectForContentRect(content_rect);
+
+    NSRect::new(
+        NSPoint::new(
+            center_x - outer.size.width / 2.0,
+            center_y - outer.size.height / 2.0,
+        ),
+        outer.size,
+    )
+}
+
+#[cfg(target_os = "macos")]
+pub fn animate_main_window_logical_size(
+    app: &AppHandle,
+    width: f64,
+    height: f64,
+    duration_ms: u64,
+) -> Result<(), String> {
+    use block2::RcBlock;
+    use core::ptr::NonNull;
+    use objc2_app_kit::{NSAnimatablePropertyContainer, NSAnimationContext, NSWindow};
+
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| "animate_main_window_logical_size: main window missing".to_string())?;
+
+    let ptr = window
+        .ns_window()
+        .map_err(|error| format!("animate_main_window_logical_size: ns_window failed: {error}"))?;
+
+    let duration_secs = (duration_ms as f64 / 1000.0).clamp(0.15, 1.5);
+    let ns_window_ptr = ptr as *const NSWindow;
+    let window_for_completion = window.clone();
 
     unsafe {
-        use objc2_app_kit::NSWindow;
-        use objc2_foundation::{NSPoint, NSRect, NSSize};
+        let target_frame = center_anchored_main_window_frame(&*ns_window_ptr, width, height);
 
-        let ns_window: &NSWindow = &*(ptr as *const NSWindow);
-        let current = ns_window.frame();
-        let next_x = current.origin.x + (current.size.width - width) / 2.0;
-        let next_y = current.origin.y + (current.size.height - height) / 2.0;
-        let next = NSRect::new(NSPoint::new(next_x, next_y), NSSize::new(width, height));
-        ns_window.setFrame_display_animate(next, true, true);
-        refresh_macos_webview_layers(window);
+        let changes = RcBlock::new(move |context: NonNull<NSAnimationContext>| {
+            let context = context.as_ref();
+            context.setDuration(duration_secs);
+            let animated_window = (&*ns_window_ptr).animator();
+            animated_window.setFrame_display(target_frame, true);
+        });
+
+        let completion = RcBlock::new(move || {
+            if let Err(error) = window_for_completion.set_size(LogicalSize::new(width, height)) {
+                log_error(
+                    LogArea::Window,
+                    format!("animate_main_window_logical_size: set_size sync failed: {error}"),
+                );
+            }
+            refresh_macos_webview_layers(&window_for_completion);
+            log_info(
+                LogArea::Window,
+                format!(
+                    "main window native animation completed: width={width} height={height} duration_ms={duration_ms}"
+                ),
+            );
+        });
+
+        NSAnimationContext::runAnimationGroup_completionHandler(&changes, Some(&completion));
     }
 
+    log_info(
+        LogArea::Window,
+        format!(
+            "main window native animation started: width={width} height={height} duration_ms={duration_ms} policy=center-anchored"
+        ),
+    );
     Ok(())
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn animate_main_window_logical_size(
+    app: &AppHandle,
+    width: f64,
+    height: f64,
+    _duration_ms: u64,
+) -> Result<(), String> {
+    set_main_window_logical_size(app, width, height)
 }
 
 /// Configure the companion overlay as a floating HUD that follows the active Space.

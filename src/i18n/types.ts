@@ -306,7 +306,7 @@ export type AppLocale = {
       closingMessage: string;
     };
     dev: {
-      persona: string;
+      mate: string;
       timeline: string;
       timelineEmpty: string;
     };
@@ -373,6 +373,7 @@ export type AppLocale = {
     setup: {
       headline: string;
       subheadline: string;
+      mateLabel: string;
       continue: string;
     };
     modelRoute: {

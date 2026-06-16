@@ -23,8 +23,8 @@ use app_lifecycle::{
     setup::setup_app,
     tray::show_main_window,
     windows::{
-        set_main_window_logical_size_command, start_main_window_drag_command,
-        sync_companion_window_position,
+        animate_main_window_logical_size_command, set_main_window_logical_size_command,
+        start_main_window_drag_command, sync_companion_window_position,
     },
 };
 use llama_sidecar::get_llama_sidecar_status;
@@ -57,6 +57,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             sync_companion_window_position,
             set_main_window_logical_size_command,
+            animate_main_window_logical_size_command,
             start_main_window_drag_command,
             get_current_context_snapshot,
             get_screen_capture_permission_status,

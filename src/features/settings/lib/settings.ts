@@ -2,7 +2,7 @@ import type { AppLocale } from "../../../i18n";
 import { normalizeCharacterId } from "../../character";
 import type { GeneralSettings, ModelRoute, TalkFrequency } from "../types";
 import type { AccentColorId, AppearanceMode } from "../../../ui/tokens/appearance";
-import { normalizePersonaId } from "../../../domain/persona/types";
+import { normalizeCompanionMateId } from "../../../domain/mate";
 
 export const initialSettings: GeneralSettings = {
   locale: "ko",
@@ -34,7 +34,7 @@ export function normalizeGeneralSettings(
   return {
     ...merged,
     characterId: normalizeCharacterId(merged.characterId),
-    companionPersonaId: normalizePersonaId(merged.companionPersonaId),
+    companionPersonaId: normalizeCompanionMateId(merged.companionPersonaId),
     accentColor: isAccentColor(accentColor)
       ? accentColor
       : initialSettings.accentColor,

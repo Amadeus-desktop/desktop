@@ -40,7 +40,8 @@ export const onboarding: OnboardingMessages = {
   },
   setup: {
     headline: "誰と一緒に過ごしますか？",
-    subheadline: "口調は違っても、そばにいる気持ちは同じです。",
+    subheadline: "アイコンだけ選びます。口調や性格はキャラクター設定で変えられます。",
+    mateLabel: "メイト",
     continue: "そばに置く",
   },
   preparing: {
