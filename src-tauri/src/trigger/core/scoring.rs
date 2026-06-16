@@ -400,7 +400,10 @@ pub(super) fn select_work_session_milestone_candidate(
     None
 }
 
-pub(super) fn exception_suppression(input: &TriggerInput) -> Option<&'static str> {
+pub(super) fn exception_suppression(
+    input: &TriggerInput,
+    talk_frequency: &str,
+) -> Option<&'static str> {
     if suppress_fullscreen_non_work(&input.snapshot) {
         return Some("fullscreen_non_work");
     }
@@ -417,7 +420,7 @@ pub(super) fn exception_suppression(input: &TriggerInput) -> Option<&'static str
         return Some("music_short_foreground");
     }
 
-    if suppress_work_cluster_drift(&input.snapshot, history) {
+    if suppress_work_cluster_drift(&input.snapshot, history, talk_frequency) {
         return Some("work_cluster");
     }
 
@@ -433,7 +436,17 @@ fn suppress_music_drift(snapshot: &MacosContextSnapshot, history: &ProcessHistor
 fn suppress_work_cluster_drift(
     snapshot: &MacosContextSnapshot,
     history: &ProcessHistoryWindow,
+    talk_frequency: &str,
 ) -> bool {
+    if talk_frequency == "test"
+        && snapshot
+            .browser_context
+            .as_ref()
+            .is_some_and(|context| context.url_class == BrowserUrlClass::Video)
+    {
+        return false;
+    }
+
     snapshot.category == AppCategory::NonWork
         && history.work_cluster_duration_ms >= 10 * MINUTE_MS
         && history.app_switch_count >= 3
