@@ -1,8 +1,8 @@
 import { LogicalSize } from "@tauri-apps/api/dpi";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
+import { invoke } from "@tauri-apps/api/core";
 import { createSerializedAsyncQueue } from "../../../lib/async/serializedAsyncQueue";
 import { isTauriRuntime } from "../../../lib/tauri/runtime";
-import { scheduleMainWindowCompositorKick } from "../../../lib/tauri/mainWindowChrome";
 import { logger } from "../../../observability/logger";
 import {
   controlCenterWindowPolicy,
@@ -75,9 +75,22 @@ export async function centerMainWindowOnMonitor() {
   await webviewWindow.center();
 }
 
-async function setMainWindowLogicalSizeOnMonitor(width: number, height: number) {
+async function setMainWindowLogicalSizeOnMonitor(
+  width: number,
+  height: number,
+  animated = false,
+) {
   const webviewWindow = getMainWebviewWindow();
   if (!webviewWindow) return;
+
+  if (isTauriRuntime()) {
+    await invoke("set_main_window_logical_size_command", {
+      width,
+      height,
+      animated,
+    });
+    return;
+  }
 
   await webviewWindow.setSize(new LogicalSize(width, height));
   await webviewWindow.center();
@@ -99,7 +112,10 @@ export function clampControlCenterSize(
   };
 }
 
-export async function applyMainWindowLayoutMode(mode: MainWindowLayoutMode) {
+export async function applyMainWindowLayoutMode(
+  mode: MainWindowLayoutMode,
+  animated = false,
+) {
   const webviewWindow = getMainWebviewWindow();
   if (!webviewWindow) return;
   const beganAt = performance.now();
@@ -117,10 +133,11 @@ export async function applyMainWindowLayoutMode(mode: MainWindowLayoutMode) {
     await setMainWindowLogicalSizeOnMonitor(
       onboardingWindowPolicy.width,
       onboardingWindowPolicy.height,
+      animated,
     );
-    scheduleMainWindowCompositorKick();
     logger.info("window", "main layout apply completed", {
       mode,
+      animated,
       durationMs: Math.round(performance.now() - beganAt),
       width: onboardingWindowPolicy.width,
       height: onboardingWindowPolicy.height,
@@ -140,10 +157,10 @@ export async function applyMainWindowLayoutMode(mode: MainWindowLayoutMode) {
       controlCenterWindowPolicy.minHeight,
     ),
   );
-  await setMainWindowLogicalSizeOnMonitor(next.width, next.height);
-  scheduleMainWindowCompositorKick();
+  await setMainWindowLogicalSizeOnMonitor(next.width, next.height, animated);
   logger.info("window", "main layout apply completed", {
     mode,
+    animated,
     durationMs: Math.round(performance.now() - beganAt),
     width: next.width,
     height: next.height,
@@ -154,12 +171,12 @@ export async function animateMainWindowLayoutMode(
   mode: MainWindowLayoutMode,
   durationMs = 480,
 ) {
-  logger.info("window", "main native resize animation skipped", {
+  logger.info("window", "main native resize animation requested", {
     mode,
     durationMs,
-    policy: "single-apply",
+    policy: "native-window-frame",
   });
-  await applyMainWindowLayoutMode(mode);
+  await applyMainWindowLayoutMode(mode, true);
 }
 
 export function requestMainWindowLayoutMode(mode: MainWindowLayoutMode) {

@@ -16,10 +16,10 @@
       {
         "label": "main",
         "title": "Amadeus",
-        "width": 840,
-        "height": 560,
+        "width": 360,
+        "height": 580,
         "minWidth": 320,
-        "minHeight": 480,
+        "minHeight": 460,
         "resizable": true,
         "decorations": false,
         "transparent": true,

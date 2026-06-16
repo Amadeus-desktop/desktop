@@ -2,7 +2,7 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::observability::{error as log_error, info as log_info, warn as log_warn, LogArea};
-use tauri::{AppHandle, Emitter, Manager, WebviewWindow};
+use tauri::{AppHandle, Emitter, LogicalSize, Manager, WebviewWindow};
 
 pub const COMPANION_SPACE_CHANGED_EVENT: &str = "companion-space-changed";
 
@@ -160,6 +160,72 @@ pub fn start_main_window_drag(app: &AppHandle) -> Result<(), String> {
     window
         .start_dragging()
         .map_err(|error| format!("start_main_window_drag: {error}"))?;
+    Ok(())
+}
+
+pub fn set_main_window_logical_size(
+    app: &AppHandle,
+    width: f64,
+    height: f64,
+    animated: bool,
+) -> Result<(), String> {
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| "set_main_window_logical_size: main window missing".to_string())?;
+
+    #[cfg(target_os = "macos")]
+    {
+        set_macos_window_logical_size(&window, width, height, animated)
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = animated;
+        window
+            .set_size(LogicalSize::new(width, height))
+            .map_err(|error| format!("set_main_window_logical_size: set_size failed: {error}"))?;
+        window.center().map_err(|error| {
+            format!("set_main_window_logical_size: center failed after set_size: {error}")
+        })?;
+        Ok(())
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn set_macos_window_logical_size(
+    window: &WebviewWindow,
+    width: f64,
+    height: f64,
+    animated: bool,
+) -> Result<(), String> {
+    if !animated {
+        window
+            .set_size(LogicalSize::new(width, height))
+            .map_err(|error| format!("set_macos_window_logical_size: set_size failed: {error}"))?;
+        window.center().map_err(|error| {
+            format!("set_macos_window_logical_size: center failed after set_size: {error}")
+        })?;
+        refresh_macos_webview_layers(window);
+        return Ok(());
+    }
+
+    let ptr = window.ns_window().map_err(|error| {
+        format!("set_macos_window_logical_size: ns_window unavailable: {error}")
+    })?;
+
+    unsafe {
+        use objc2_app_kit::NSWindow;
+        use objc2_foundation::{NSPoint, NSRect, NSSize};
+
+        let ns_window: &NSWindow = &*(ptr as *const NSWindow);
+        let current = ns_window.frame();
+        let next_x = current.origin.x + (current.size.width - width) / 2.0;
+        let next_y = current.origin.y + (current.size.height - height) / 2.0;
+        let next = NSRect::new(NSPoint::new(next_x, next_y), NSSize::new(width, height));
+        ns_window.setFrame_display_animate(next, true, true);
+        refresh_macos_webview_layers(window);
+    }
+
     Ok(())
 }
 

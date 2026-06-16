@@ -22,7 +22,10 @@ use app_lifecycle::{
     frontend_ready::record_frontend_ready,
     setup::setup_app,
     tray::show_main_window,
-    windows::{start_main_window_drag_command, sync_companion_window_position},
+    windows::{
+        set_main_window_logical_size_command, start_main_window_drag_command,
+        sync_companion_window_position,
+    },
 };
 use llama_sidecar::get_llama_sidecar_status;
 use llm::{generate_chat_reply, generate_test_utterance, get_llm_provider_health};
@@ -53,6 +56,7 @@ pub fn run() {
         .setup(setup_app)
         .invoke_handler(tauri::generate_handler![
             sync_companion_window_position,
+            set_main_window_logical_size_command,
             start_main_window_drag_command,
             get_current_context_snapshot,
             get_screen_capture_permission_status,
