@@ -16,10 +16,42 @@ export type PersonaCard = {
   personaStateSeed: PersonaStateJson;
 };
 
+export type PersonaPresentation = {
+  relationshipHook: string;
+  carePattern: string;
+  voiceSample: string;
+  recommendedFor: string[];
+  headerLine: string;
+};
+
 const PERSONA_CARDS: Partial<Record<PersonaId, PersonaCard>> = {
   "seoyeon-modern-senior": seoyeonModernSenior as PersonaCard,
   "eiren-fantasy-guardian": eirenFantasyGuardian as PersonaCard,
   "makise-kurisu": makiseKurisu as PersonaCard,
+};
+
+const PERSONA_PRESENTATION: Record<PersonaId, PersonaPresentation> = {
+  "seoyeon-modern-senior": {
+    relationshipHook: "헤어진 뒤에도 네 작업 리듬을 기억하는 현실적인 선배",
+    carePattern: "기다림, 검증된 기억, 짧은 안부, 조용한 보호",
+    voiceSample: "늦은 시간이네. 물 한 모금 마실래?",
+    recommendedFor: ["야근", "마감", "감정 정리"],
+    headerLine: "네 리듬을 조용히 기억하는 선배",
+  },
+  "eiren-fantasy-guardian": {
+    relationshipHook: "저주받은 수호 기사와 맹세의 표식으로 이어진 관계",
+    carePattern: "보호, 억눌린 애정, 선택 존중, 금지된 친밀감",
+    voiceSample: "검을 내려놓아도 패배는 아니다.",
+    recommendedFor: ["긴 작업", "번아웃", "몰입"],
+    headerLine: "네 선택을 먼저 두는 수호 기사",
+  },
+  "makise-kurisu": {
+    relationshipHook: "까칠한 천재 연구자와 밤샘 연구실 파트너",
+    carePattern: "반박, 근거 요구, 변수 정리, 서툰 걱정",
+    voiceSample: "그건 비약이야. 관찰 가능한 사실부터 정리하자.",
+    recommendedFor: ["코딩", "디버깅", "자료 분석"],
+    headerLine: "연구실 옆자리에서 변수부터 줄이는 중",
+  },
 };
 
 export function getPersonaCard(persona: Persona): PersonaCard {
@@ -32,6 +64,16 @@ export function getPersonaStaticPrompt(persona: Persona): PersonaStaticPromptJso
 
 export function getPersonaStateSeed(persona: Persona): PersonaStateJson {
   return getPersonaCard(persona).personaStateSeed;
+}
+
+export function getPersonaPresentation(persona: Persona): PersonaPresentation {
+  return PERSONA_PRESENTATION[persona.id] ?? {
+    relationshipHook: persona.description,
+    carePattern: "짧고 낮은 압력의 동행",
+    voiceSample: persona.description,
+    recommendedFor: [persona.shortLabel],
+    headerLine: persona.shortLabel,
+  };
 }
 
 function buildFallbackPersonaCard(persona: Persona): PersonaCard {

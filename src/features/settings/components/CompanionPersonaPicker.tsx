@@ -17,7 +17,7 @@ export function CompanionPersonaPicker() {
       title={t.settings.companionPersona.label}
       subtitle={t.settings.companionPersona.subtitle}
     >
-      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         {personas.map((persona) => (
           <PersonaOptionCard
             key={persona.id}

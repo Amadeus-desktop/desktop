@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getPersonaCard } from "./cards";
+import { getPersonaCard, getPersonaPresentation } from "./cards";
 import { PERSONA_IDS, normalizePersonaId } from "./types";
 import type { Persona, PersonaId } from "./types";
 
@@ -67,5 +67,28 @@ describe("persona cards", () => {
       ]),
     });
     expect(card.staticPromptJson.scientific_boundary).toBeTruthy();
+  });
+
+  it("exposes relationship-first presentation metadata for persona selection", () => {
+    const presentations = CARD_PERSONA_IDS.map((id) =>
+      getPersonaPresentation(persona(id)),
+    );
+
+    for (const presentation of presentations) {
+      expect(presentation.relationshipHook.length).toBeGreaterThan(8);
+      expect(presentation.carePattern.length).toBeGreaterThan(8);
+      expect(presentation.voiceSample.length).toBeGreaterThan(8);
+      expect(presentation.recommendedFor.length).toBeGreaterThan(0);
+      expect(presentation.headerLine.length).toBeGreaterThan(8);
+    }
+  });
+
+  it("surfaces Makise Kurisu as a lab partner grounded in official traits", () => {
+    const presentation = getPersonaPresentation(persona("makise-kurisu"));
+
+    expect(presentation.relationshipHook).toContain("연구실");
+    expect(presentation.carePattern).toContain("변수");
+    expect(presentation.voiceSample).toContain("비약");
+    expect(presentation.recommendedFor.join(" ")).toContain("코딩");
   });
 });

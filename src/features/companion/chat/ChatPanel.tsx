@@ -1,4 +1,5 @@
 import { memo, useState, type FormEvent } from "react";
+import { getPersonaPresentation } from "../../../domain/persona/cards";
 import { cn } from "../../../lib/utils/cn";
 import type { CompanionLocale } from "../../../i18n";
 import { Button } from "../../../ui";
@@ -59,6 +60,7 @@ export const ChatPanel = memo(function ChatPanel({
   const deep = mode === "deep";
   const showThread = mode === "pocket" || mode === "deep";
   const bodyRef = useChatAutoScroll(messages.length + (isSending ? 1 : 0));
+  const personaPresentation = getPersonaPresentation(persona);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -97,7 +99,9 @@ export const ChatPanel = memo(function ChatPanel({
         </div>
         <div className="min-w-0 flex-1">
           <p className={companionStyles.chatTitle}>{persona.name}</p>
-          <p className={companionStyles.chatStatus}>{statusLabel}</p>
+          <p className={companionStyles.chatStatus}>
+            {statusLabel} · {personaPresentation.headerLine}
+          </p>
         </div>
       </header>
 
