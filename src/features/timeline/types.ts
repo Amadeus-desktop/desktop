@@ -136,6 +136,31 @@ export type SyncQueueRow = EnqueueSyncPayloadInput & {
   updatedAtMs: number;
 };
 
+export type LocalPersonaCacheRow = {
+  id: string;
+  remotePersonaId: string;
+  slug: string;
+  name: string;
+  baseTone: string;
+  relationshipType: string;
+  worldType: string;
+  staticPromptJson: string;
+  personaStateJson: string | null;
+  remoteVersion: number;
+  lastPulledVersion: number;
+  pendingMutationId: string | null;
+  syncStatus: "synced" | "pending" | "conflicted" | "deleted";
+  updatedAtMs: number;
+};
+
+export type UpsertLocalPersonasInput = {
+  personas: LocalPersonaCacheRow[];
+};
+
+export type GetLocalPersonaInput = {
+  slugOrRemoteId: string;
+};
+
 export type SyncPayloadEnvelope = {
   schemaVersion: 1;
   eventType: string;

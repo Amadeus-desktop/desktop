@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { getCompanionMates, getCompanionMateList, normalizeCompanionMateId } from "../../../domain/mate";
+import {
+  normalizeCompanionMateId,
+  type CompanionMateId,
+} from "../../../domain/mate";
+import type { Persona } from "../../../domain/persona";
 import { useI18n } from "../../../i18n";
+import { useCachedPersonas } from "../../persona/hooks/useCachedPersonas";
 import { useAppSettings } from "../../settings";
 import { patchCompanionSession, resetCompanionSession } from "../lib/companionSessionStore";
 import { useCompanionChatActions } from "./useCompanionChatActions";
@@ -19,8 +24,19 @@ export function useCompanionShell({
   const locale = useI18n();
   const { settings } = useAppSettings();
   const t = locale.companion;
-  const matesById = useMemo(() => getCompanionMates(locale), [locale]);
-  const mateList = useMemo(() => getCompanionMateList(locale), [locale]);
+  const cachedPersonas = useCachedPersonas(locale);
+  const mateList = cachedPersonas.personas;
+  const matesById = useMemo(
+    () =>
+      mateList.reduce(
+        (personas, persona) => {
+          personas[persona.id] = persona;
+          return personas;
+        },
+        {} as Record<CompanionMateId, Persona>,
+      ),
+    [mateList],
+  );
   const {
     mode,
     nudge,

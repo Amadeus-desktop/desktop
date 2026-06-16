@@ -23,11 +23,14 @@ import type {
   CreateUserReactionInput,
   CreateUtteranceEventInput,
   EnqueueSyncPayloadInput,
+  GetLocalPersonaInput,
   GetOrCreateConversationSessionInput,
   ListConversationMessagesInput,
   LocalMemory,
+  LocalPersonaCacheRow,
   SyncQueueRow,
   TimelineEvent,
+  UpsertLocalPersonasInput,
   UserReaction,
   UtteranceEvent,
   WorkSession,
@@ -149,4 +152,36 @@ export async function clearLocalTimelineData(): Promise<number> {
   }
 
   return 0;
+}
+
+export async function upsertLocalPersonas(
+  personas: LocalPersonaCacheRow[],
+): Promise<LocalPersonaCacheRow[]> {
+  if (isTauriRuntime()) {
+    return invoke<LocalPersonaCacheRow[]>("upsert_local_personas", {
+      input: { personas } satisfies UpsertLocalPersonasInput,
+    });
+  }
+
+  return personas;
+}
+
+export async function listLocalPersonas(): Promise<LocalPersonaCacheRow[]> {
+  if (isTauriRuntime()) {
+    return invoke<LocalPersonaCacheRow[]>("list_local_personas");
+  }
+
+  return [];
+}
+
+export async function getLocalPersona(
+  slugOrRemoteId: string,
+): Promise<LocalPersonaCacheRow | null> {
+  if (isTauriRuntime()) {
+    return invoke<LocalPersonaCacheRow | null>("get_local_persona", {
+      input: { slugOrRemoteId } satisfies GetLocalPersonaInput,
+    });
+  }
+
+  return null;
 }
