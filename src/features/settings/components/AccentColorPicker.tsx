@@ -31,9 +31,9 @@ export function AccentColorPicker() {
               onClick={() => setAccentColor(colorId)}
               className={cn(
                 "flex flex-col items-center gap-1.5 rounded-[12px] border px-1.5 py-2 transition",
-                selected
-                  ? "border-[color:rgb(var(--accent-rgb)/0.45)] bg-[color:rgb(var(--accent-rgb)/0.08)]"
-                  : "border-[color:var(--shell-border-subtle)] bg-[color:var(--shell-panel-strong)] hover:border-[color:var(--shell-border-strong)]",
+        selected
+          ? "border-[color:var(--shell-selection-border)] bg-[color:var(--shell-selection-bg)] shadow-[inset_0_0_0_1px_var(--shell-selection-border)]"
+          : "border-[color:var(--shell-border-subtle)] bg-[color:var(--shell-panel-strong)] hover:border-[color:var(--shell-border-strong)] hover:bg-[color:var(--shell-row-hover)]",
               )}
             >
               <span
@@ -52,7 +52,7 @@ export function AccentColorPicker() {
                 className={cn(
                   "w-full truncate text-center text-[10px] leading-4",
                   selected
-                    ? "font-semibold text-[color:var(--accent)]"
+                    ? "font-semibold text-[color:var(--shell-selection-text)]"
                     : cn("font-medium", "text-[color:var(--shell-ink-muted)]"),
                 )}
               >

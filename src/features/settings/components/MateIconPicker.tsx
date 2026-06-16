@@ -22,8 +22,8 @@ export function MateIconOption({ kind, label, selected, onSelect }: MateIconOpti
       className={cn(
         "flex flex-col items-center justify-center gap-1.5 rounded-[12px] border px-1.5 py-2.5 text-center transition",
         selected
-          ? "border-[color:rgb(var(--accent-rgb)/0.45)] bg-[color:rgb(var(--accent-rgb)/0.08)] shadow-[inset_0_0_0_1px_rgb(var(--accent-rgb)/0.18)]"
-          : "border-[color:var(--shell-border-subtle)] bg-[color:var(--shell-panel-strong)] hover:border-[color:rgb(var(--accent-rgb)/0.22)] hover:bg-[color:rgb(var(--accent-rgb)/0.04)]",
+          ? "border-[color:var(--shell-selection-border)] bg-[color:var(--shell-selection-bg)] shadow-[inset_0_0_0_1px_var(--shell-selection-border)]"
+          : "border-[color:var(--shell-border-subtle)] bg-[color:var(--shell-panel-strong)] hover:border-[color:var(--shell-border-strong)] hover:bg-[color:var(--shell-row-hover)]",
       )}
     >
       <PersonaPresenceIcon
@@ -37,7 +37,7 @@ export function MateIconOption({ kind, label, selected, onSelect }: MateIconOpti
       <span
         className={cn(
           "w-full truncate text-[10px] font-semibold leading-4",
-          selected ? "text-[color:var(--accent)]" : shellText.muted,
+          selected ? "text-[color:var(--shell-selection-text)]" : shellText.muted,
         )}
       >
         {label}

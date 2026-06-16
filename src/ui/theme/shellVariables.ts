@@ -45,6 +45,14 @@ export const shellVariablesDark = {
   "--companion-paper-shadow": "0 16px 36px rgb(62 48 32 / 0.2)",
   "--companion-paper-ring": "rgb(255 255 255 / 0.42)",
   "--companion-paper-highlight": "rgb(255 255 255 / 0.62)",
+  "--shell-selection-bg": "rgb(var(--accent-rgb) / 0.14)",
+  "--shell-selection-border": "rgb(var(--accent-rgb) / 0.38)",
+  "--shell-selection-text": "var(--accent-soft)",
+  "--character-voice-bg": "#23232a",
+  "--character-voice-bg-deep": "#2b2b35",
+  "--character-voice-border": "#3f3f4c",
+  "--character-voice-ink": "rgb(255 255 255 / 0.9)",
+  "--character-voice-muted": "rgb(255 255 255 / 0.5)",
 } as const;
 
 /** Light appearance overrides (applied via `.light` on `html`). */
@@ -84,4 +92,12 @@ export const shellVariablesLight = {
   "--companion-paper-shadow": "0 14px 32px rgb(62 48 32 / 0.14)",
   "--companion-paper-ring": "rgb(255 255 255 / 0.72)",
   "--companion-paper-highlight": "rgb(255 255 255 / 0.82)",
+  "--shell-selection-bg": "rgb(var(--accent-rgb) / 0.16)",
+  "--shell-selection-border": "rgb(var(--accent-rgb) / 0.44)",
+  "--shell-selection-text": "var(--shell-ink)",
+  "--character-voice-bg": "#eef2f8",
+  "--character-voice-bg-deep": "#e3eaf4",
+  "--character-voice-border": "#c5d0e3",
+  "--character-voice-ink": "#243047",
+  "--character-voice-muted": "#5a677c",
 } as const;

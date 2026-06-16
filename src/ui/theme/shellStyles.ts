@@ -9,7 +9,7 @@ export const glassStyles = {
   row:
     "border border-[color:var(--shell-border-subtle)] bg-[color:var(--shell-row)] transition hover:border-[color:var(--shell-border-strong)] hover:bg-[color:var(--shell-row-hover)]",
   rowSelected:
-    "border-[color:rgb(var(--accent-rgb)/0.45)] bg-[color:rgb(var(--accent-rgb)/0.08)] shadow-[inset_0_0_0_1px_rgb(var(--accent-rgb)/0.22)]",
+    "border-[color:var(--shell-selection-border)] bg-[color:var(--shell-selection-bg)] shadow-[inset_0_0_0_1px_var(--shell-selection-border)]",
   chip:
     "border border-[color:var(--shell-border-strong)] bg-[color:var(--shell-panel-strong)]",
   bubble:
@@ -34,3 +34,9 @@ export const shellFieldClass =
 
 export const shellBadgeClass =
   "rounded-full border border-[color:var(--shell-border-strong)] bg-[color:var(--shell-panel-strong)] px-2.5 py-1 text-[11px] font-medium text-[color:var(--shell-ink-muted)]";
+
+export const characterVoicePreviewClass = [
+  "rounded-[14px] border border-[color:var(--character-voice-border)]",
+  "bg-[linear-gradient(168deg,var(--character-voice-bg)_0%,var(--character-voice-bg-deep)_100%)]",
+  "px-3 py-2.5",
+].join(" ");

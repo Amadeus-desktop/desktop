@@ -41,8 +41,9 @@ export function SegmentedControl<TValue extends string>({
               index > 0 &&
                 "border-l border-[color:var(--shell-border-strong)]",
               selected
-                ? "bg-[color:rgb(var(--accent-rgb)/0.16)] text-[color:var(--accent-soft)] shadow-[inset_0_0_0_1px_rgb(var(--accent-rgb)/0.22)]"
+                ? "border-[color:var(--shell-selection-border)] bg-[color:var(--shell-selection-bg)] text-[color:var(--shell-selection-text)] shadow-[inset_0_0_0_1px_var(--shell-selection-border)]"
                 : "text-[color:var(--shell-ink-muted)] hover:bg-[color:var(--shell-row-hover)] hover:text-[color:var(--shell-ink)]",
+              selected && "font-semibold",
             )}
           >
             {option.label}

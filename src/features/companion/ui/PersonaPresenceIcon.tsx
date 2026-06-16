@@ -46,9 +46,9 @@ export function PersonaPresenceIcon({
         size !== "fab" && PRESENCE_ICON_TILE[size],
         isOutline
           ? cn(
-              "border-2 bg-transparent shadow-none",
+              "border-2 bg-[color:var(--shell-row)] shadow-none",
               useSettingsAccent
-                ? "border-[color:rgb(var(--accent-rgb)/0.55)] text-[color:var(--accent-soft)]"
+                ? "border-[color:var(--shell-border-strong)] text-[color:var(--shell-ink-muted)]"
                 : undefined,
             )
           : cn(

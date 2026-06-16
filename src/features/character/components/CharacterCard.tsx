@@ -4,7 +4,7 @@ import {
   CHARACTER_AVATAR_TILE,
   type CharacterAvatarSize,
 } from "../../../ui/tokens/avatarSizes";
-import { glassStyles, shellText } from "../../../ui/theme/shellStyles";
+import { glassStyles, shellText, characterVoicePreviewClass } from "../../../ui/theme/shellStyles";
 import type { Character } from "../types";
 
 type CharacterAvatarProps = {
@@ -93,11 +93,11 @@ export function CharacterCard({
         </span>
       </span>
 
-      <div className="rounded-[14px] border border-[color:var(--companion-paper-border)] bg-[linear-gradient(168deg,var(--companion-paper-bg)_0%,var(--companion-paper-bg-deep)_100%)] px-3 py-2.5 shadow-[var(--companion-paper-shadow)] ring-1 ring-[color:var(--companion-paper-ring)]">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-[color:var(--companion-paper-muted)]">
+      <div className={characterVoicePreviewClass}>
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-[color:var(--character-voice-muted)]">
           {speechPreviewLabel}
         </p>
-        <p className="mt-1 text-[12px] leading-[1.6] text-[color:var(--companion-paper-ink)]">
+        <p className="mt-1 text-[12px] leading-[1.6] text-[color:var(--character-voice-ink)]">
           “{character.speechExample}”
         </p>
       </div>
