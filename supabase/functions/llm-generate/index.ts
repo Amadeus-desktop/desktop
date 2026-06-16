@@ -256,7 +256,11 @@ async function enrichWithCloudMemoryRag(
         matches,
       ),
     };
-  } catch {
+  } catch (error) {
+    console.warn("edge_memory_rag_failed", {
+      personaId: input.personaId,
+      error: errorMessage(error),
+    });
     return input;
   }
 }
@@ -389,15 +393,16 @@ function mergeRagMatchesIntoEnvelope(
 
   for (const match of matches) {
     if (seen.has(match.id)) continue;
-    seen.add(match.id);
     if (match.memory_category === "episodic") {
+      seen.add(match.id);
       episodicContext.push({
         id: match.id,
         summary: match.content,
         createdAtMs: Date.parse(match.created_at) || Date.now(),
         scope: "cloud_safe",
       });
-    } else {
+    } else if (match.memory_category === "semantic") {
+      seen.add(match.id);
       semanticMemories.push({
         id: match.id,
         content: match.content,
