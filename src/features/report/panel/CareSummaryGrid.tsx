@@ -1,6 +1,6 @@
 import { cn } from "../../../lib/utils/cn";
 import type { ReportMetric } from "../types";
-import { reportMetricToneStyles, reportPanelStyles } from "../ui/reportStyles";
+import { reportMetricToneStyles, reportPanelStyles } from "../ui/panelStyles";
 
 type CareSummaryGridProps = {
   metrics: ReportMetric[];

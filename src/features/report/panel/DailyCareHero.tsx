@@ -1,4 +1,4 @@
-import { dailyCareStyles } from "../ui/reportStyles";
+import { reportPanelStyles } from "../ui/panelStyles";
 
 type DailyCareHeroProps = {
   prompt: string;
@@ -10,9 +10,9 @@ export function DailyCareHero({ prompt, onOpenSummary }: DailyCareHeroProps) {
     <button
       type="button"
       onClick={onOpenSummary}
-      className={dailyCareStyles.heroButton}
+      className={reportPanelStyles.heroButton}
     >
-      <p className={dailyCareStyles.heroPrompt}>{prompt}</p>
+      <p className={reportPanelStyles.heroPrompt}>{prompt}</p>
     </button>
   );
 }

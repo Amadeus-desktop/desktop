@@ -15,8 +15,8 @@ export const companion: CompanionMessages = {
   },
   nudge: {
     close: "Close note",
-    ignore: "I'm okay for now",
-    open: "Open to hear it",
+    ignore: "Not now",
+    open: "Open the note",
   },
   chat: {
     close: "Close chat",

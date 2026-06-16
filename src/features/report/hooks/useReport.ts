@@ -4,7 +4,7 @@ import { getLocale, LOCALE_TAGS, useI18n } from "../../../i18n";
 import { useLifecycleFetch } from "../../../lib/hooks/useLifecycleFetch";
 import { listTimelineEvents } from "../../timeline";
 import type { TimelineEvent, TimelineEventKind } from "../../timeline/types";
-import { buildReportMetrics } from "../lib/report";
+import { buildReportMetrics } from "../lib/insight";
 import type { WorkTimelineItem } from "../types";
 
 export function useReport() {

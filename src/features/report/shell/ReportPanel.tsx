@@ -4,14 +4,14 @@ import { Button, PanelHeader, SectionHeading } from "../../../ui";
 import { useI18n } from "../../../i18n";
 import { getCompanionMates, normalizeCompanionMateId } from "../../../domain/mate";
 import { useAppSettings } from "../../settings";
-import { CareSummaryGrid } from "./CareSummaryGrid";
-import { DailyCareClosing } from "./DailyCareClosing";
-import { DailyCareHero } from "./DailyCareHero";
-import { DailyCareSummaryOverlay } from "./DailyCareSummaryOverlay";
-import { buildDailyCareInsight } from "../lib/report";
-import { WorkTimeline } from "./WorkTimeline";
+import { DailyCareSummaryOverlay } from "../daily-care/components/DailyCareSummaryOverlay";
+import { buildDailyCareInsight } from "../lib/insight";
 import { useReport } from "../hooks/useReport";
-import { reportPanelStyles } from "../ui/reportStyles";
+import { CareSummaryGrid } from "../panel/CareSummaryGrid";
+import { DailyCareClosing } from "../panel/DailyCareClosing";
+import { DailyCareHero } from "../panel/DailyCareHero";
+import { WorkTimeline } from "../panel/WorkTimeline";
+import { reportPanelStyles } from "../ui/panelStyles";
 
 export function ReportPanel() {
   const t = useI18n();

@@ -156,13 +156,19 @@ function activityLabel(event: TimelineEvent, metadata: ContextMetadata): string 
 }
 
 function activityKind(metadata: ContextMetadata): DailyCareActivityDetail["kind"] {
-  if (metadata.browserContext?.urlClass === "Video" || metadata.category === "NonWork") {
+  const urlClass = normalizeActivityClass(metadata.browserContext?.urlClass);
+  const category = normalizeActivityClass(metadata.category);
+  if (urlClass === "video" || category === "non_work") {
     return "break";
   }
-  if (metadata.category === "Work") {
+  if (category === "work") {
     return "work";
   }
   return "unknown";
+}
+
+function normalizeActivityClass(value?: string | null): string {
+  return value?.replace(/([a-z])([A-Z])/g, "$1_$2").toLowerCase() ?? "";
 }
 
 function activitySummary(activity: ActivityBucket): string {

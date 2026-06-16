@@ -37,6 +37,12 @@ export const shellVariablesDark = {
   "--report-tone-mint": "#86efac",
   "--report-tone-mint-soft": "#bbf7d0",
   "--report-tone-mint-bg": "#202822",
+  "--companion-paper-bg": "#faf4ea",
+  "--companion-paper-bg-deep": "#f1e8da",
+  "--companion-paper-border": "#e5d9c7",
+  "--companion-paper-ink": "#3f372f",
+  "--companion-paper-muted": "#8c8174",
+  "--companion-paper-shadow": "0 16px 36px rgb(62 48 32 / 0.2)",
 } as const;
 
 /** Light appearance overrides (applied via `.light` on `html`). */

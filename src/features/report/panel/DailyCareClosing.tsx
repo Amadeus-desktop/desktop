@@ -1,5 +1,5 @@
 import { shellText } from "../../../ui/theme/shellStyles";
-import { reportPanelStyles } from "../ui/reportStyles";
+import { reportPanelStyles } from "../ui/panelStyles";
 
 type DailyCareClosingProps = {
   title: string;

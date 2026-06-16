@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import { cn } from "../../../lib/utils/cn";
-import { dailyCareStyles } from "../ui/reportStyles";
+import { cn } from "../../../../../lib/utils/cn";
+import { dailyCareStyles } from "../../ui/styles";
 
 type DailyCareSummaryStepFrameProps = {
   eyebrow: string;

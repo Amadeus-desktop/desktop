@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button, TimelineList } from "../../../ui";
 import type { AppLocale } from "../../../i18n";
 import type { WorkTimelineItem } from "../types";
-import { reportPanelStyles } from "../ui/reportStyles";
+import { reportPanelStyles } from "../ui/panelStyles";
 import { shellText } from "../../../ui/theme/shellStyles";
 
 const DEFAULT_VISIBLE_COUNT = 5;

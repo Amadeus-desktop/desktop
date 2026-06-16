@@ -8,7 +8,7 @@ type NoteBubbleProps = {
   animate?: boolean;
 };
 
-/** Speech bubble anchored visually to the mate icon below (tail at bottom-right). */
+/** Warm paper memo resting above the mate anchor — not a chat bubble. */
 export function NoteBubble({ children, className, animate = true }: NoteBubbleProps) {
   return (
     <article

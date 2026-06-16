@@ -15,8 +15,8 @@ export const companion: CompanionMessages = {
   },
   nudge: {
     close: "メモを閉じる",
-    ignore: "今は大丈夫",
-    open: "開いて聞く",
+    ignore: "今はいい",
+    open: "メモを開く",
   },
   chat: {
     close: "会話を閉じる",

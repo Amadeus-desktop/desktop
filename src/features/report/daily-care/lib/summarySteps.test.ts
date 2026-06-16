@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildDailyCareSummarySteps } from "./dailyCareSummarySteps";
+import { buildDailyCareSummarySteps } from "./summarySteps";
 
 describe("buildDailyCareSummarySteps", () => {
   it("builds welcome, narrative, activity, keywords, and closing steps", () => {

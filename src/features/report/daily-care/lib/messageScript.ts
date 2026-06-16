@@ -1,6 +1,6 @@
-import type { AppLocale } from "../../../i18n";
-import type { DailyCareActivityDetail } from "../types";
-import type { DailyCareSummaryStep } from "./dailyCareSummarySteps";
+import type { AppLocale } from "../../../../i18n";
+import type { DailyCareActivityDetail } from "../../types";
+import type { DailyCareSummaryStep } from "./summarySteps";
 
 export type DailyCareThreadMessage =
   | {

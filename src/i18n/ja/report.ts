@@ -16,6 +16,10 @@ export const report: ReportMessages = {
     typing: "入力中",
     status: "今日そばで見た流れ",
     replyHint: "どう返す？",
+    customReply: {
+      placeholder: "自分の言葉で書いてみる？",
+      send: "送信",
+    },
     navigation: {
       next: "次へ",
       back: "戻る",
@@ -30,12 +34,20 @@ export const report: ReportMessages = {
     },
     replies: {
       acknowledge: "そうだったんだ",
-      continue: "うん、わかった",
-      curious: "もう少し聞かせて",
+      continue: "うん、聞いてる",
+      curious: "もう少し教えて？",
       tired: "今日は少し疲れた",
-      later: "ちょっと待って",
+      later: "ちょっと待って、ゆっくりしよう",
       warmClose: "ありがとう、今日もお疲れさま",
       thanksClose: "また明日ね",
+      agreeSoft: "うん、そんな感じだった",
+      surprised: "え、そうなんだ",
+      soft: "…そうなんだ",
+      unsure: "よくわからない",
+      grateful: "話してくれてありがとう",
+      playful: "ふふ、そうなの？",
+      needMore: "それ、ちょっと気になる",
+      relate: "わたしもそういう日ある",
     },
     steps: {
       welcome: {

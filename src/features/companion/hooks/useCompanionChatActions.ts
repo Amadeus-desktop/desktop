@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { logger } from "../../../observability/logger";
 import { patchAppSettings } from "../../settings";
 import type { GeneralSettings } from "../../settings/types";
@@ -57,9 +57,26 @@ export function useCompanionChatActions({
   transitionMode,
   recordReaction,
 }: UseCompanionChatActionsOptions) {
+  const restoreSequenceRef = useRef(0);
+
+  const beginRestore = useCallback(() => {
+    restoreSequenceRef.current += 1;
+    return restoreSequenceRef.current;
+  }, []);
+
+  const isCurrentRestore = useCallback((restoreId: number) => {
+    const currentSession = getCompanionSessionSnapshot();
+    return restoreSequenceRef.current === restoreId && currentSession.mode === "pocket";
+  }, []);
+
+  const invalidateRestore = useCallback(() => {
+    restoreSequenceRef.current += 1;
+  }, []);
+
   const openPocket = useCallback(async () => {
     const intro = generatePocketIntro(nudge, selectedPersona);
     const openingId = `companion-intro-${Date.now()}`;
+    const restoreId = beginRestore();
 
     logger.info("ui", "companion pocket opening", {
       fromMode: mode,
@@ -81,6 +98,9 @@ export function useCompanionChatActions({
       });
       return [];
     });
+    if (!isCurrentRestore(restoreId)) {
+      return;
+    }
     if (restoredMessages.length > 0) {
       setMessages(restoredMessages);
       setIsSending(false);
@@ -88,8 +108,7 @@ export function useCompanionChatActions({
       return;
     }
     window.setTimeout(() => {
-      const currentSession = getCompanionSessionSnapshot();
-      if (currentSession.mode !== "pocket") {
+      if (!isCurrentRestore(restoreId)) {
         setIsSending(false);
         return;
       }
@@ -102,7 +121,16 @@ export function useCompanionChatActions({
       setIsSending(false);
     }, POCKET_FIRST_SPEAK_DELAY_MS);
     void recordReaction("opened").catch(() => undefined);
-  }, [mode, nudge, recordReaction, selectedPersona, setIsSending, setMessages]);
+  }, [
+    beginRestore,
+    isCurrentRestore,
+    mode,
+    nudge,
+    recordReaction,
+    selectedPersona,
+    setIsSending,
+    setMessages,
+  ]);
 
   const openIcon = useCallback(async () => {
     logger.info("ui", "companion icon click", {
@@ -130,12 +158,13 @@ export function useCompanionChatActions({
   }, [recordReaction, transitionMode]);
 
   const closePocket = useCallback(async () => {
+    invalidateRestore();
     await recordReaction("closed", { score: true });
     patchCompanionSession({ activeUtteranceId: null, messages: [], draft: "" });
     setMessages([]);
     setIsSending(false);
     await transitionMode("quiet");
-  }, [recordReaction, setIsSending, setMessages, transitionMode]);
+  }, [invalidateRestore, recordReaction, setIsSending, setMessages, transitionMode]);
 
   const openDailyCare = useCallback(async () => {
     if (!settings.nightCareEnabled) return;
@@ -153,6 +182,7 @@ export function useCompanionChatActions({
 
       if (mode !== "pocket") return;
 
+      const restoreId = beginRestore();
       setMessages([]);
       setIsSending(true);
       const restoredMessages = await restoreCompanionMessagesForPersona(
@@ -162,8 +192,11 @@ export function useCompanionChatActions({
           personaId: personas[personaId].id,
           error,
         });
-        return [];
-      });
+          return [];
+        });
+      if (!isCurrentRestore(restoreId)) {
+        return;
+      }
       if (restoredMessages.length > 0) {
         setMessages(restoredMessages);
         setIsSending(false);
@@ -180,7 +213,7 @@ export function useCompanionChatActions({
       ]);
       setIsSending(false);
     },
-    [mode, nudge, personas, setIsSending, setMessages],
+    [beginRestore, isCurrentRestore, mode, nudge, personas, setIsSending, setMessages],
   );
 
   const sendMessage = useCallback(async (text: string) => {

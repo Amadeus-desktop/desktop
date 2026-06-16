@@ -15,8 +15,8 @@ export const companion: CompanionMessages = {
   },
   nudge: {
     close: "메모 닫기",
-    ignore: "지금은 괜찮아",
-    open: "열어서 듣기",
+    ignore: "지금은 넘길게",
+    open: "쪽지 펼치기",
   },
   chat: {
     close: "대화 닫기",

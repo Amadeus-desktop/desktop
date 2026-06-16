@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Persona } from "../../../domain/persona/types";
-import type { AppLocale } from "../../../i18n";
-import type { GeneralSettings } from "../../settings/types";
-import type { DailyCareInsight, ReportMetric } from "../types";
-import { buildDailyCarePhases, type DailyCarePhase } from "../lib/dailyCarePhases";
+import type { Persona } from "../../../../domain/persona/types";
+import type { AppLocale } from "../../../../i18n";
+import type { GeneralSettings } from "../../../settings/types";
+import type { DailyCareInsight, ReportMetric } from "../../types";
+import { buildDailyCarePhases, type DailyCarePhase } from "../lib/phases";
 import {
   DAILY_CARE_INTER_BUBBLE_MS,
   DAILY_CARE_PRE_LLM_PAUSE_MS,
   generateDailyCareBeat,
   typingDelayMs,
-} from "../lib/dailyCareLlm";
-import type { DailyCareReply, DailyCareThreadMessage } from "../lib/dailyCareMessageScript";
+} from "../lib/llm";
+import type { DailyCareReply, DailyCareThreadMessage } from "../lib/messageScript";
 
 function sleep(ms: number) {
   return new Promise<void>((resolve) => {
@@ -118,7 +118,7 @@ export function useDailyCareMessageSession({
 
       if (cancelled || revealTokenRef.current !== revealToken) return;
       setIsTyping(false);
-      setReplies(beat.replies);
+      setReplies(beat.replies.slice(0, 2));
     }
 
     void revealPhase();
@@ -151,10 +151,20 @@ export function useDailyCareMessageSession({
     [onComplete, phaseIndex, prefersReducedMotion],
   );
 
+  const submitCustomReply = useCallback(
+    (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed) return;
+      selectReply({ id: "custom", label: trimmed });
+    },
+    [selectReply],
+  );
+
   return {
     messages,
     replies,
     isTyping,
     selectReply,
+    submitCustomReply,
   };
 }

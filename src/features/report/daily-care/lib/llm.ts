@@ -1,18 +1,18 @@
-import type { Persona } from "../../../domain/persona/types";
-import type { SafeCurrentContext } from "../../../domain/prompt/assembly";
-import type { AppLocale } from "../../../i18n";
-import { generateChatReply } from "../../llm";
-import { generateEdgeChatReply } from "../../llm/adapters/edgeLlmRepository";
-import { toLlmChatRequest } from "../../llm/types";
-import type { CompanionMessage } from "../../companion/types";
-import type { GeneralSettings } from "../../settings/types";
-import type { DailyCareInsight, ReportMetric } from "../types";
-import type { DailyCarePhase } from "./dailyCarePhases";
+import type { Persona } from "../../../../domain/persona/types";
+import type { SafeCurrentContext } from "../../../../domain/prompt/assembly";
+import type { AppLocale } from "../../../../i18n";
+import { generateChatReply } from "../../../llm";
+import { generateEdgeChatReply } from "../../../llm/adapters/edgeLlmRepository";
+import { toLlmChatRequest } from "../../../llm/types";
+import type { CompanionMessage } from "../../../companion/types";
+import type { GeneralSettings } from "../../../settings/types";
+import type { DailyCareInsight, ReportMetric } from "../../types";
+import type { DailyCarePhase } from "./phases";
 import {
   splitCompanionBubbles,
   type DailyCareReply,
   type DailyCareThreadMessage,
-} from "./dailyCareMessageScript";
+} from "./messageScript";
 
 export type DailyCareBeat = {
   messages: DailyCareThreadMessage[];
@@ -139,8 +139,11 @@ function buildDirectorPrompt(input: GenerateDailyCareBeatInput): string {
       : "Opening beat: invite them in like a text thread, not a presentation slide.",
     'Return ONLY compact JSON: {"messages":["..."],"replies":["...","..."]}',
     "messages: 1-2 short bubbles, max 2 sentences each.",
-    "replies: 2-3 distinct user reply options (short, conversational, different moods).",
-    "On closing phase, include one reply that gently ends today.",
+    "replies: exactly 2 tap options the user might send as chat lines.",
+    "Write replies as natural first-person chat in the user's language (Korean: casual 반말, complete or natural fragments).",
+    "Each reply must express a clearly different mood (agree, curious, tired, playful, soft, etc.). Never paraphrase the same idea twice.",
+    "Do not include a free-text or 'type your own' option — the UI adds that separately.",
+    "On closing phase, one reply should gently end today.",
   ].join("\n");
 }
 
@@ -184,7 +187,7 @@ function parseDailyCareBeat(raw: string, input: GenerateDailyCareBeatInput): Dai
 
     const replies = rawReplies
       .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
-      .slice(0, 3)
+      .slice(0, 2)
       .map((label, index) => ({ id: `reply-${index}`, label: label.trim() }));
 
     if (messages.length > 0 && replies.length >= 2) {
@@ -243,7 +246,8 @@ function enrichBeat(beat: DailyCareBeat, input: GenerateDailyCareBeatInput): Dai
 
   return {
     messages,
-    replies: beat.replies.length >= 2 ? beat.replies : fallbackReplies(input),
+    replies:
+      beat.replies.length >= 2 ? beat.replies.slice(0, 2) : pickPresetReplies(input),
   };
 }
 
@@ -258,11 +262,7 @@ export function fallbackDailyCareBeat(input: GenerateDailyCareBeatInput): DailyC
             textMessage("welcome-1", labels.summaryOverlay.steps.welcome.title.replace(/\n/g, " ")),
             textMessage("welcome-2", labels.summaryOverlay.steps.welcome.description),
           ],
-          replies: [
-            { id: "start", label: labels.summaryOverlay.steps.welcome.cta },
-            { id: "tired", label: labels.summaryOverlay.replies.tired },
-            { id: "later", label: labels.summaryOverlay.replies.later },
-          ],
+          replies: pickPresetReplies(input),
         },
         input,
       );
@@ -300,34 +300,117 @@ export function fallbackDailyCareBeat(input: GenerateDailyCareBeatInput): DailyC
           messages: splitCompanionBubbles(phase.closingNote).map((text, index) =>
             textMessage(`closing-${index}`, text),
           ),
-          replies: [
-            { id: "warm", label: labels.summaryOverlay.replies.warmClose },
-            { id: "thanks", label: labels.summaryOverlay.replies.thanksClose },
-            { id: "finish", label: labels.summaryOverlay.navigation.finish },
-          ],
+          replies: pickPresetReplies(input),
         },
         input,
       );
   }
 }
 
-function fallbackReplies(input: GenerateDailyCareBeatInput): DailyCareReply[] {
-  const { labels, phaseIndex, totalPhases } = input;
+export function pickPresetReplies(input: GenerateDailyCareBeatInput): DailyCareReply[] {
+  const { labels, phase, phaseIndex, totalPhases } = input;
+  const replies = labels.summaryOverlay.replies;
+  const welcome = labels.summaryOverlay.steps.welcome;
+  const finish = labels.summaryOverlay.navigation.finish;
   const isLast = phaseIndex >= totalPhases - 1;
 
-  if (isLast) {
-    return [
-      { id: "warm", label: labels.summaryOverlay.replies.warmClose },
-      { id: "thanks", label: labels.summaryOverlay.replies.thanksClose },
-      { id: "finish", label: labels.summaryOverlay.navigation.finish },
+  if (phase.kind === "closing" || isLast) {
+    const pairs: DailyCareReply[][] = [
+      [
+        { id: "warm", label: replies.warmClose },
+        { id: "thanks", label: replies.thanksClose },
+      ],
+      [
+        { id: "grateful", label: replies.grateful },
+        { id: "finish", label: finish },
+      ],
+      [
+        { id: "soft", label: replies.soft },
+        { id: "thanks", label: replies.thanksClose },
+      ],
     ];
+    return pairs[phaseIndex % pairs.length] ?? pairs[0];
   }
 
-  return [
-    { id: "continue", label: labels.summaryOverlay.replies.continue },
-    { id: "curious", label: labels.summaryOverlay.replies.curious },
-    { id: "tired", label: labels.summaryOverlay.replies.tired },
-  ];
+  switch (phase.kind) {
+    case "welcome": {
+      const pairs: DailyCareReply[][] = [
+        [
+          { id: "start", label: welcome.cta },
+          { id: "tired", label: replies.tired },
+        ],
+        [
+          { id: "agree", label: replies.agreeSoft },
+          { id: "later", label: replies.later },
+        ],
+        [
+          { id: "curious", label: replies.curious },
+          { id: "playful", label: replies.playful },
+        ],
+      ];
+      return pairs[phaseIndex % pairs.length] ?? pairs[0];
+    }
+    case "summary": {
+      const pairs: DailyCareReply[][] = [
+        [
+          { id: "ack", label: replies.acknowledge },
+          { id: "curious", label: replies.curious },
+        ],
+        [
+          { id: "soft", label: replies.soft },
+          { id: "surprised", label: replies.surprised },
+        ],
+        [
+          { id: "continue", label: replies.continue },
+          { id: "relate", label: replies.relate },
+        ],
+      ];
+      return pairs[phaseIndex % pairs.length] ?? pairs[0];
+    }
+    case "activity": {
+      const pairs: DailyCareReply[][] = [
+        [
+          { id: "ack", label: replies.acknowledge },
+          { id: "need-more", label: replies.needMore },
+        ],
+        [
+          { id: "surprised", label: replies.surprised },
+          { id: "curious", label: replies.curious },
+        ],
+        [
+          { id: "relate", label: replies.relate },
+          { id: "soft", label: replies.soft },
+        ],
+      ];
+      return pairs[phaseIndex % pairs.length] ?? pairs[0];
+    }
+    case "keywords": {
+      const pairs: DailyCareReply[][] = [
+        [
+          { id: "ack", label: replies.acknowledge },
+          { id: "unsure", label: replies.unsure },
+        ],
+        [
+          { id: "agree", label: replies.agreeSoft },
+          { id: "curious", label: replies.curious },
+        ],
+        [
+          { id: "soft", label: replies.soft },
+          { id: "grateful", label: replies.grateful },
+        ],
+      ];
+      return pairs[phaseIndex % pairs.length] ?? pairs[0];
+    }
+    default:
+      return [
+        { id: "continue", label: replies.continue },
+        { id: "curious", label: replies.curious },
+      ];
+  }
+}
+
+function fallbackReplies(input: GenerateDailyCareBeatInput): DailyCareReply[] {
+  return pickPresetReplies(input);
 }
 
 function toCompanionMessages(history: DailyCareThreadMessage[]): CompanionMessage[] {

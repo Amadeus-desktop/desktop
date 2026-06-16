@@ -16,6 +16,10 @@ export const report: ReportMessages = {
     typing: "입력 중",
     status: "오늘 곁에서 본 흐름",
     replyHint: "어떻게 답할까?",
+    customReply: {
+      placeholder: "직접 적어볼래?",
+      send: "보내기",
+    },
     navigation: {
       next: "다음",
       back: "이전",
@@ -29,13 +33,21 @@ export const report: ReportMessages = {
       closing: "마무리",
     },
     replies: {
-      acknowledge: "그랬구나",
-      continue: "응, 알겠어",
-      curious: "조금 더 말해줘",
-      tired: "오늘은 좀 피곤해",
-      later: "잠깐만",
+      acknowledge: "그렇구나",
+      continue: "응, 들어볼게",
+      curious: "조금만 더 말해줄래?",
+      tired: "오늘은 좀 지쳤어",
+      later: "잠깐만, 천천히 하자",
       warmClose: "고마워, 오늘도 수고했어",
       thanksClose: "내일 또 보자",
+      agreeSoft: "그래, 맞는 것 같아",
+      surprised: "오, 그랬구나",
+      soft: "…그렇구나",
+      unsure: "잘 모르겠어",
+      grateful: "얘기해 줘서 고마워",
+      playful: "하하, 그랬어?",
+      needMore: "그게 좀 궁금해",
+      relate: "나도 그런 날 있어",
     },
     steps: {
       welcome: {

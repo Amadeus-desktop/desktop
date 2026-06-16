@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { getAppLocale } from "../../../i18n";
 import type { TimelineEvent } from "../../timeline/types";
-import { buildDailyCareInsight } from "./report";
+import { buildDailyCareInsight } from "./insight";
 
 const today = new Date("2026-06-17T14:00:00+09:00").getTime();
 
@@ -80,6 +80,44 @@ describe("buildDailyCareInsight", () => {
       kind: "work",
     });
     expect(insight.activityDetails[0].summary).toContain("오래");
+    vi.useRealTimers();
+  });
+
+  it("classifies lower-case desktop activity metadata", () => {
+    vi.setSystemTime(today + 120 * 60_000);
+    const events = [
+      event(
+        "context-work",
+        "context",
+        0,
+        "Zed",
+        JSON.stringify({
+          category: "work",
+          frontmostDurationMs: 25 * 60_000,
+        }),
+      ),
+      event(
+        "context-break",
+        "context",
+        30,
+        "Google Chrome",
+        JSON.stringify({
+          category: "non_work",
+          frontmostDurationMs: 12 * 60_000,
+          browserContext: {
+            urlHost: "youtube.com",
+            urlClass: "video",
+          },
+        }),
+      ),
+    ];
+
+    const insight = buildDailyCareInsight(events, getAppLocale("ko"));
+
+    expect(insight.activityDetails).toEqual([
+      expect.objectContaining({ label: "Zed", kind: "work" }),
+      expect.objectContaining({ label: "youtube.com", kind: "break" }),
+    ]);
     vi.useRealTimers();
   });
 });

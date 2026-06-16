@@ -1,13 +1,13 @@
 import { useEffect, useRef } from "react";
-import type { AppLocale } from "../../../i18n";
-import type { MateIconKind } from "../../../domain/mate";
-import { cn } from "../../../lib/utils/cn";
-import { ChatBubble } from "../../companion/chat/components/ChatBubble";
-import { TypingDots } from "../../companion/chat/components/TypingDots";
-import { PersonaPresenceIcon } from "../../companion/ui/PersonaPresenceIcon";
-import { companionStyles } from "../../companion/ui/styles";
-import type { DailyCareThreadMessage } from "../lib/dailyCareMessageScript";
-import { dailyCareStyles } from "../ui/reportStyles";
+import type { AppLocale } from "../../../../i18n";
+import type { MateIconKind } from "../../../../domain/mate";
+import { cn } from "../../../../lib/utils/cn";
+import { ChatBubble } from "../../../companion/chat/components/ChatBubble";
+import { TypingDots } from "../../../companion/chat/components/TypingDots";
+import { PersonaPresenceIcon } from "../../../companion/ui/PersonaPresenceIcon";
+import { companionStyles } from "../../../companion/ui/styles";
+import type { DailyCareThreadMessage } from "../lib/messageScript";
+import { dailyCareStyles } from "../ui/styles";
 
 type DailyCareMessageThreadProps = {
   messages: DailyCareThreadMessage[];

@@ -16,6 +16,10 @@ export const report: ReportMessages = {
     typing: "Typing",
     status: "Today's flow from beside you",
     replyHint: "How do you want to reply?",
+    customReply: {
+      placeholder: "Or type your own reply…",
+      send: "Send",
+    },
     navigation: {
       next: "Next",
       back: "Back",
@@ -30,12 +34,20 @@ export const report: ReportMessages = {
     },
     replies: {
       acknowledge: "I see",
-      continue: "Okay, tell me",
-      curious: "Tell me a bit more",
-      tired: "I'm a little tired today",
-      later: "Hold on",
+      continue: "Okay, I'm listening",
+      curious: "Tell me a little more?",
+      tired: "I'm pretty tired today",
+      later: "Hold on, let's go slow",
       warmClose: "Thanks, you worked hard today",
       thanksClose: "See you tomorrow",
+      agreeSoft: "Yeah, that sounds right",
+      surprised: "Oh, really?",
+      soft: "…I see",
+      unsure: "I'm not sure",
+      grateful: "Thanks for sharing that",
+      playful: "Ha, is that so?",
+      needMore: "I'm curious about that part",
+      relate: "I've had days like that too",
     },
     steps: {
       welcome: {

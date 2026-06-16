@@ -1,4 +1,4 @@
-import type { DailyCareActivityDetail, DailyCareInsight } from "../types";
+import type { DailyCareActivityDetail, DailyCareInsight } from "../../types";
 
 const MAX_ACTIVITIES = 4;
 

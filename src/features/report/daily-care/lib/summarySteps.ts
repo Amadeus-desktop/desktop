@@ -1,4 +1,4 @@
-import type { DailyCareActivityDetail, DailyCareInsight } from "../types";
+import type { DailyCareActivityDetail, DailyCareInsight } from "../../types";
 
 export type DailyCareSummaryStep =
   | { kind: "welcome"; id: "welcome" }

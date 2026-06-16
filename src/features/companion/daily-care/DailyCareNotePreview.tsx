@@ -4,7 +4,7 @@ import { companionStyles } from "../ui/styles";
 import { CloseIcon } from "../ui/icons";
 import { LocalTimeline } from "../dev/LocalTimeline";
 import type { TimelineEvent } from "../../timeline/types";
-import { buildDailyCareInsight } from "../../report/lib/report";
+import { buildDailyCareInsight } from "../../report/lib/insight";
 import { buildDailyCareStats } from "./dailyCareStats";
 
 type DailyCareNotePreviewProps = {

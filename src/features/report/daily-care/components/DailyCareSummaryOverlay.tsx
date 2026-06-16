@@ -1,18 +1,18 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
-import type { MateIconKind } from "../../../domain/mate";
-import type { Persona } from "../../../domain/persona/types";
-import { Button, MAIN_WINDOW_OVERLAY_ROOT_ID } from "../../../ui";
-import { cn } from "../../../lib/utils/cn";
-import { useMatchMedia } from "../../../lib/hooks/useMatchMedia";
-import { PersonaPresenceIcon } from "../../companion/ui/PersonaPresenceIcon";
-import type { AppLocale } from "../../../i18n";
-import type { GeneralSettings } from "../../settings/types";
-import type { DailyCareInsight, ReportMetric, WorkTimelineItem } from "../types";
+import type { MateIconKind } from "../../../../domain/mate";
+import type { Persona } from "../../../../domain/persona/types";
+import { Button, MAIN_WINDOW_OVERLAY_ROOT_ID } from "../../../../ui";
+import { cn } from "../../../../lib/utils/cn";
+import { useMatchMedia } from "../../../../lib/hooks/useMatchMedia";
+import { PersonaPresenceIcon } from "../../../companion/ui/PersonaPresenceIcon";
+import type { AppLocale } from "../../../../i18n";
+import type { GeneralSettings } from "../../../settings/types";
+import type { DailyCareInsight, ReportMetric, WorkTimelineItem } from "../../types";
 import { useDailyCareOverlayMotion } from "../hooks/useDailyCareOverlayMotion";
 import { useDailyCareMessageSession } from "../hooks/useDailyCareMessageSession";
-import { dailyCareStyles } from "../ui/reportStyles";
+import { dailyCareStyles } from "../ui/styles";
 import { DailyCareMessageThread } from "./DailyCareMessageThread";
 import { DailyCareReplyBar } from "./DailyCareReplyBar";
 
@@ -57,7 +57,7 @@ function DailyCareSummaryOverlayContent({
   const { closing, requestClose } = useDailyCareOverlayMotion({
     onClosed: onClose,
   });
-  const { messages, replies, isTyping, selectReply } = useDailyCareMessageSession({
+  const { messages, replies, isTyping, selectReply, submitCustomReply } = useDailyCareMessageSession({
     insight,
     metrics,
     labels,
@@ -133,8 +133,11 @@ function DailyCareSummaryOverlayContent({
           <DailyCareReplyBar
             replies={replies}
             hint={labels.summaryOverlay.replyHint}
+            customPlaceholder={labels.summaryOverlay.customReply.placeholder}
+            customSendLabel={labels.summaryOverlay.customReply.send}
             disabled={isTyping}
             onSelect={selectReply}
+            onCustomSubmit={submitCustomReply}
           />
         </div>
       </div>

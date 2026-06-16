@@ -1,9 +1,9 @@
-import { cn } from "../../../lib/utils/cn";
+import { cn } from "../../../../../lib/utils/cn";
 import {
   DAILY_CARE_SUMMARY_PHASES,
   type DailyCareSummaryPhase,
-} from "../lib/dailyCareSummarySteps";
-import { dailyCareStyles } from "../ui/reportStyles";
+} from "../../lib/summarySteps";
+import { dailyCareStyles } from "../../ui/styles";
 
 type DailyCareSummaryProgressProps = {
   currentPhase: DailyCareSummaryPhase;
