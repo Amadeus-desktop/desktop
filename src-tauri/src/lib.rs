@@ -19,6 +19,7 @@ use app_lifecycle::{
         start_dev_auth_callback_server,
     },
     frontend_log::record_frontend_log,
+    frontend_ready::record_frontend_ready,
     setup::setup_app,
     tray::show_main_window,
     windows::{start_main_window_drag_command, sync_companion_window_position},
@@ -78,6 +79,7 @@ pub fn run() {
             generate_test_utterance,
             generate_chat_reply,
             record_frontend_log,
+            record_frontend_ready,
             consume_pending_auth_callback,
             start_dev_auth_callback_server
         ])

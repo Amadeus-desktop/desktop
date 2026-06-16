@@ -7,6 +7,7 @@ import { ensureSettingsSync } from "../features/settings";
 import { ensureCompanionWebviewTransparency } from "../lib/tauri/mainWindowChrome";
 import { useTauriDevTools } from "../lib/tauri/useTauriDevTools";
 import { logger } from "../observability/logger";
+import { scheduleFrontendFirstPaintRecord } from "../features/lifecycle";
 import { useShellTheme } from "../ui";
 
 export function CompanionApp() {
@@ -18,6 +19,7 @@ export function CompanionApp() {
     logger.info("ui", "companion app mounted", {
       performanceNowMs: Math.round(performance.now()),
     });
+    scheduleFrontendFirstPaintRecord("companion");
     void hydrateAuth();
     hydrateOnboardingProgress();
     ensureSettingsSync();

@@ -11,6 +11,7 @@ import {
 import { ensureSettingsSync } from "../features/settings";
 import { useTauriDevTools } from "../lib/tauri/useTauriDevTools";
 import { logger } from "../observability/logger";
+import { scheduleFrontendFirstPaintRecord } from "../features/lifecycle";
 import { useShellTheme } from "../ui";
 
 function App() {
@@ -34,6 +35,7 @@ function App() {
     logger.info("ui", "main app mounted", {
       performanceNowMs: Math.round(performance.now()),
     });
+    scheduleFrontendFirstPaintRecord("main");
     void hydrateAuth();
     hydrateOnboardingProgress();
   }, []);

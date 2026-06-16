@@ -4,6 +4,7 @@ export type LogArea =
   | "auth"
   | "settings"
   | "context"
+  | "startup"
   | "trigger"
   | "window"
   | "ui";

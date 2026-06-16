@@ -1,4 +1,4 @@
-import { LogicalPosition, LogicalSize } from "@tauri-apps/api/dpi";
+import { LogicalSize } from "@tauri-apps/api/dpi";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { createSerializedAsyncQueue } from "../../../lib/async/serializedAsyncQueue";
 import { isTauriRuntime } from "../../../lib/tauri/runtime";
@@ -73,26 +73,6 @@ export async function centerMainWindowOnMonitor() {
   if (!webviewWindow) return;
 
   await webviewWindow.center();
-}
-
-async function setMainWindowLogicalSizeCentered(width: number, height: number) {
-  const webviewWindow = getMainWebviewWindow();
-  if (!webviewWindow) return;
-
-  const rect = await readMainWindowOuterLogicalRect();
-  if (!rect) {
-    await webviewWindow.setSize(new LogicalSize(width, height));
-    await webviewWindow.center();
-    return;
-  }
-
-  const centerX = rect.x + rect.width / 2;
-  const centerY = rect.y + rect.height / 2;
-  const nextX = Math.round(centerX - width / 2);
-  const nextY = Math.round(centerY - height / 2);
-
-  await webviewWindow.setSize(new LogicalSize(width, height));
-  await webviewWindow.setPosition(new LogicalPosition(nextX, nextY));
 }
 
 async function setMainWindowLogicalSizeOnMonitor(width: number, height: number) {
@@ -170,120 +150,16 @@ export async function applyMainWindowLayoutMode(mode: MainWindowLayoutMode) {
   });
 }
 
-function easeOutCubic(t: number) {
-  return 1 - (1 - t) ** 3;
-}
-
 export async function animateMainWindowLayoutMode(
   mode: MainWindowLayoutMode,
   durationMs = 480,
 ) {
-  const webviewWindow = getMainWebviewWindow();
-  if (!webviewWindow) {
-    await new Promise((resolve) => setTimeout(resolve, durationMs));
-    return;
-  }
-
-  await ensureMainWindowVisible(webviewWindow);
-  logger.info("window", "main layout animation started", {
+  logger.info("window", "main native resize animation skipped", {
     mode,
     durationMs,
+    policy: "single-apply",
   });
-
-  const start = (await readMainWindowLogicalSize()) ?? {
-    width: controlCenterWindowPolicy.defaultWidth,
-    height: controlCenterWindowPolicy.defaultHeight,
-  };
-
-  const target =
-    mode === "onboarding"
-      ? {
-          width: onboardingWindowPolicy.width,
-          height: onboardingWindowPolicy.height,
-        }
-      : clampControlCenterSize(
-          readControlCenterWindowSize()?.width ??
-            controlCenterWindowPolicy.defaultWidth,
-          readControlCenterWindowSize()?.height ??
-            controlCenterWindowPolicy.defaultHeight,
-        );
-
-  if (mode === "onboarding") {
-    await webviewWindow.setMinSize(
-      new LogicalSize(
-        onboardingWindowPolicy.minWidth,
-        onboardingWindowPolicy.minHeight,
-      ),
-    );
-  }
-
-  const beganAt = performance.now();
-  let frameCount = 0;
-  let slowFrameCount = 0;
-  let maxFrameMs = 0;
-  let loggedSlowFrames = 0;
-
-  while (true) {
-    const frameBeganAt = performance.now();
-    const progress = easeOutCubic(
-      Math.min(1, (performance.now() - beganAt) / durationMs),
-    );
-    const width = Math.round(
-      start.width + (target.width - start.width) * progress,
-    );
-    const height = Math.round(
-      start.height + (target.height - start.height) * progress,
-    );
-
-    await setMainWindowLogicalSizeCentered(width, height);
-    frameCount += 1;
-    const frameMs = performance.now() - frameBeganAt;
-    maxFrameMs = Math.max(maxFrameMs, frameMs);
-    if (frameMs > 34) {
-      slowFrameCount += 1;
-      if (loggedSlowFrames < 5) {
-        loggedSlowFrames += 1;
-        logger.warn("window", "main layout animation slow native resize frame", {
-          mode,
-          frameMs: Math.round(frameMs),
-          width,
-          height,
-          progress: Number(progress.toFixed(3)),
-        });
-      }
-    }
-
-    if (progress >= 1) {
-      break;
-    }
-
-    await new Promise<void>((resolve) => {
-      requestAnimationFrame(() => resolve());
-    });
-  }
-
-  if (mode === "onboarding") {
-    await setMainWindowLogicalSizeOnMonitor(target.width, target.height);
-  } else {
-    await webviewWindow.setMinSize(
-      new LogicalSize(
-        controlCenterWindowPolicy.minWidth,
-        controlCenterWindowPolicy.minHeight,
-      ),
-    );
-    await setMainWindowLogicalSizeOnMonitor(target.width, target.height);
-  }
-
-  scheduleMainWindowCompositorKick();
-  logger.info("window", "main layout animation completed", {
-    mode,
-    frameCount,
-    slowFrameCount,
-    maxFrameMs: Math.round(maxFrameMs),
-    totalMs: Math.round(performance.now() - beganAt),
-    targetWidth: target.width,
-    targetHeight: target.height,
-  });
+  await applyMainWindowLayoutMode(mode);
 }
 
 export function requestMainWindowLayoutMode(mode: MainWindowLayoutMode) {

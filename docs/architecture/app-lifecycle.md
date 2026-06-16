@@ -14,8 +14,8 @@
 - `src-tauri/src/lib.rs`가 app setup, tray, resident close, dev auth callback server, single instance, deep link plugin, window show/focus를 동시에 가진다.
 - frontend에서는 `authStore`, `OnboardingFlow`, `useAuthWindow`, `useControlCenterWindow`, `mainWindowLayout`이 각각 직접 window 상태를 바꾼다.
 - main window와 companion window가 모두 `hydrateAuth()`를 호출한다.
-- 현재 resize animation은 JS `requestAnimationFrame` loop에서 Tauri window `setSize`/`setPosition` IPC를 반복 호출한다.
-- 현재 onboarding drag handle 경로에는 drag threshold 이후 `document.documentElement.style.opacity = "0"`으로 root를 직접 투명화하는 코드가 있다.
+- 수정 전 resize animation은 JS `requestAnimationFrame` loop에서 Tauri window `setSize`/`setPosition` IPC를 반복 호출했다.
+- 수정 전 onboarding drag handle 경로에는 drag threshold 이후 `document.documentElement.style.opacity = "0"`으로 root를 직접 투명화하는 코드가 있었다.
 
 추정:
 
@@ -46,7 +46,7 @@
 
 | 증상 | 근거 수준 | 근거 |
 | --- | --- | --- |
-| drag 중 투명화 | 확정 | `src/lib/tauri/useTauriWindowDragOpacity.ts`가 drag threshold 이후 `document.documentElement.style.opacity = "0"`을 실행한다. 이 hook은 onboarding drag handle에서 사용된다. |
+| drag 중 투명화 | 수정 전 확정 | 수정 전 `src/lib/tauri/useTauriWindowDragOpacity.ts`가 drag threshold 이후 `document.documentElement.style.opacity = "0"`을 실행했다. L3에서 이 직접 투명화 경로는 제거했다. |
 | click 단독 투명화 | 근거 부족 | 같은 hook은 `mousedown`만으로 opacity를 바꾸지 않고, threshold를 넘은 `mousemove` 이후에만 바꾼다. click만으로 투명화되는지는 런타임 이벤트 로그가 필요하다. |
 | resize animation 버벅임 | 강한 추정 | `animateMainWindowLayoutMode()`가 `requestAnimationFrame`마다 native `setSize`/`setPosition` IPC를 호출한다. companion도 `ResizeObserver`마다 `setSize`와 position sync를 호출한다. 실제 frame drop 수치는 아직 없다. |
 | transparent/compositor 영향 | 강한 추정 | config가 `transparent: true`, `titleBarStyle: "Transparent"`, `macOSPrivateApi: true`를 사용하고, Rust/JS 모두 compositor refresh성 1px resize 또는 layer refresh를 가진다. 다만 이것이 click 단독 투명화의 직접 원인이라는 증거는 없다. |
@@ -78,18 +78,19 @@ Frontend forwarded log:
 - `deep link auth listener setup started/completed`
 - `loopback auth callback event received`
 - `main layout apply started/completed`
-- `main layout animation started/completed`
-- `main layout animation slow native resize frame`
+- `main native resize animation skipped`
+- `main layout apply started/completed`
 - `main compositor kick scheduled/completed`
-- `onboarding drag opacity armed/hidden/restored`
-- `onboarding drag ended without opacity hide`
+- `onboarding drag armed`
+- `onboarding drag threshold crossed`
+- `onboarding click ended without drag`
 - `companion native resize synced`
 
 판정 규칙:
 
 - click만 했는데 `onboarding drag opacity hidden`이 찍히면 click/drag threshold 분기 버그다.
 - click만 했고 `onboarding drag ended without opacity hide`만 찍히면 click 단독 투명화 원인은 이 hook이 아니다.
-- `main layout animation slow native resize frame`이 여러 번 찍히면 JS RAF native resize 제거가 P1이다.
+- `main native resize animation skipped` 이후에도 버벅임이 재현되면 JS RAF native resize가 아니라 single apply, compositor refresh, React paint, transparent window 쪽을 본다.
 - `startup phase completed` 중 특정 phase가 100ms 이상 반복되면 해당 phase를 first-paint 이후로 미룰 후보로 본다.
 - `dev auth callback server failed` 또는 `hydrateAuth failed`가 찍히면 login/onboarding 정지 원인은 auth callback path부터 본다.
 
@@ -523,12 +524,28 @@ P2:
 - auth callback received/replayed/consumed/duplicate, layout queued/applied/fallback 로그를 추가한다.
 - debug dev callback server start failure를 `LogArea::Auth`에 남긴다.
 
+진행 상태:
+
+- `src-tauri/src/app_lifecycle/frontend_ready.rs`가 `record_frontend_ready` command와 first-paint 중복 방지 state를 소유한다.
+- main window는 `main_window_first_paint`, companion window는 `companion_window_first_paint`를 double `requestAnimationFrame` 이후 Rust로 전송한다.
+- Rust auth callback router는 callback received, pending replay overwrite, event emit, pending consume 결과를 로그로 남긴다.
+- frontend main window lifecycle coordinator는 layout requested/completed/failed를 reason/priority와 함께 로그로 남긴다.
+- Rust setup phase duration log와 debug dev callback server failure log는 기존 구현을 유지한다.
+
 ### Phase L3: Window Performance Stabilization
 
 - JS RAF native resize animation 제거.
 - onboarding/control-center 전환은 single apply + CSS transition으로 변경.
 - click/drag transparent regression check 추가.
 - layout slow log 추가.
+
+진행 상태:
+
+- `animateMainWindowLayoutMode()`는 더 이상 `requestAnimationFrame` 루프에서 native `setSize`/`setPosition`을 반복 호출하지 않는다.
+- animated layout request는 compatibility API를 유지하되, 내부적으로 `applyMainWindowLayoutMode()` single apply 경로를 사용한다.
+- onboarding drag hook은 더 이상 `document.documentElement.style.opacity = "0"`을 실행하지 않는다.
+- onboarding drag hook은 click/drag threshold/release 진단 로그만 남긴다.
+- 남은 L3 항목: Playwright 또는 수동 smoke로 click/drag 투명화 회귀와 layout transition 체감 확인.
 
 ### Phase L4: Startup Defer
 

@@ -3,6 +3,7 @@ use crate::macos_window::position_companion_window;
 use crate::{
     app_lifecycle::{
         auth_callback::start_dev_auth_callback_server,
+        frontend_ready::FrontendLifecycleState,
         resident_windows::{watch_companion_window_layout, watch_resident_window_close},
         startup::StartupPhaseTimer,
         tray::setup_menu_bar,
@@ -62,6 +63,7 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
     app.manage(TimelineState::new(repository));
     app.manage(ContextBridgeState::native());
     app.manage(TriggerEngineState::new());
+    app.manage(FrontendLifecycleState::default());
     app.manage(settings_state);
     app.manage(llm_state);
     app.manage(sidecar_state);

@@ -29,19 +29,35 @@ pub struct AuthCallbackPayload {
 }
 
 pub fn route_auth_callback(app: &tauri::AppHandle, url: String) {
-    store_pending_auth_callback(url.clone());
+    log_info(LogArea::Auth, "auth callback received by rust router");
+    if store_pending_auth_callback(url.clone()) {
+        log_info(
+            LogArea::Auth,
+            "auth callback pending replay overwritten by newer callback",
+        );
+    }
     let payload = AuthCallbackPayload { url };
     if let Err(error) = app.emit(AUTH_CALLBACK_EVENT, payload) {
         log_error(
             LogArea::Auth,
             format!("auth callback event emit failed; pending replay retained: {error}"),
         );
+    } else {
+        log_info(LogArea::Auth, "auth callback event emitted to frontend");
     }
 }
 
 #[tauri::command]
 pub fn consume_pending_auth_callback() -> Option<AuthCallbackPayload> {
-    take_pending_auth_callback().map(|url| AuthCallbackPayload { url })
+    let pending = take_pending_auth_callback().map(|url| AuthCallbackPayload { url });
+    log_info(
+        LogArea::Auth,
+        format!(
+            "auth callback pending replay consume requested: found={}",
+            pending.is_some()
+        ),
+    );
+    pending
 }
 
 #[tauri::command]
@@ -101,10 +117,13 @@ where
         .find(|arg| is_supported_app_auth_callback_url(arg))
 }
 
-fn store_pending_auth_callback(url: impl Into<String>) {
+fn store_pending_auth_callback(url: impl Into<String>) -> bool {
     if let Ok(mut pending) = PENDING_AUTH_CALLBACK_URL.lock() {
+        let replaced = pending.is_some();
         *pending = Some(url.into());
+        return replaced;
     }
+    false
 }
 
 fn take_pending_auth_callback() -> Option<String> {

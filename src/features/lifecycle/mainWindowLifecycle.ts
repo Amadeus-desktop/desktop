@@ -37,7 +37,7 @@ export function createMainWindowLifecycle({
   log = logger,
 }: MainWindowLifecycleDeps) {
   return {
-    requestMainWindowLayout(request: MainWindowLayoutRequest) {
+    async requestMainWindowLayout(request: MainWindowLayoutRequest) {
       log.info("window", "main lifecycle layout requested", {
         mode: request.mode,
         reason: request.reason,
@@ -46,11 +46,28 @@ export function createMainWindowLifecycle({
         priority: request.priority ?? 0,
       });
 
-      if (request.animated) {
-        return animateLayoutMode(request.mode, request.durationMs);
+      try {
+        if (request.animated) {
+          await animateLayoutMode(request.mode, request.durationMs);
+        } else {
+          await applyLayoutMode(request.mode);
+        }
+        log.info("window", "main lifecycle layout completed", {
+          mode: request.mode,
+          reason: request.reason,
+          animated: Boolean(request.animated),
+          priority: request.priority ?? 0,
+        });
+      } catch (error) {
+        log.error("window", "main lifecycle layout failed", {
+          mode: request.mode,
+          reason: request.reason,
+          animated: Boolean(request.animated),
+          priority: request.priority ?? 0,
+          error,
+        });
+        throw error;
       }
-
-      return applyLayoutMode(request.mode);
     },
   };
 }
