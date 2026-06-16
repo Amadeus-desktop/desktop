@@ -6,11 +6,12 @@ use std::{
 
 use super::{
     migrations::{apply_local_schema, local_schema_environment_from_env},
-    validate_local_memory_input, validate_sync_payload_envelope, AppendConversationMessageInput,
-    ContextEvent, ConversationMessage, ConversationSession, CreateContextEventInput,
-    CreateLocalMemoryInput, CreateUserReactionInput, CreateUtteranceEventInput,
-    EnqueueSyncPayloadInput, GetOrCreateConversationSessionInput, ListConversationMessagesInput,
-    LocalMemory, SyncQueueRow, TimelineError, TimelineEvent, UserReaction, UtteranceEvent,
+    validate_local_memory_input, validate_sync_payload_envelope, ActivityObservation,
+    AppendConversationMessageInput, ContextEvent, ConversationMessage, ConversationSession,
+    CreateContextEventInput, CreateLocalMemoryInput, CreateUserReactionInput,
+    CreateUtteranceEventInput, EnqueueSyncPayloadInput, GetOrCreateConversationSessionInput,
+    ListConversationMessagesInput, LocalMemory, RecordActivityObservationInput, SyncQueueRow,
+    TimelineError, TimelineEvent, UserReaction, UtteranceEvent,
 };
 
 pub struct TimelineRepository {
@@ -153,6 +154,59 @@ impl TimelineRepository {
             params![memory.id, memory.persona_id, memory.memory_type, memory.content, memory.scope, memory.confidence, memory.created_at_ms, memory.updated_at_ms],
         )?;
         Ok(memory)
+    }
+
+    pub fn record_activity_observation(
+        &mut self,
+        input: RecordActivityObservationInput,
+    ) -> Result<ActivityObservation, TimelineError> {
+        validate_activity_observation_input(&input)?;
+        let (id, observed_at_ms) = self.next_marker("act")?;
+        let observation = ActivityObservation {
+            id,
+            observed_at_ms,
+            app_name: input.app_name,
+            bundle_identifier: input.bundle_identifier,
+            process_id: input.process_id,
+            app_category: input.app_category,
+            browser_url_host: input.browser_url_host,
+            browser_url_class: input.browser_url_class,
+            idle_seconds: input.idle_seconds,
+            frontmost_duration_ms: input.frontmost_duration_ms,
+            is_fullscreen: input.is_fullscreen,
+            sensitive: input.sensitive,
+            capture_suppressed: input.capture_suppressed,
+            trigger_action: input.trigger_action,
+            trigger_candidate_type: input.trigger_candidate_type,
+            speakability_score: input.speakability_score,
+            source_kind: input.source_kind,
+            metadata_json: normalized_metadata_json(input.metadata_json),
+        };
+        self.connection.execute(
+            "INSERT INTO activity_observations (id, observed_at_ms, app_name, bundle_identifier, process_id, app_category, browser_url_host, browser_url_class, idle_seconds, frontmost_duration_ms, is_fullscreen, sensitive, capture_suppressed, trigger_action, trigger_candidate_type, speakability_score, source_kind, metadata_json)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18)",
+            params![
+                observation.id,
+                observation.observed_at_ms,
+                observation.app_name,
+                observation.bundle_identifier,
+                observation.process_id,
+                observation.app_category,
+                observation.browser_url_host,
+                observation.browser_url_class,
+                observation.idle_seconds,
+                observation.frontmost_duration_ms,
+                bool_to_i64(observation.is_fullscreen),
+                bool_to_i64(observation.sensitive),
+                bool_to_i64(observation.capture_suppressed),
+                observation.trigger_action,
+                observation.trigger_candidate_type,
+                observation.speakability_score,
+                observation.source_kind,
+                observation.metadata_json,
+            ],
+        )?;
+        Ok(observation)
     }
 
     pub fn get_or_create_conversation_session(
@@ -391,6 +445,7 @@ impl TimelineRepository {
             "sync_queue",
             "local_memories",
             "work_sessions",
+            "activity_observations",
             "user_reactions",
             "utterance_events",
             "context_events",
@@ -470,6 +525,47 @@ fn validate_conversation_message_input(
         ));
     }
     Ok(())
+}
+
+fn validate_activity_observation_input(
+    input: &RecordActivityObservationInput,
+) -> Result<(), TimelineError> {
+    if input.app_name.trim().is_empty() {
+        return Err(TimelineError::Validation(
+            "activity observation app_name is required".to_string(),
+        ));
+    }
+    if !matches!(input.app_category.as_str(), "Work" | "NonWork" | "Unknown") {
+        return Err(TimelineError::Validation(format!(
+            "unsupported activity observation app_category '{}'",
+            input.app_category
+        )));
+    }
+    if let Some(browser_url_class) = input.browser_url_class.as_deref() {
+        if !matches!(browser_url_class, "Work" | "Video" | "Unknown") {
+            return Err(TimelineError::Validation(format!(
+                "unsupported activity observation browser_url_class '{browser_url_class}'"
+            )));
+        }
+    }
+    if !matches!(
+        input.source_kind.as_str(),
+        "Process" | "Browser" | "Ocr" | "TriggerPoll"
+    ) {
+        return Err(TimelineError::Validation(format!(
+            "unsupported activity observation source_kind '{}'",
+            input.source_kind
+        )));
+    }
+    Ok(())
+}
+
+fn bool_to_i64(value: bool) -> i64 {
+    if value {
+        1
+    } else {
+        0
+    }
 }
 
 fn current_time_ms() -> Result<i64, TimelineError> {

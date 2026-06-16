@@ -11,8 +11,8 @@ pub use core::{
     AppendConversationMessageInput, ContextEvent, ConversationMessage, ConversationSession,
     CreateContextEventInput, CreateLocalMemoryInput, CreateUserReactionInput,
     CreateUtteranceEventInput, EnqueueSyncPayloadInput, GetOrCreateConversationSessionInput,
-    ListConversationMessagesInput, LocalMemory, SyncQueueRow, TimelineEvent, TimelineRepository,
-    TimelineState, UserReaction, UtteranceEvent,
+    ListConversationMessagesInput, LocalMemory, RecordActivityObservationInput, SyncQueueRow,
+    TimelineEvent, TimelineRepository, TimelineState, UserReaction, UtteranceEvent,
 };
 
 pub(crate) use core::{CommandError, TimelineError};

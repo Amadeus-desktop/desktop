@@ -39,6 +39,27 @@ pub struct CreateLocalMemoryInput {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct RecordActivityObservationInput {
+    pub app_name: String,
+    pub bundle_identifier: String,
+    pub process_id: i64,
+    pub app_category: String,
+    pub browser_url_host: Option<String>,
+    pub browser_url_class: Option<String>,
+    pub idle_seconds: f64,
+    pub frontmost_duration_ms: i64,
+    pub is_fullscreen: bool,
+    pub sensitive: bool,
+    pub capture_suppressed: bool,
+    pub trigger_action: String,
+    pub trigger_candidate_type: Option<String>,
+    pub speakability_score: i64,
+    pub source_kind: String,
+    pub metadata_json: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GetOrCreateConversationSessionInput {
     pub persona_id: String,
 }
@@ -111,6 +132,29 @@ pub struct LocalMemory {
     pub confidence: i64,
     pub created_at_ms: i64,
     pub updated_at_ms: i64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ActivityObservation {
+    pub id: String,
+    pub observed_at_ms: i64,
+    pub app_name: String,
+    pub bundle_identifier: String,
+    pub process_id: i64,
+    pub app_category: String,
+    pub browser_url_host: Option<String>,
+    pub browser_url_class: Option<String>,
+    pub idle_seconds: f64,
+    pub frontmost_duration_ms: i64,
+    pub is_fullscreen: bool,
+    pub sensitive: bool,
+    pub capture_suppressed: bool,
+    pub trigger_action: String,
+    pub trigger_candidate_type: Option<String>,
+    pub speakability_score: i64,
+    pub source_kind: String,
+    pub metadata_json: String,
 }
 
 #[derive(Debug, Clone, Serialize)]

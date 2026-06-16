@@ -6,11 +6,11 @@ mod state;
 mod validation;
 
 pub use contract::{
-    AppendConversationMessageInput, ContextEvent, ConversationMessage, ConversationSession,
-    CreateContextEventInput, CreateLocalMemoryInput, CreateUserReactionInput,
+    ActivityObservation, AppendConversationMessageInput, ContextEvent, ConversationMessage,
+    ConversationSession, CreateContextEventInput, CreateLocalMemoryInput, CreateUserReactionInput,
     CreateUtteranceEventInput, EnqueueSyncPayloadInput, GetOrCreateConversationSessionInput,
-    ListConversationMessagesInput, LocalMemory, SyncPayloadEnvelope, SyncQueueRow, TimelineEvent,
-    UserReaction, UtteranceEvent,
+    ListConversationMessagesInput, LocalMemory, RecordActivityObservationInput,
+    SyncPayloadEnvelope, SyncQueueRow, TimelineEvent, UserReaction, UtteranceEvent,
 };
 pub use repository::TimelineRepository;
 pub use state::TimelineState;

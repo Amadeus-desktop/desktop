@@ -5,12 +5,13 @@ use crate::{
     macos_context::{read_current_snapshot, ContextBridgeState},
     observability::{info as log_info, warn as log_warn, LogArea},
     ocr::{capture_gate_input_for_command, OcrObservation, OcrState, ScreenCaptureState},
+    privacy::PrivacyAssessment,
     privacy::{assess_privacy, get_screen_capture_permission_status},
     settings::{
         privacy_keywords_for, talk_frequency_poll_interval, talk_frequency_trigger_sensitivity,
         SettingsState,
     },
-    timeline::TimelineState,
+    timeline::{RecordActivityObservationInput, TimelineState},
 };
 
 use super::{persistence::persist_trigger_events, CommandError};
@@ -127,6 +128,7 @@ pub fn run_trigger_engine_once(
             .as_ref()
             .map(|observation| observation.context_class),
     );
+    record_activity_observation_for_trigger(&timeline_state, &snapshot, &privacy, &evaluation);
     let (context_event, utterance_event) = if evaluation.should_persist {
         let captured_after_evaluation =
             ocr_observation.is_none() && should_capture_ocr_for_trigger(&privacy, &evaluation);
@@ -193,6 +195,63 @@ pub fn run_trigger_engine_once(
         context_event,
         utterance_event,
     })
+}
+
+fn record_activity_observation_for_trigger(
+    timeline_state: &State<'_, TimelineState>,
+    snapshot: &crate::macos_context::MacosContextSnapshot,
+    privacy: &PrivacyAssessment,
+    evaluation: &crate::trigger::TriggerEvaluation,
+) {
+    let browser_context = snapshot.browser_context.as_ref();
+    let input = RecordActivityObservationInput {
+        app_name: snapshot.app_name.clone(),
+        bundle_identifier: snapshot.bundle_identifier.clone(),
+        process_id: i64::from(snapshot.process_id),
+        app_category: format!("{:?}", snapshot.category),
+        browser_url_host: browser_context.and_then(|context| context.url_host.clone()),
+        browser_url_class: browser_context.map(|context| format!("{:?}", context.url_class)),
+        idle_seconds: snapshot.idle_seconds,
+        frontmost_duration_ms: i64::try_from(snapshot.frontmost_duration_ms).unwrap_or(i64::MAX),
+        is_fullscreen: snapshot.is_fullscreen,
+        sensitive: privacy.is_sensitive,
+        capture_suppressed: privacy.should_suppress_capture,
+        trigger_action: format!("{:?}", evaluation.action),
+        trigger_candidate_type: evaluation
+            .candidate
+            .as_ref()
+            .map(|candidate| candidate.trigger_type.as_str().to_string()),
+        speakability_score: evaluation.speakability_score,
+        source_kind: if browser_context.is_some() {
+            "Browser".to_string()
+        } else {
+            "Process".to_string()
+        },
+        metadata_json: serde_json::json!({
+            "privacyReason": privacy.reason,
+            "suppressionReason": evaluation.suppression_reason,
+            "shouldPersist": evaluation.should_persist,
+            "screenCapturePermission": get_screen_capture_permission_status(),
+        })
+        .to_string(),
+    };
+
+    let result = timeline_state
+        .repository()
+        .lock()
+        .map_err(|_| "timeline repository lock was poisoned".to_string())
+        .and_then(|mut repository| {
+            repository
+                .record_activity_observation(input)
+                .map(|_| ())
+                .map_err(|error| error.to_string())
+        });
+    if let Err(error) = result {
+        log_warn(
+            LogArea::Trigger,
+            format!("activity observation record failed: {error}"),
+        );
+    }
 }
 
 #[tauri::command]

@@ -89,6 +89,27 @@ CREATE TABLE IF NOT EXISTS work_sessions (
   created_at_ms INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS activity_observations (
+  id TEXT PRIMARY KEY NOT NULL,
+  observed_at_ms INTEGER NOT NULL,
+  app_name TEXT NOT NULL,
+  bundle_identifier TEXT NOT NULL,
+  process_id INTEGER NOT NULL,
+  app_category TEXT NOT NULL CHECK (app_category IN ('Work', 'NonWork', 'Unknown')),
+  browser_url_host TEXT,
+  browser_url_class TEXT CHECK (browser_url_class IN ('Work', 'Video', 'Unknown')),
+  idle_seconds REAL NOT NULL,
+  frontmost_duration_ms INTEGER NOT NULL,
+  is_fullscreen INTEGER NOT NULL CHECK (is_fullscreen IN (0, 1)),
+  sensitive INTEGER NOT NULL CHECK (sensitive IN (0, 1)),
+  capture_suppressed INTEGER NOT NULL CHECK (capture_suppressed IN (0, 1)),
+  trigger_action TEXT NOT NULL,
+  trigger_candidate_type TEXT,
+  speakability_score INTEGER NOT NULL,
+  source_kind TEXT NOT NULL CHECK (source_kind IN ('Process', 'Browser', 'Ocr', 'TriggerPoll')),
+  metadata_json TEXT NOT NULL DEFAULT '{}'
+);
+
 CREATE TABLE IF NOT EXISTS conversation_sessions (
   id TEXT PRIMARY KEY NOT NULL,
   cloud_conversation_id TEXT NOT NULL,
@@ -135,6 +156,12 @@ CREATE INDEX IF NOT EXISTS local_memories_updated_at_idx
 
 CREATE INDEX IF NOT EXISTS work_sessions_started_at_idx
   ON work_sessions (started_at_ms DESC);
+
+CREATE INDEX IF NOT EXISTS activity_observations_observed_at_idx
+  ON activity_observations (observed_at_ms DESC);
+
+CREATE INDEX IF NOT EXISTS activity_observations_category_idx
+  ON activity_observations (app_category, observed_at_ms DESC);
 
 CREATE INDEX IF NOT EXISTS conversation_sessions_cloud_id_idx
   ON conversation_sessions (cloud_conversation_id);

@@ -99,6 +99,26 @@ fn clears_local_timeline_data() {
         })
         .expect("local memory is stored");
     repository
+        .record_activity_observation(RecordActivityObservationInput {
+            app_name: "Zed".to_string(),
+            bundle_identifier: "dev.zed.Zed".to_string(),
+            process_id: 123,
+            app_category: "Work".to_string(),
+            browser_url_host: None,
+            browser_url_class: None,
+            idle_seconds: 0.5,
+            frontmost_duration_ms: 60_000,
+            is_fullscreen: false,
+            sensitive: false,
+            capture_suppressed: false,
+            trigger_action: "NoAction".to_string(),
+            trigger_candidate_type: None,
+            speakability_score: 0,
+            source_kind: "Process".to_string(),
+            metadata_json: "{}".to_string(),
+        })
+        .expect("activity observation is stored");
+    repository
         .enqueue_sync_payload(EnqueueSyncPayloadInput {
             event_type: "memory.summary".to_string(),
             payload_json: serde_json::to_string(&SyncPayloadEnvelope {
@@ -120,7 +140,7 @@ fn clears_local_timeline_data() {
         .clear_local_data()
         .expect("local data is cleared");
 
-    assert!(deleted >= 5);
+    assert!(deleted >= 6);
     assert!(repository
         .list_timeline_events(10)
         .expect("timeline rows are listed")
@@ -136,6 +156,7 @@ fn migration_prepares_phase_6_local_tables() {
         "local_personas",
         "local_memories",
         "work_sessions",
+        "activity_observations",
         "conversation_sessions",
         "conversation_messages",
         "sync_queue",
@@ -145,6 +166,35 @@ fn migration_prepares_phase_6_local_tables() {
                 .table_exists(table_name)
                 .expect("schema query works"),
             "{table_name} table should exist"
+        );
+    }
+
+    let activity_observation_columns = repository
+        .table_columns("activity_observations")
+        .expect("schema query works");
+    for column_name in [
+        "observed_at_ms",
+        "app_name",
+        "bundle_identifier",
+        "process_id",
+        "app_category",
+        "browser_url_host",
+        "browser_url_class",
+        "idle_seconds",
+        "frontmost_duration_ms",
+        "sensitive",
+        "capture_suppressed",
+        "trigger_action",
+        "trigger_candidate_type",
+        "speakability_score",
+        "source_kind",
+        "metadata_json",
+    ] {
+        assert!(
+            activity_observation_columns
+                .iter()
+                .any(|column| column == column_name),
+            "activity_observations should include {column_name}"
         );
     }
 
