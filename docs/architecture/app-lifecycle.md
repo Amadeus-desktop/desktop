@@ -153,23 +153,37 @@ src-tauri/src/lib.rs
   -> builder composition only
 
 src-tauri/src/app_lifecycle/mod.rs
-  -> setup order
-  -> plugin registration order
-  -> startup phases
+  -> lifecycle module boundary
 
 src-tauri/src/app_lifecycle/auth_callback.rs
   -> amadeus:// auth callback validation
   -> dev loopback callback replay state
   -> single-instance argv fallback
 
+src-tauri/src/app_lifecycle/auth_callback_html.rs
+  -> dev loopback callback HTML response rendering
+
+src-tauri/src/app_lifecycle/frontend_log.rs
+  -> frontend log command bridge
+
+src-tauri/src/app_lifecycle/resident_windows.rs
+  -> resident close policy
+  -> companion layout watch
+
+src-tauri/src/app_lifecycle/setup.rs
+  -> setup order
+  -> state registration
+  -> deferred startup work scheduling
+
+src-tauri/src/app_lifecycle/tray.rs
+  -> menu bar icon/menu/events
+  -> tray-triggered resident app actions
+
 src-tauri/src/app_lifecycle/windows.rs
-  -> main/companion show, hide, focus
-  -> transparent/compositor refresh
-  -> resize/drag native policy
+  -> command wrappers for native window operations
 
 src-tauri/src/app_lifecycle/startup.rs
-  -> first-paint critical path
-  -> deferred sidecar/OCR/trigger warmup
+  -> startup phase duration logging
 ```
 
 필수 계약:
@@ -225,8 +239,14 @@ type MainWindowLayoutRequest = {
 현재 구현 상태:
 
 - L1b: `src-tauri/src/app_lifecycle/auth_callback.rs`가 dev loopback callback, pending replay, protocol argv validation을 소유한다.
+- L1b: `src-tauri/src/app_lifecycle/auth_callback_html.rs`가 dev loopback callback HTML 응답 렌더링을 소유한다.
+- L1b: `src-tauri/src/app_lifecycle/frontend_log.rs`가 frontend log bridge command를 소유한다.
+- L1b: `src-tauri/src/app_lifecycle/resident_windows.rs`가 resident window close/watch 정책을 소유한다.
+- L1b: `src-tauri/src/app_lifecycle/setup.rs`가 Tauri setup 순서와 state registration을 소유한다.
 - L1b: `src-tauri/src/app_lifecycle/startup.rs`가 startup phase duration log를 소유한다.
+- L1b: `src-tauri/src/app_lifecycle/tray.rs`가 menu bar/tray 이벤트를 소유한다.
 - L1b: `src-tauri/src/app_lifecycle/windows.rs`가 main drag command와 companion position sync command wrapper를 소유한다.
+- L1b: `src-tauri/src/lib.rs`는 Tauri builder composition과 invoke handler registry만 남긴다.
 - L2: `src/features/lifecycle/mainWindowLifecycle.ts`가 main window layout request의 단일 coordinator다.
 - L2: `authStore`, `useAuthWindow`, `OnboardingFlow`는 직접 layout mode helper를 호출하지 않고 `requestMainWindowLayout()`에 `reason`, `priority`, `animated`를 담아 요청한다.
 - L2a: native resize animation 제거/대체와 `useControlCenterWindow`까지의 완전 흡수는 다음 phase로 남긴다.
@@ -477,7 +497,7 @@ P2:
 
 - `app_lifecycle` module 추가.
 - `lib.rs`는 builder composition만 남긴다.
-- `auth_callback`, `windows`, `startup` submodule 추가.
+- `auth_callback`, `auth_callback_html`, `frontend_log`, `resident_windows`, `setup`, `startup`, `tray`, `windows` submodule 추가.
 - single-instance argv auth fallback 추가.
 - dev callback pending replay state 추가.
 
@@ -492,9 +512,9 @@ P2:
 
 진행 상태:
 
-- main window layout request는 `requestMainWindowLayoutMode` / `requestAnimatedMainWindowLayoutMode`를 통해 serialized async queue를 타도록 1차 정리했다.
-- `authStore`, `useAuthWindow`, `OnboardingFlow`의 직접 layout 전환 호출은 queue 기반 entrypoint로 전환했다.
-- 아직 남은 L2 항목: 별도 `src/features/lifecycle` coordinator module 승격, reason/priority가 포함된 request object. JS RAF native resize 제거는 L3 범위다.
+- main window layout request는 `src/features/lifecycle/mainWindowLifecycle.ts`의 `requestMainWindowLayout()` coordinator를 통해 serialized async queue를 탄다.
+- `authStore`, `useAuthWindow`, `OnboardingFlow`의 직접 layout 전환 호출은 `reason`, `priority`, `animated`가 포함된 request object 기반 entrypoint로 전환했다.
+- 아직 남은 항목: `useControlCenterWindow`까지 lifecycle coordinator로 흡수하는 작업과 JS RAF native resize 제거는 L2a/L3 범위다.
 
 ### Phase L2a: First Paint Gate And Logging
 
