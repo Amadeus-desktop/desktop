@@ -4,7 +4,7 @@ use crate::{
     ocr::OcrContextClass,
     settings::AppSettings,
     trigger::core::{evaluate_trigger_with_ocr, evaluate_trigger_with_ocr_context},
-    trigger::scoring::{should_probe_ocr_for_candidate, should_probe_unknown_ocr_for_candidate},
+    trigger::scoring::should_probe_unknown_ocr_for_candidate,
 };
 
 const MINUTE_MS: u128 = 60 * 1000;
@@ -146,20 +146,14 @@ fn docs_scenario_05_long_work_creates_milestone_when_idle_is_not_deep_pause() {
 }
 
 #[test]
-fn docs_scenario_06_work_ocr_blocked_signal_creates_conversation() {
+fn docs_scenario_06_work_ocr_blocked_signal_alone_stays_silent() {
     let evaluation = evaluate_trigger_with_ocr(
         input(snapshot(AppCategory::Work, 70.0, 6 * MINUTE_MS)),
         &AppSettings::default(),
         Some("compile error failed cannot resolve module"),
     );
 
-    assert_candidate(
-        &evaluation,
-        TriggerType::DeepPause,
-        TriggerAction::Conversation,
-        "ocr_blocked_signal_after_sustained_work",
-    );
-    assert_eq!(evaluation.speakability_score, 80);
+    assert_suppressed(&evaluation, "no_trigger");
 }
 
 #[test]
@@ -469,10 +463,6 @@ fn docs_scenario_24_very_long_idle_is_treated_as_away_and_suppressed() {
     let evaluation = evaluate(away_work.clone());
 
     assert_suppressed(&evaluation, "away_idle");
-    assert!(!should_probe_ocr_for_candidate(
-        &away_work,
-        &normal_privacy("main.rs")
-    ));
 
     let away_unknown = snapshot(AppCategory::Unknown, 30.0 * 60.0, 12 * MINUTE_MS);
     assert!(!should_probe_unknown_ocr_for_candidate(
@@ -482,19 +472,14 @@ fn docs_scenario_24_very_long_idle_is_treated_as_away_and_suppressed() {
 }
 
 #[test]
-fn docs_scenario_25_repeated_ocr_stuckness_is_not_required_yet() {
+fn docs_scenario_25_repeated_ocr_stuckness_is_required_before_standalone_help() {
     let evaluation = evaluate_trigger_with_ocr(
         input(snapshot(AppCategory::Work, 70.0, 6 * MINUTE_MS)),
         &AppSettings::default(),
         Some("compile error failed cannot resolve module"),
     );
 
-    assert_candidate(
-        &evaluation,
-        TriggerType::DeepPause,
-        TriggerAction::Conversation,
-        "ocr_blocked_signal_after_sustained_work",
-    );
+    assert_suppressed(&evaluation, "no_trigger");
 }
 
 #[test]

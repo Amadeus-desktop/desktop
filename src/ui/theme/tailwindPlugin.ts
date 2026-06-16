@@ -47,14 +47,24 @@ export const amadeusTailwindPlugin = plugin(({ addBase, addUtilities }) => {
       minHeight: "100%",
       background: "transparent !important",
     },
-    "html[data-companion-viewport], html[data-companion-viewport] body, html[data-companion-viewport] #root":
-      {
-        height: "auto",
-        minHeight: "0",
-        width: "auto",
-        minWidth: "0",
-        overflow: "visible",
-      },
+    "html[data-companion-viewport], html[data-companion-viewport] body": {
+      height: "100%",
+      minHeight: "100%",
+      width: "100%",
+      minWidth: "100%",
+      overflow: "visible",
+    },
+    "html[data-companion-viewport] #root": {
+      height: "100%",
+      minHeight: "100%",
+      width: "100%",
+      minWidth: "100%",
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "flex-end",
+      alignItems: "flex-end",
+      overflow: "visible",
+    },
     body: {
       margin: "0",
     },

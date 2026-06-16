@@ -1,56 +1,64 @@
 export const companionStyles = {
   stack:
-    "tauri-interactive-zone inline-flex flex-col items-end gap-2.5 overflow-visible p-2.5",
+    "tauri-interactive-zone inline-flex flex-col items-end justify-end gap-2.5 overflow-visible p-2.5",
 
-  panel:
-    "flex flex-col overflow-hidden rounded-chat-panel border border-chat-border bg-chat-surface text-chat-ink shadow-chat-panel animate-chat-in dark:border-chat-border-dark dark:bg-chat-surface-dark dark:text-chat-ink-dark",
-  // Fixed intrinsic size only. The companion window auto-sizes to this content via
-  // ResizeObserver, so any viewport-relative cap (100vh/100vw) here would feed the
-  // window size back into the content size and stall growth at a clipped size.
-  panelSize: "h-chat-panel w-chat-panel",
+  /** Compact nudge bubble sitting above the mate anchor. */
+  nudgeCard:
+    "w-chat-nudge origin-bottom-right rounded-[20px] border border-white/10 bg-[#2b2629]/95 px-3.5 py-3 text-[color:var(--shell-ink)] shadow-[0_16px_40px_rgb(0_0_0/0.35)] backdrop-blur-md transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-safe-animate animate-tab-panel-enter",
 
-  header:
-    "flex h-chat-header shrink-0 items-center gap-3 border-b border-chat-border bg-chat-header px-3.5 dark:border-chat-border-dark dark:bg-chat-header-dark",
-  headerTitle: "text-chat-title text-chat-ink dark:text-chat-ink-dark",
-  headerSubtitle: "text-chat-xs text-chat-muted dark:text-chat-muted-dark",
+  nudgeName:
+    "mb-1.5 text-[11px] font-semibold text-[color:rgb(var(--accent-rgb)/0.9)]",
+  nudgeMessage:
+    "block w-full rounded-[14px] bg-white/[0.04] px-3 py-2.5 text-left text-[13px] leading-relaxed text-[color:var(--shell-ink)] transition hover:bg-white/[0.07] active:scale-[0.995]",
 
-  iconButton:
-    "ml-auto rounded-full p-1.5 text-chat-faint transition hover:bg-[#3a3a40] hover:text-chat-ink dark:hover:text-chat-ink-dark",
+  /** Full chat sheet above anchor — LoveyDovey / Zeta inspired warm chat. */
+  chatPanel: [
+    "flex h-chat-panel w-chat-panel origin-bottom-right flex-col overflow-hidden rounded-[24px]",
+    "border border-white/10 bg-[#1f1b1e] shadow-[0_20px_48px_rgb(0_0_0/0.42)]",
+    "transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-safe-animate animate-tab-panel-enter",
+  ].join(" "),
 
-  bubbleRow: "flex items-end gap-2.5",
+  chatHeader:
+    "flex shrink-0 items-center gap-2.5 border-b border-white/[0.06] px-3.5 py-3",
+  chatAvatar:
+    "flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/[0.05]",
+  chatTitle: "truncate text-[14px] font-semibold leading-tight text-[color:var(--shell-ink)]",
+  chatStatus: "truncate text-[11px] leading-4 text-[color:var(--shell-ink-faint)]",
+
+  chatBody:
+    "min-h-0 flex-1 overflow-y-auto bg-gradient-to-b from-white/[0.03] to-transparent px-3 py-3",
+
+  chatInputBar: "shrink-0 px-3 pb-3 pt-2",
+  chatInputWrap:
+    "flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-3 py-1.5 shadow-[inset_0_1px_0_rgb(255_255_255/0.04)]",
+  chatInput:
+    "min-w-0 flex-1 bg-transparent px-1 py-1.5 text-[13px] text-[color:var(--shell-ink)] outline-none placeholder:text-[color:var(--shell-ink-faint)]",
+
+  bubbleRow: "flex items-end gap-2",
   bubbleRowUser: "flex justify-end",
   bubbleCompanion:
-    "max-w-[88%] rounded-chat-bubble rounded-bl-md border border-chat-border bg-chat-bubble-companion px-3.5 py-2.5 text-chat-sm leading-relaxed text-chat-ink dark:border-chat-border-dark dark:bg-chat-bubble-companion-dark dark:text-chat-ink-dark",
+    "max-w-[86%] rounded-[18px] rounded-bl-[6px] border border-white/[0.08] bg-[#3a3438]/95 px-3.5 py-2.5 text-[13px] leading-relaxed text-[color:#f7f2ef]",
   bubbleUser:
-    "max-w-[88%] rounded-chat-bubble rounded-br-md border border-[#0a84ff]/40 bg-chat-bubble-user px-3.5 py-2.5 text-chat-sm leading-relaxed text-chat-bubble-user-ink dark:bg-chat-bubble-user-dark dark:text-chat-bubble-user-ink-dark",
-  sender:
-    "mb-1 text-chat-xs font-medium text-chat-muted dark:text-chat-muted-dark",
+    "max-w-[86%] rounded-[18px] rounded-br-[6px] border border-[color:rgb(var(--accent-rgb)/0.22)] bg-[color:rgb(var(--accent-rgb)/0.18)] px-3.5 py-2.5 text-[13px] leading-relaxed text-[color:var(--accent-soft)]",
+  sender: "mb-1 text-[10px] font-medium text-[color:var(--shell-ink-faint)]",
 
-  inputBar:
-    "flex shrink-0 items-center gap-2 border-t border-chat-border bg-chat-surface px-3.5 py-2.5 dark:border-chat-border-dark dark:bg-chat-surface-dark",
-  input:
-    "min-w-0 flex-1 rounded-chat-input border border-[#3a3a40] bg-chat-input px-3.5 py-2 text-chat-sm text-chat-ink outline-none placeholder:text-chat-faint focus:border-[#0a84ff] focus:ring-2 focus:ring-[#0a84ff]/20 dark:text-chat-ink-dark dark:placeholder:text-chat-faint-dark dark:bg-chat-input-dark",
-  sendButton:
-    "flex size-9 shrink-0 items-center justify-center rounded-full bg-[#0a84ff] text-white transition hover:bg-[#0077ed]",
+  iconButton:
+    "shrink-0 rounded-full p-1.5 text-[color:var(--shell-ink-muted)] transition hover:bg-white/[0.06] hover:text-[color:var(--shell-ink)]",
+
   textLink:
-    "text-chat-xs text-chat-muted transition hover:text-[#0a84ff] dark:text-chat-muted-dark",
-
-  nudgeCard:
-    "w-chat-nudge overflow-hidden rounded-chat-nudge border-2 border-[#505058] bg-[#28282d] text-[#f5f5f7] shadow-[0_12px_40px_rgb(0_0_0_/_0.45)] animate-chat-in",
-  nudgeBody: "flex gap-3 p-3.5",
-  nudgeHeader: "mb-2 flex items-start justify-between gap-2",
-  nudgeMessage:
-    "block w-full rounded-[14px] border border-[#42424a] bg-[#323238] px-3.5 py-2.5 text-left text-chat-sm leading-relaxed text-[#f5f5f7] transition active:scale-[0.995]",
-  nudgeClose:
-    "flex size-7 shrink-0 items-center justify-center rounded-full border border-[#585860] bg-[#3a3a40] text-[#a1a1a6] transition hover:bg-[#48484f] hover:text-[#f5f5f7]",
+    "text-[11px] text-[color:var(--shell-ink-faint)] transition hover:text-[color:var(--accent-soft)]",
 
   devPanel:
-    "border-t border-chat-border bg-[#1a1a1e] px-3.5 py-3 dark:border-chat-border-dark",
+    "border-t border-white/[0.06] bg-black/20 px-3.5 py-3",
   devBox:
-    "rounded-chat-bubble border border-chat-border bg-chat-input px-2.5 py-2 dark:border-chat-border-dark dark:bg-chat-input-dark",
-  devLabel:
-    "text-[10px] uppercase tracking-widest text-chat-faint dark:text-chat-faint-dark",
+    "rounded-[14px] border border-white/10 bg-white/[0.04] px-2.5 py-2",
+  devLabel: "text-[10px] uppercase tracking-widest text-[color:var(--shell-ink-faint)]",
 
   statCard:
-    "rounded-chat-bubble border border-chat-border bg-chat-bubble-companion px-3.5 py-2.5 dark:border-chat-border-dark dark:bg-chat-bubble-companion-dark",
+    "rounded-[16px] border border-white/10 bg-white/[0.04] px-3.5 py-2.5",
+
+  /** @deprecated */
+  surface: "",
+  surfaceNudge: "",
+  surfacePanel: "",
 } as const;

@@ -75,8 +75,8 @@ This phase prevents regressions as prompts, memory schemas, and providers evolve
 Create fixtures for:
 
 ```text
-persona_warm_friend
-persona_steady_ally
+persona_seoyeon_modern_senior
+persona_eiren_fantasy_guardian
 conversation_web_to_app
 conversation_app_offline_to_web
 memory_cloud_safe_preference

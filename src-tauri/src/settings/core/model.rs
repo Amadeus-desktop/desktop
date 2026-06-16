@@ -5,11 +5,10 @@ use super::{
         ACCENT_LAVENDER, ACCENT_MINT, ACCENT_PEACH, ACCENT_ROSE, ACCENT_SKY, APPEARANCE_DARK,
         APPEARANCE_LIGHT, APPEARANCE_SYSTEM, DEFAULT_ACCENT_COLOR, DEFAULT_APPEARANCE,
         DEFAULT_CHARACTER_ID, DEFAULT_COMPANION_MATE_ICON, DEFAULT_COMPANION_PERSONA_ID,
-        DEFAULT_LLAMA_SERVER_HOST,
-        DEFAULT_LLAMA_SERVER_PORT, DEFAULT_LOCALE, DEFAULT_NICKNAME, DEFAULT_TALK_FREQUENCY,
-        LOCALE_EN, LOCALE_JA, LOCALE_KO, LOCALHOST_IPV4, LOCALHOST_NAME, MATE_ICON_BUBBLE,
-        MATE_ICON_LETTER, MATE_ICON_ORB, MATE_ICON_STAR, PERSONA_LOVING_PARTNER,
-        PERSONA_SOFT_CARE, PERSONA_STEADY_ALLY, PERSONA_WARM_FRIEND,
+        DEFAULT_LLAMA_SERVER_HOST, DEFAULT_LLAMA_SERVER_PORT, DEFAULT_LOCALE, DEFAULT_NICKNAME,
+        DEFAULT_TALK_FREQUENCY, LOCALE_EN, LOCALE_JA, LOCALE_KO, LOCALHOST_IPV4, LOCALHOST_NAME,
+        MATE_ICON_BUBBLE, MATE_ICON_LETTER, MATE_ICON_ORB, MATE_ICON_STAR,
+        PERSONA_EIREN_FANTASY_GUARDIAN, PERSONA_MAKISE_KURISU, PERSONA_SEOYEON_MODERN_SENIOR,
     },
     SettingsError,
 };
@@ -71,17 +70,27 @@ impl Default for AppSettings {
 impl AppSettings {
     pub fn normalize_legacy_values(&mut self) -> bool {
         let normalized_persona = match self.companion_persona_id.as_str() {
-            "fantasy_guardian" => Some(PERSONA_STEADY_ALLY),
-            "quiet_companion" | "cute_character" | "nature_healing" => Some(PERSONA_SOFT_CARE),
-            "minimal_user" => Some(PERSONA_WARM_FRIEND),
+            "warm_friend" | "loving_partner" | "soft_care" | "quiet_companion" | "minimal_user"
+            | "cute_character" | "nature_healing" => Some(PERSONA_SEOYEON_MODERN_SENIOR),
+            "steady_ally" | "fantasy_guardian" => Some(PERSONA_EIREN_FANTASY_GUARDIAN),
+            "makise" => Some(PERSONA_MAKISE_KURISU),
             _ => None,
         };
+        let normalized_character = match self.character_id.as_str() {
+            "ruda" | "daon" => Some(PERSONA_SEOYEON_MODERN_SENIOR),
+            "emilia" => Some(PERSONA_EIREN_FANTASY_GUARDIAN),
+            _ => None,
+        };
+        let mut changed = false;
         if let Some(persona_id) = normalized_persona {
             self.companion_persona_id = persona_id.to_string();
-            true
-        } else {
-            false
+            changed = true;
         }
+        if let Some(character_id) = normalized_character {
+            self.character_id = character_id.to_string();
+            changed = true;
+        }
+        changed
     }
 
     pub fn validate(&self) -> Result<(), SettingsError> {
@@ -92,16 +101,17 @@ impl AppSettings {
             )))?,
         }
         match self.character_id.as_str() {
-            "ruda" | "emilia" | "daon" => {}
+            PERSONA_SEOYEON_MODERN_SENIOR
+            | PERSONA_EIREN_FANTASY_GUARDIAN
+            | PERSONA_MAKISE_KURISU => {}
             other => Err(SettingsError::Validation(format!(
                 "unsupported character '{other}'"
             )))?,
         }
         match self.companion_persona_id.as_str() {
-            PERSONA_WARM_FRIEND
-            | PERSONA_LOVING_PARTNER
-            | PERSONA_STEADY_ALLY
-            | PERSONA_SOFT_CARE => {}
+            PERSONA_SEOYEON_MODERN_SENIOR
+            | PERSONA_EIREN_FANTASY_GUARDIAN
+            | PERSONA_MAKISE_KURISU => {}
             other => Err(SettingsError::Validation(format!(
                 "unsupported companion persona '{other}'"
             )))?,

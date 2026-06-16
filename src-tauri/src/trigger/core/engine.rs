@@ -6,9 +6,9 @@ use crate::settings::{
 use super::{
     scoring::{
         action_for_score, apply_ocr_signal_to_evaluation, exception_suppression, select_candidate,
-        select_ocr_candidate, select_unknown_ocr_candidate, select_work_cluster_candidate,
-        select_work_session_milestone_candidate, should_probe_ocr_for_candidate,
-        should_suppress_active_input_milestone, should_suppress_away_idle, suppressed,
+        select_unknown_ocr_candidate, select_work_cluster_candidate,
+        select_work_session_milestone_candidate, should_suppress_active_input_milestone,
+        should_suppress_away_idle, suppressed,
     },
     TriggerAction, TriggerEvaluation, TriggerInput,
 };
@@ -64,13 +64,6 @@ pub(crate) fn evaluate_trigger_with_ocr_context(
             select_work_session_milestone_candidate(&input.snapshot, input.work_session_duration_ms)
         })
         .or_else(|| select_unknown_ocr_candidate(&input.snapshot, ocr_context_class))
-        .or_else(|| {
-            if should_probe_ocr_for_candidate(&input.snapshot, &input.privacy) {
-                select_ocr_candidate(&input.snapshot, redacted_ocr_summary)
-            } else {
-                None
-            }
-        })
     else {
         return suppressed("no_trigger");
     };

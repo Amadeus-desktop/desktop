@@ -6,7 +6,6 @@ import {
   subscribeToCompanionSession,
 } from "../lib/companionSessionStore";
 import type { CompanionMessage, CompanionMode } from "../types";
-import { forceResyncTauriCompanionWindow } from "./useTauriCompanionWindow";
 
 export function useCompanionSessionState() {
   const session = useSyncExternalStore(
@@ -22,7 +21,6 @@ export function useCompanionSessionState() {
 
   const transitionMode = useCallback(async (nextMode: CompanionMode) => {
     patchCompanionSession({ mode: nextMode });
-    forceResyncTauriCompanionWindow();
   }, []);
 
   const setDraft = useCallback(

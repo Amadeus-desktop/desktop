@@ -424,8 +424,8 @@ Daily Care Note는 생산성 점수표가 아니다.
 4. PocketChat
 5. DeepChat Mock
 6. Persona 2종 mock
-  - warm_friend
-  - fantasy_guardian
+  - seoyeon-modern-senior
+  - eiren-fantasy-guardian
 7. Context Depth State
   - quiet
   - new_note

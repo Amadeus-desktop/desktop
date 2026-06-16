@@ -85,7 +85,7 @@ function validateRequest(value: unknown): LlmChatRequest {
   return {
     messages: messages.slice(-12),
     locale: stringField(record.locale, "ko").slice(0, 8),
-    personaId: stringField(record.personaId, "warm_friend").slice(0, 64),
+    personaId: stringField(record.personaId, "seoyeon-modern-senior").slice(0, 64),
     nickname: stringField(record.nickname, "작업자").slice(0, 64),
     promptEnvelope: normalizePromptEnvelope(record.promptEnvelope),
   };

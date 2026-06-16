@@ -23,24 +23,24 @@
 - Mate 선택이 Persona를 바꾸지 않음
 - Mate 선택이 LLM prompt에 영향 없음
 
-**현재 문제:** `src/domain/persona/types.ts`의 `PERSONA_IDS`에 7개(`warm_friend`, `loving_partner`, `steady_ally`, `soft_care` 포함)가 들어 있음. 제네릭 4종은 Mate 개념으로 분리하거나 제거해야 함.
+**현재 상태:** `src/domain/persona/types.ts`의 `PERSONA_IDS`는 named Persona 3종만 포함함. 과거 제네릭 값은 레거시 설정 마이그레이션을 위해 `normalizePersonaId()`에서만 흡수함.
 
 ---
 
 ## P0 — 앱이 실제로 작동하려면 반드시 필요
 
-### [ ] 제네릭 Persona 4종 제거 — Persona/Mate 분리
+### [x] 제네릭 Persona 4종 제거 — Persona/Mate 분리
 
-**문제:** `PERSONA_IDS`에 `warm_friend`, `loving_partner`, `steady_ally`, `soft_care` 포함
-**파일:** `src/domain/persona/types.ts`, `src/domain/persona/registry.ts`
-**결과:** Persona 선택 UI에 실체 없는 캐릭터가 노출됨. JSON 카드, system prompt 없음.
+**상태:** `PERSONA_IDS`는 `seoyeon-modern-senior`, `eiren-fantasy-guardian`, `makise-kurisu`만 포함.
+**파일:** `src/domain/persona/types.ts`, `src/domain/persona/registry.ts`, `src/features/character`, `src/features/settings/lib/settings.ts`
+**결과:** Persona 선택 UI는 JSON 카드가 있는 3종만 노출함.
 
-할 일:
+완료:
 - `PERSONA_IDS`를 named 3종으로만 축소
-- `warm_friend` 등 4종을 Mate 타입으로 분리 (별도 `MateId` 타입)
-- `PRESENCE_ICON_BY_PERSONA`를 Persona 3종 + Mate 4종으로 각각 재정의
-- `pocketIntro.ts` — named 3종 suffix만 유지, 제네릭 4종 항목 제거
-- `LEGACY_PERSONA_MAP` 리매핑 정리
+- `pocketIntro.ts` named 3종 suffix만 유지
+- `LEGACY_PERSONA_MAP`은 과거 저장값을 named 3종으로 리매핑
+- Main window 캐릭터 선택창도 `getPersonaList()` 기반으로 전환
+- 평가 fixture도 named Persona 기준으로 변경
 
 ---
 
@@ -253,7 +253,7 @@
 
 ---
 
-### [ ] 우려6: OCR + 화면녹화 시너지 → 기본 후보 생성 구현, 반복성 고도화 남음
+### [ ] 우려6: OCR + 화면녹화 시너지 → 보정 연결 구현, 반복성 고도화 남음
 
 **현재 "작업 인지" 실제 방식** (`src-tauri/src/macos_context/core/native_macos.rs`):
 - 어떤 앱: `NSWorkspace.frontmostApplication()`
@@ -263,22 +263,22 @@
 - 작업/비작업: `classify_app(bundle_id)`
 
 **현재 트리거 후보 규칙** (`scoring.rs`): DeepPause(Work+같은앱10분 또는 work_cluster10분+idle120초↑) / Milestone(Work+같은앱60분 또는 work_session60분+idle600초미만) / Drift(NonWork+10분↑).
-**추가 OCR 후보 규칙:** Work 앱에서 5분 이상 머물고 idle 60초 이상이며 OCR redacted summary에 blocked signal(error/failed/cannot/오류/실패 등)이 있으면 `ocr_blocked_signal_after_sustained_work` DeepPause 후보를 생성함.
+**OCR 보정 규칙:** 기존 trigger 후보가 persist 가능할 때 OCR redacted summary에 blocked signal(error/failed/cannot/오류/실패 등)이 있으면 speakability score를 +8 보정함. Work OCR blocked signal만으로는 단독 후보를 생성하지 않음.
 
 **해소됨:** `run_trigger_engine_once`가 `evaluation.should_persist`이고 privacy gate가 안전할 때만 OCR capture+recognize를 시도함.
-**해소됨:** 기존 규칙으로 후보가 없더라도 Work+5분+idle60초 조건이면 evaluation 전 OCR probe를 수행하고, blocked signal이면 후보를 생성함.
+**해소됨:** Work OCR blocked signal만으로 단독 후보를 만들지 않도록 막아 1회 키워드 false positive를 줄임.
 **해소됨:** Unknown+10분+idle120초 조건에서도 privacy-safe하면 evaluation 전 OCR probe를 수행하고, `work_document`/`code_error` context class일 때만 Work-like DeepPause 후보를 생성함.
 **해소됨:** OCR `text_summary_redacted`가 `LlmInputEnvelope.redacted_ocr_summary`로 주입되어 NudgeNote LLM 입력에 들어감.
 **해소됨:** OCR redacted summary에 error/failed/exception/cannot/오류/실패 등 blocked signal이 있으면 speakability score를 +8 보정함.
-**해소됨:** OCR blocked 후보 메시지에서 "화면/보여/흔적" 같은 감시감 표현을 제거함.
+**해소됨:** OCR blocked 단독 후보 메시지를 제거하고, 기존 후보 메시지에만 보정이 붙도록 정리함.
 **남음:** OCR 반복성/동일 화면 장시간 정체 판단은 아직 없음.
 
-**결론:** PRD가 말한 "OCR로 화면 보고 맥락 파악" 중 LLM 입력 연결, blocked signal score 보정, 기본 OCR 후보 생성은 구현됨. 다만 "같은 화면/같은 오류가 반복되는 정체 상태" 판단은 아직 미구현.
+**결론:** PRD가 말한 "OCR로 화면 보고 맥락 파악" 중 LLM 입력 연결과 blocked signal score 보정은 구현됨. 단 1회 OCR 키워드만으로 먼저 말을 거는 경로는 false positive 방지를 위해 제거함. "같은 화면/같은 오류가 반복되는 정체 상태" 판단은 아직 미구현.
 
 할 일 (시너지 작업 = 아래 전부):
 - OCR `text_summary_redacted`/content_kind/classes → trigger context/signal 구조로 보존할지 결정
 - OCR 반복성 반영 (예: 같은 오류/같은 화면 장시간 = "정체")
-- OCR 후보 생성 조건 실측 튜닝
+- OCR 반복 정체 후보 생성 조건 실측 튜닝
 - 실제 macOS 권한 ON 상태에서 end-to-end smoke test
 
 ---
@@ -290,14 +290,14 @@
 **현황:** OCR (`apple_vision.rs`) 실제 구현, Trigger scoring 실제 구현
 **확인됨:** OCR 결과는 persist 가능한 trigger에서 `LlmInputEnvelope.redacted_ocr_summary`로 LLM 입력에 들어감.
 **확인됨:** blocked OCR signal은 `apply_ocr_signal_to_evaluation()`에서 speakability score/action 보정에 사용됨.
-**확인됨:** blocked OCR signal은 Work+5분+idle60초 조건에서 DeepPause 후보 생성에도 사용됨.
+**확인됨:** blocked OCR signal은 Work 단독 후보 생성에는 사용하지 않음. 기존 persist 가능한 후보의 score/context 보정으로만 사용함.
 **확인됨:** Unknown OCR probe는 privacy-safe + 10분 + idle120초 조건에서만 수행되고, `work_document`/`code_error`만 DeepPause로 승격함.
 **파일:** `src-tauri/src/trigger/commands/runner.rs`, `src-tauri/src/trigger/commands/persistence.rs`, `src-tauri/src/trigger/core/scoring.rs`, `src-tauri/src/ocr/core/`
 
 할 일:
 - macOS Screen Recording 권한 ON 상태에서 실제 자동 trigger smoke test
 - OCR summary가 prompt 로그/LLM envelope에 들어가는지 runtime log로 확인
-- OCR 후보 생성 조건과 실제 Nudge 빈도 튜닝
+- OCR 반복 정체 후보 생성 조건과 실제 Nudge 빈도 튜닝
 
 ---
 

@@ -4,36 +4,40 @@ import type { CompanionLocale } from "../../../i18n";
 import { PersonaPresenceIcon } from "../ui/PersonaPresenceIcon";
 import type { CompanionMode } from "../types";
 
-type FloatingMessageIconProps = {
-  mode: CompanionMode;
+type MateAnchorProps = {
   mateIcon: MateIconKind;
+  mode: CompanionMode;
+  expanded: boolean;
   labels: CompanionLocale["presence"];
   onClick: () => void;
 };
 
-export function FloatingMessageIcon({
-  mode,
+export function MateAnchor({
   mateIcon,
+  mode,
+  expanded,
   labels,
   onClick,
-}: FloatingMessageIconProps) {
+}: MateAnchorProps) {
   const sleeping = mode === "sleep";
 
   return (
     <button
       type="button"
       aria-label={sleeping ? labels.wake : labels.open}
+      aria-expanded={expanded}
       onClick={onClick}
       className={cn(
-        "tauri-interactive rounded-full p-0 shadow-none transition",
+        "tauri-interactive shrink-0 rounded-full p-0 shadow-none transition-transform duration-300 ease-out",
         sleeping && "opacity-50",
+        expanded && "scale-[0.96]",
       )}
     >
       <PersonaPresenceIcon
         kind={mateIcon}
         accentSource="settings"
         size="lg"
-        variant="outline"
+        variant={expanded ? "filled" : "outline"}
       />
     </button>
   );

@@ -1,6 +1,6 @@
 export const REQUIRED_EVAL_FIXTURES = [
-  "persona_warm_friend",
-  "persona_steady_ally",
+  "persona_seoyeon_modern_senior",
+  "persona_eiren_fantasy_guardian",
   "conversation_web_to_app",
   "conversation_app_offline_to_web",
   "memory_cloud_safe_preference",

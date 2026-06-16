@@ -15,7 +15,7 @@ use crate::trigger::{
     core::evaluate_trigger_with_ocr_context,
     scoring::{
         apply_ocr_signal_to_evaluation, should_capture_ocr_for_trigger,
-        should_probe_ocr_for_candidate, should_probe_unknown_ocr_for_candidate, suppressed,
+        should_probe_unknown_ocr_for_candidate, suppressed,
     },
     TriggerEngineState, TriggerPollDecision, TriggerPollResult, TriggerRunResult,
     TriggerRuntimeSnapshot,
@@ -58,12 +58,17 @@ pub fn run_trigger_engine_once(
         .lock()
         .map_err(|_| CommandError::from("trigger runtime lock was poisoned".to_string()))?
         .input_for(snapshot.clone(), privacy.clone());
-    let mut ocr_observation = (should_probe_ocr_for_candidate(&snapshot, &privacy)
-        || should_probe_unknown_ocr_for_candidate(&snapshot, &privacy))
-    .then(|| {
-        capture_trigger_ocr_observation(&ocr_state, &capture_state, &settings, &snapshot, &privacy)
-    })
-    .flatten();
+    let mut ocr_observation = should_probe_unknown_ocr_for_candidate(&snapshot, &privacy)
+        .then(|| {
+            capture_trigger_ocr_observation(
+                &ocr_state,
+                &capture_state,
+                &settings,
+                &snapshot,
+                &privacy,
+            )
+        })
+        .flatten();
     let mut evaluation = evaluate_trigger_with_ocr_context(
         trigger_input,
         &settings,

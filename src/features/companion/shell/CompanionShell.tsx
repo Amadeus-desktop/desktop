@@ -2,10 +2,10 @@ import { useCompanionPresentationEnabled } from "../hooks/useCompanionPresentati
 import { useCompanionDevTools } from "../hooks/useCompanionDevTools";
 import { useCompanionLayoutResync } from "../hooks/useCompanionLayoutResync";
 import { useCompanionShell } from "../hooks/useCompanionShell";
+import { ChatPanel } from "../chat/ChatPanel";
 import { DailyCareNotePreview } from "../daily-care/DailyCareNotePreview";
-import { PocketChat } from "../chat/PocketChat";
-import { FloatingMessageIcon } from "../presence/FloatingMessageIcon";
-import { NudgeNote } from "../presence/NudgeNote";
+import { MateAnchor } from "../presence/MateAnchor";
+import { NudgeCard } from "../presence/NudgeCard";
 import { CompanionViewport } from "./CompanionViewport";
 
 export function CompanionShell() {
@@ -14,35 +14,42 @@ export function CompanionShell() {
   const shell = useCompanionShell({ companionEnabled: presentationEnabled });
   useCompanionLayoutResync(shell.mode);
 
+  const showNudge = shell.mode === "nudge";
+  const showChat = shell.mode === "pocket" || shell.mode === "deep";
+  const showMateAnchor =
+    shell.mode !== "daily_care" &&
+    (shell.mode === "quiet" ||
+      shell.mode === "sleep" ||
+      shell.mode === "new_note" ||
+      showNudge ||
+      showChat);
+
   return (
     <CompanionViewport>
-      {presentationEnabled && shell.mode === "nudge" ? (
-        <NudgeNote
-          personaId={shell.selectedPersonaId}
-          mateIcon={shell.mateIcon}
+      {presentationEnabled && showNudge ? (
+        <NudgeCard
           personaName={shell.selectedPersona.name}
           nudge={shell.nudge}
           labels={shell.t}
           onOpen={() => void shell.openPocket()}
-          onDismiss={() => void shell.dismissNudge()}
           onIgnore={() => void shell.ignoreNudge()}
         />
       ) : null}
 
-      {presentationEnabled && (shell.mode === "pocket" || shell.mode === "deep") ? (
-        <PocketChat
+      {presentationEnabled && showChat ? (
+        <ChatPanel
           mode={shell.mode}
+          mateIcon={shell.mateIcon}
           persona={shell.selectedPersona}
+          messages={shell.messages}
           mates={shell.mateList}
           selectedPersonaId={shell.selectedPersonaId}
-          messages={shell.messages}
-          draft={shell.draft}
           timelineEvents={shell.timelineEvents}
           devToolsOpen={devToolsOpen}
           nightCareEnabled={shell.nightCareEnabled}
+          isSending={shell.isSending}
           labels={shell.t}
-          onDraftChange={shell.setDraft}
-          onSubmit={() => void shell.sendMessage()}
+          onSend={(text) => void shell.sendMessage(text)}
           onClose={() => void shell.closePocket()}
           onMateSelect={shell.selectPersona}
           onOpenDailyCare={() => void shell.openDailyCare()}
@@ -58,10 +65,11 @@ export function CompanionShell() {
         />
       ) : null}
 
-      {presentationEnabled && shell.showPresence ? (
-        <FloatingMessageIcon
+      {presentationEnabled && showMateAnchor ? (
+        <MateAnchor
           mode={shell.mode}
           mateIcon={shell.mateIcon}
+          expanded={showNudge || showChat}
           labels={shell.t.presence}
           onClick={() => void shell.openIcon()}
         />

@@ -7,7 +7,7 @@ describe("normalizeGeneralSettings", () => {
       companionPersonaId: "nature_healing" as typeof initialSettings.companionPersonaId,
     });
 
-    expect(settings.companionPersonaId).toBe("warm_friend");
+    expect(settings.companionPersonaId).toBe("seoyeon-modern-senior");
   });
 
   it("falls back invalid appearance and accent values to defaults", () => {
@@ -29,12 +29,12 @@ describe("normalizeGeneralSettings", () => {
     expect(settings.accentColor).toBe("mint");
   });
 
-  it("falls back invalid character ids to emilia", () => {
+  it("falls back invalid character ids to the default persona", () => {
     const settings = normalizeGeneralSettings({
       characterId: "unknown" as typeof initialSettings.characterId,
     });
 
-    expect(settings.characterId).toBe("emilia");
+    expect(settings.characterId).toBe("seoyeon-modern-senior");
   });
 
   it("normalizes companion mate icon values", () => {

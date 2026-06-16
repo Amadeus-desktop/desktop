@@ -5,7 +5,6 @@ import type { GeneralSettings } from "../../settings/types";
 import { recordTriggerReactionForScoring } from "../../trigger";
 import { generatePocketIntro } from "../lib/pocketIntro";
 import { patchCompanionSession } from "../lib/companionSessionStore";
-import { forceResyncTauriCompanionWindow } from "./useTauriCompanionWindow";
 import { resolveCompanionReply } from "../lib/reply";
 import type { CompanionMateId } from "../../../domain/mate";
 import type {
@@ -20,12 +19,10 @@ type UseCompanionChatActionsOptions = {
   mode: CompanionMode;
   nudge: string;
   messages: CompanionMessage[];
-  draft: string;
   isSending: boolean;
   selectedPersona: Persona;
   personas: Record<CompanionMateId, Persona>;
   settings: GeneralSettings;
-  setDraft: (draft: string) => void;
   setMessages: (
     messages: CompanionMessage[] | ((current: CompanionMessage[]) => CompanionMessage[]),
   ) => void;
@@ -41,12 +38,10 @@ export function useCompanionChatActions({
   mode,
   nudge,
   messages,
-  draft,
   isSending,
   selectedPersona,
   personas,
   settings,
-  setDraft,
   setMessages,
   setIsSending,
   transitionMode,
@@ -70,7 +65,6 @@ export function useCompanionChatActions({
         },
       ],
     });
-    forceResyncTauriCompanionWindow();
     void recordReaction("opened").catch(() => undefined);
   }, [mode, nudge, recordReaction, selectedPersona]);
 
@@ -103,9 +97,8 @@ export function useCompanionChatActions({
     await recordReaction("closed", { score: true });
     patchCompanionSession({ activeUtteranceId: null, messages: [], draft: "" });
     setMessages([]);
-    setDraft("");
     await transitionMode("quiet");
-  }, [recordReaction, setDraft, setMessages, transitionMode]);
+  }, [recordReaction, setMessages, transitionMode]);
 
   const openDailyCare = useCallback(async () => {
     if (!settings.nightCareEnabled) return;
@@ -135,18 +128,17 @@ export function useCompanionChatActions({
     [mode, nudge, personas, setMessages],
   );
 
-  const sendMessage = useCallback(async () => {
-    const text = draft.trim();
-    if (!text || isSending) return;
+  const sendMessage = useCallback(async (text: string) => {
+    const messageText = text.trim();
+    if (!messageText || isSending) return;
 
     const userMessage: CompanionMessage = {
       id: `user-${Date.now()}`,
       sender: "user",
-      text,
+      text: messageText,
     };
     const nextMessages = [...messages, userMessage];
 
-    setDraft("");
     setIsSending(true);
     setMessages(nextMessages);
 
@@ -175,18 +167,19 @@ export function useCompanionChatActions({
       setMessages((currentMessages) => [...currentMessages, replyMessage]);
       await recordReaction("deep_reply", { score: false });
       await recordTriggerReactionForScoring("replied");
-      await transitionMode("deep");
+      if (mode !== "deep") {
+        await transitionMode("deep");
+      }
     } finally {
       setIsSending(false);
     }
   }, [
-    draft,
     isSending,
     messages,
+    mode,
     nudge,
     recordReaction,
     selectedPersona,
-    setDraft,
     setIsSending,
     setMessages,
     settings,

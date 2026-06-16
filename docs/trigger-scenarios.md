@@ -22,7 +22,7 @@
 - Unknown Work-like OCR DeepPause: Unknown + 같은앱 ≥10분 + idle ≥120초 + privacy-safe OCR class가 `work_document`/`code_error` → 72 Bubble
 - **Unknown 카테고리 → 기본 침묵. 단 Work-like OCR class일 때만 보수적으로 DeepPause 승격**
 
-**OCR 후보** (`select_ocr_candidate`): Work + blocked 키워드 → 72, 보정 +8 = 80 Conversation
+**OCR 보정**: 기존에 persist 가능한 trigger 후보가 있을 때 Work OCR blocked 키워드 → speakability +8 보정. OCR blocked 키워드만으로는 단독 후보를 만들지 않는다.
 
 **억제** (`exception_suppression`, history 필요)
 - meeting app frontmost → `meeting`
@@ -79,12 +79,12 @@ OCR/스크린 확인은 Unknown을 무조건 분류하기 위한 도구가 아�
 
 | # | 시나리오 | 현재 동작 | 상태 | 문제/비고 |
 |---|---|---|---|---|
-| 1 | 작업앱 10분+ 후 idle 120초 (자리 비움) | DeepPause Bubble 발동 | ⚠️ | idle=자리비움인지 화면읽기인지 구분 못 함. 문서 읽는 중에도 발동 |
+| 1 | 작업앱 10분+ 후 idle 120~600초 | DeepPause Bubble 발동 | ⚠️ | idle=읽기/생각/짧은 부재인지 구분 못 함. 문서 읽는 중에도 발동 |
 | 2 | 작업하다 유튜브 실행 | 전환 시 타이머 리셋 → 유튜브 10분 지나야 Drift | ⚠️ | "방금 딴짓 시작"은 감지 못 함. 10분 후에야 반응 |
 | 3 | 창 왔다갔다(IDE↔터미널↔브라우저) 작업 | work_cluster≥10분 + switch≥3 + idle≥120초면 DeepPause, 연속 Work session≥60분이면 Milestone | ✅ | 단 browser가 Unknown으로 분류되면 Work session은 끊김 |
 | 4 | 음악(Spotify) 백그라운드 + 작업 | 음악은 frontmost 아님 → 작업앱 기준 정상 발동 | ✅ | 음악 백그라운드는 영향 없음. 정상 |
 | 5 | 작업앱 60분 이상 지속 | Milestone Conversation 발동 | ✅ | 같은 앱 60분 또는 Work 앱들 사이 연속 session 60분 모두 가능 |
-| 6 | 작업 중 화면에 에러 메시지 뜸(5분+idle 60초+) | OCR blocked → DeepPause 80 Conversation | ✅ | 단 1회 키워드로 발동. false positive 위험(에러 이미 해결 중) |
+| 6 | 작업 중 화면에 에러 메시지 뜸(5분+idle 60초+) | OCR blocked 단독으로는 침묵. 기존 trigger 후보가 있을 때만 +8 보정 | ✅ | 1회 키워드 false positive를 막는 대신, 진짜 막힘 조기 개입은 지연됨 |
 | 7 | 줌/팀즈 회의 중 | meeting 억제 | ✅ | history 있을 때만. history 없으면 `is_known_meeting_app`로 fallback ✅ |
 | 8 | 잠깐 Spotify 열어서 곡 바꿈(60초 미만) | music_short_foreground 억제 | ✅ | 짧은 음악 조작은 침묵 |
 | 9 | 딴짓하며 작업앱 사이 짧게 비작업 끼임(3회+) | work_cluster 억제 | ✅ | 단 history 필요. NonWork 단일 10분 미만일 때만 |
@@ -103,7 +103,7 @@ OCR/스크린 확인은 Unknown을 무조건 분류하기 위한 도구가 아�
 | 22 | 회의 끝나고 바로 작업 복귀 | meeting 풀리고 작업앱 10분+idle → DeepPause | ✅ | 정상 전환 |
 | 23 | 짧게 여러 작업앱 옮기다 한 곳 정착 10분+ | 정착 앱에서 frontmost 누적 10분 → 발동 | ✅ | 정착 후엔 정상 |
 | 24 | idle 매우 길게(자리 30분 비움) | `away_idle`로 발화/OCR probe 억제 | ✅ | 10분 초과 idle은 부재로 보고 보류 |
-| 25 | 같은 에러 화면 20분째 유지(진짜 막힘) | OCR 1회 신호만 봄, 반복/지속 미인지 | ❌ | 히스토리 기반 "진짜 막힘" 판정 없음(알려진 한계) |
+| 25 | 같은 에러 화면 20분째 유지(진짜 막힘) | 반복/지속 미인지. 일반 DeepPause 후보가 있을 때 OCR은 +8 보정만 함 | ❌ | 히스토리 기반 "진짜 막힘" 판정 없음(알려진 한계) |
 | 26 | tvwiki/niconico/신생 영상 사이트 | Unknown이면 침묵 | ✅ | 키워드 추격 금지. 행동층/풀스크린 신호 전까지 침묵이 안전 기본값 |
 | 27 | Zeta/LoveyDovey 같은 AI chat/companion | Unknown이면 침묵 | ✅ | NonWork 잔소리 금지. 경쟁 companion 사용 중 개입하지 않음 |
 
@@ -140,9 +140,9 @@ Unknown을 키워드로 더 분류하지 않고, 키보드/마우스/스크롤/O
 ### ✅ 4. 같은 앱 재발동 차단 (#16)
 발화가 저장된 앱 bundle에서는 앱을 떠날 때까지 `repeated_app_utterance`로 억제한다.
 
-### ⚠️ 5. OCR 1회 키워드 false positive (#6,25)
-OCR 후보 메시지는 화면을 봤다는 표현을 제거했다. 다만 1회 키워드만으로 blocked 상태를 판단하는 한계는 남아 있다.
-**수정:** 1회는 관찰만, 2회+ 확인 시 발동(히스토리 필요, 1일엔 무거우면 후순위)
+### ✅ 5. OCR 1회 키워드 false positive (#6,25)
+OCR blocked 키워드만으로 단독 후보를 만들지 않도록 막았다. 기존 trigger 후보가 persist 가능한 경우에만 OCR은 score +8 보정과 LLM context 보강으로 사용한다.
+**남은 수정:** 진짜 막힘을 조기 개입하려면 2회+ 반복 확인 또는 히스토리 기반 정체 판단이 필요하다.
 
 ---
 
@@ -150,6 +150,6 @@ OCR 후보 메시지는 화면을 봤다는 표현을 제거했다. 다만 1회 
 
 1. **classifier 보강** (#10,11,12) — 완료. 브라우저 title 판정 + Slack/Figma/Discord Work화.
 2. **frontmost → work_cluster/work_session 기준 전환** (#3) — DeepPause와 Milestone 모두 완료.
-3. **OCR 반복성 + 입력밀도 몰입가드** (#5,#3-flow) — 일부 완료. idle<5초 Milestone guard와 Unknown Work-like OCR 승격은 구현됨. 동일 화면 히스토리와 실제 입력 이벤트 데이터는 남음.
+3. **OCR 반복성 + 입력밀도 몰입가드** (#5,#3-flow) — 일부 완료. idle<5초 Milestone guard, Unknown Work-like OCR 승격, OCR 단독 blocked 발화 억제는 구현됨. 동일 화면 히스토리와 실제 입력 이벤트 데이터는 남음.
 
 나머지(시간대, OCR 히스토리, 입력/마우스/스크롤 행동 신호)는 마감 후.

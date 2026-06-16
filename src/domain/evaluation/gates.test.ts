@@ -3,7 +3,7 @@ import { evaluateAiRegressionGates, REQUIRED_EVAL_FIXTURES } from "./gates";
 
 describe("REQUIRED_EVAL_FIXTURES", () => {
   it("contains phase 07 regression fixtures for persona, sync, memory and perception", () => {
-    expect(REQUIRED_EVAL_FIXTURES).toContain("persona_warm_friend");
+    expect(REQUIRED_EVAL_FIXTURES).toContain("persona_seoyeon_modern_senior");
     expect(REQUIRED_EVAL_FIXTURES).toContain("conversation_web_to_app");
     expect(REQUIRED_EVAL_FIXTURES).toContain("memory_cloud_safe_preference");
     expect(REQUIRED_EVAL_FIXTURES).toContain(
@@ -35,7 +35,7 @@ describe("evaluateAiRegressionGates", () => {
 
   it("fails with specific reasons when thresholds or fixtures are missing", () => {
     const result = evaluateAiRegressionGates({
-      completedFixtures: ["persona_warm_friend"],
+      completedFixtures: ["persona_seoyeon_modern_senior"],
       personaContinuityPassRate: 0.94,
       crossSurfaceSyncSuccessRate: 0.995,
       duplicateMessageRate: 0.01,

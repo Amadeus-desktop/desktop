@@ -153,7 +153,7 @@ fn neutral_ocr_summary_does_not_change_trigger_score() {
 }
 
 #[test]
-fn ocr_blocked_signal_can_create_deep_pause_candidate_before_idle_threshold() {
+fn ocr_blocked_signal_alone_does_not_create_deep_pause_candidate_before_idle_threshold() {
     let evaluation = evaluate_trigger_with_ocr(
         TriggerInput {
             snapshot: snapshot(AppCategory::Work, 70.0, 6 * 60 * 1000),
@@ -169,19 +169,19 @@ fn ocr_blocked_signal_can_create_deep_pause_candidate_before_idle_threshold() {
         Some("compile error failed cannot resolve module"),
     );
 
-    let candidate = evaluation.candidate.expect("ocr deep pause candidate");
-    assert_eq!(candidate.trigger_type, TriggerType::DeepPause);
-    assert_eq!(candidate.reason, "ocr_blocked_signal_after_sustained_work");
-    assert_eq!(evaluation.action, TriggerAction::Conversation);
-    assert_eq!(evaluation.speakability_score, 80);
-    assert!(evaluation.should_persist);
+    assert_eq!(evaluation.action, TriggerAction::NoAction);
+    assert!(!evaluation.should_persist);
+    assert_eq!(
+        evaluation.suppression_reason,
+        Some("no_trigger".to_string())
+    );
 }
 
 #[test]
-fn ocr_blocked_candidate_message_does_not_reveal_screen_watching() {
+fn ocr_blocked_boosted_candidate_message_does_not_reveal_screen_watching() {
     let evaluation = evaluate_trigger_with_ocr(
         TriggerInput {
-            snapshot: snapshot(AppCategory::Work, 70.0, 6 * 60 * 1000),
+            snapshot: snapshot(AppCategory::Work, 180.0, 12 * 60 * 1000),
             privacy: normal_privacy("main.rs"),
             history: None,
             recent_utterance_minutes_ago: None,
@@ -194,11 +194,10 @@ fn ocr_blocked_candidate_message_does_not_reveal_screen_watching() {
         Some("compile error failed cannot resolve module"),
     );
 
-    let candidate = evaluation.candidate.expect("ocr deep pause candidate");
-    assert_eq!(
-        candidate.message,
-        "잠깐 정리할 타이밍 같아. 지금은 한 가지만 같이 좁혀보자."
-    );
+    let candidate = evaluation.candidate.expect("boosted deep pause candidate");
+    assert_eq!(candidate.trigger_type, TriggerType::DeepPause);
+    assert_eq!(evaluation.action, TriggerAction::Conversation);
+    assert_eq!(evaluation.speakability_score, 80);
     assert!(!candidate.message.contains("화면"));
     assert!(!candidate.message.contains("흔적"));
     assert!(!candidate.message.contains("보여"));

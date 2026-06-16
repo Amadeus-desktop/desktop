@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getPersonaCard } from "./cards";
+import { PERSONA_IDS, normalizePersonaId } from "./types";
 import type { Persona, PersonaId } from "./types";
 
 const CARD_PERSONA_IDS: PersonaId[] = [
@@ -19,6 +20,21 @@ function persona(id: PersonaId): Persona {
 }
 
 describe("persona cards", () => {
+  it("exposes only the three structured MVP personas", () => {
+    expect(PERSONA_IDS).toEqual(CARD_PERSONA_IDS);
+    expect(PERSONA_IDS).not.toContain("warm_friend");
+    expect(PERSONA_IDS).not.toContain("loving_partner");
+    expect(PERSONA_IDS).not.toContain("steady_ally");
+    expect(PERSONA_IDS).not.toContain("soft_care");
+  });
+
+  it("maps legacy generic persona ids to a structured persona", () => {
+    expect(normalizePersonaId("warm_friend")).toBe("seoyeon-modern-senior");
+    expect(normalizePersonaId("loving_partner")).toBe("seoyeon-modern-senior");
+    expect(normalizePersonaId("steady_ally")).toBe("eiren-fantasy-guardian");
+    expect(normalizePersonaId("soft_care")).toBe("seoyeon-modern-senior");
+  });
+
   it("loads the three MVP character cards from structured JSON", () => {
     const cards = CARD_PERSONA_IDS.map((id) => getPersonaCard(persona(id)));
 

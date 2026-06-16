@@ -26,6 +26,8 @@ fn default_settings_include_local_model_path() {
     let settings = AppSettings::default();
 
     assert_eq!(settings.locale, "ko");
+    assert_eq!(settings.character_id, "seoyeon-modern-senior");
+    assert_eq!(settings.companion_persona_id, "seoyeon-modern-senior");
     assert_eq!(settings.model_route, MODEL_ROUTE_API_FIRST);
     assert_eq!(settings.local_model_path, None);
     assert_eq!(settings.llama_server_binary_path, None);
@@ -116,13 +118,39 @@ fn settings_store_migrates_legacy_persona_id() {
         serde_json::from_str(&fs::read_to_string(&path).expect("settings file"))
             .expect("migrated json");
 
-    assert_eq!(loaded.companion_persona_id, "soft_care");
+    assert_eq!(loaded.companion_persona_id, "seoyeon-modern-senior");
+    assert_eq!(loaded.character_id, "seoyeon-modern-senior");
     assert_eq!(
         migrated
             .get("companionPersonaId")
             .and_then(|value| value.as_str()),
-        Some("soft_care")
+        Some("seoyeon-modern-senior")
     );
+    assert_eq!(
+        migrated.get("characterId").and_then(|value| value.as_str()),
+        Some("seoyeon-modern-senior")
+    );
+
+    let _ = fs::remove_file(path);
+}
+
+#[test]
+fn settings_store_accepts_structured_persona_ids() {
+    let path = temp_settings_path();
+    let store = SettingsStore::new(path.clone());
+    let state = SettingsState::new_for_test(store, AppSettings::default());
+    let settings = AppSettings {
+        character_id: "makise-kurisu".to_string(),
+        companion_persona_id: "makise-kurisu".to_string(),
+        ..AppSettings::default()
+    };
+
+    let saved = state
+        .update(settings)
+        .expect("structured persona settings save");
+
+    assert_eq!(saved.character_id, "makise-kurisu");
+    assert_eq!(saved.companion_persona_id, "makise-kurisu");
 
     let _ = fs::remove_file(path);
 }

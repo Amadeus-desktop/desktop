@@ -23,8 +23,6 @@ export function useCompanionShell({
   const mateList = useMemo(() => getCompanionMateList(locale), [locale]);
   const {
     mode,
-    draft,
-    setDraft,
     nudge,
     messages,
     setMessages,
@@ -78,12 +76,10 @@ export function useCompanionShell({
     mode,
     nudge,
     messages,
-    draft,
     isSending,
     selectedPersona,
     personas: matesById,
     settings,
-    setDraft,
     setMessages,
     setIsSending,
     transitionMode,
@@ -98,7 +94,6 @@ export function useCompanionShell({
     selectedPersona,
     mateList,
     selectedPersonaId,
-    draft,
     nudge,
     messages,
     timelineEvents,
@@ -108,7 +103,6 @@ export function useCompanionShell({
     mateIcon: settings.companionMateIcon,
     nightCareEnabled: settings.nightCareEnabled,
     nickname: settings.nickname,
-    setDraft,
     ...chatActions,
   };
 }

@@ -1,19 +1,21 @@
 import { PanelHeader } from "../../../ui";
 import { useI18n } from "../../../i18n";
+import { getPersonaList } from "../../../domain/persona";
 import { CharacterAvatar, CharacterCard } from "./CharacterCard";
-import { CHARACTER_IDS, getCharacterVisual } from "../lib/registry";
+import { getCharacterVisual } from "../lib/registry";
 import { useCharacterSelection } from "../hooks/useCharacterSelection";
 import type { Character } from "../types";
 
 export function CharacterPanel() {
   const t = useI18n();
   const { selectedCharacterId, selectCharacter } = useCharacterSelection();
-  const characters: Character[] = CHARACTER_IDS.map((id) => {
-    const visual = getCharacterVisual(id);
+  const characters: Character[] = getPersonaList(t).map((persona) => {
+    const visual = getCharacterVisual(persona.id);
     return {
-      id,
+      id: persona.id,
+      name: persona.name,
+      description: persona.description,
       ...visual,
-      ...t.character.profiles[id],
     };
   });
   const selectedCharacter =

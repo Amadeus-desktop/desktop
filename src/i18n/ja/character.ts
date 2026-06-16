@@ -7,18 +7,4 @@ export const character: CharacterMessages = {
   section: "Character",
   currentMode: "Current Mode",
   currentModeTemplate: "{name}基準で吹き出しとチャットのトーンを合わせます。",
-  profiles: {
-    ruda: {
-      name: "ルダ",
-      description: "やんちゃな妹テンション",
-    },
-    emilia: {
-      name: "エミリア",
-      description: "さりげなく見守るやさしさ",
-    },
-    daon: {
-      name: "ダオン",
-      description: "落ち着いた静かな慰め",
-    },
-  },
 };

@@ -3,7 +3,7 @@
 현재 코드 정책 그대로. 실제 앱 + 시간 흐름 + 발동/침묵 판정 + 근거.
 
 판정: 🔔 발동 / 🔕 침묵
-근거 코드: `scoring.rs` `select_candidate`/`select_ocr_candidate`/`exception_suppression`, `classifier.rs`, `history.rs`
+근거 코드: `scoring.rs` `select_candidate`/`apply_ocr_signal_to_evaluation`/`exception_suppression`, `classifier.rs`, `history.rs`
 
 ---
 
@@ -11,12 +11,12 @@
 
 1. **카테고리** = Work 또는 NonWork. Unknown은 기본 침묵이고, privacy-safe OCR class가 Work-like일 때만 예외적으로 DeepPause 가능
 2. **시간** = 같은앱, work_cluster, 또는 work_session 충분히 오래 (10분/60분)
-3. **상태** = idle(멈춤) 또는 OCR 막힘 신호
+3. **상태** = idle(멈춤). OCR 막힘 신호는 단독 발동 조건이 아니라 기존 후보의 보정 신호다.
 
 그 위에 게이트(meeting/music/privacy/cooldown/daily_limit/proactive)가 하나라도 걸리면 침묵.
 발화가 저장된 앱 bundle에서는 앱을 떠날 때까지 `repeated_app_utterance`로 추가 발화를 억제한다.
 
-현재 코드에서 OCR probe는 Work 카테고리와 일부 Unknown 카테고리에서만 수행된다. Unknown은 키워드로 Work/NonWork를 억지 분류하지 않고, privacy-safe하고 개입 후보성이 있을 때만 OCR/스크린 확인으로 `redacted_ocr_context_class`를 만든다. 이 class는 주로 오발화 방지와 Work-like 승격에 쓰고, NonWork 잔소리 승격에는 쓰지 않는다.
+현재 코드에서 OCR은 기존 Work trigger 후보가 persist 가능할 때 후속 보정/context로 사용되거나, 일부 Unknown 카테고리에서 Work-like 여부를 확인할 때만 수행된다. Unknown은 키워드로 Work/NonWork를 억지 분류하지 않고, privacy-safe하고 개입 후보성이 있을 때만 OCR/스크린 확인으로 `redacted_ocr_context_class`를 만든다. 이 class는 주로 오발화 방지와 Work-like 승격에 쓰고, NonWork 잔소리 승격에는 쓰지 않는다.
 
 ```
 Unknown
@@ -31,15 +31,25 @@ Unknown
 
 ## A. 작업 → 멈춤 계열
 
-### A-1. VSCode 코딩하다 커피 타러 감 🔔
+### A-1. VSCode 코딩하다 잠깐 멈춤 🔔
 ```
 00:00  VSCode 열고 코딩 시작
 00:10  계속 같은 VSCode (frontmost 10분 누적)
-00:12  자리 떠서 입력 없음 120초 경과 (idle ≥120)
+00:12  입력 없음 120초 경과 (120초 ≤ idle ≤ 600초)
 → DeepPause Bubble (72)
    "잠깐 멈춘 것 같아서. 말 안 해도 괜찮아."
 ```
-근거: Work + frontmost≥10분 + idle≥120초
+근거: Work + frontmost≥10분 + 120초≤idle≤600초
+
+### A-1b. VSCode 켜둔 채 30분 자리 비움 🔕
+```
+00:00  VSCode 열고 코딩 시작
+00:10  계속 같은 VSCode (frontmost 10분 누적)
+00:40  자리 비움으로 idle 30분 경과 (idle >600초)
+→ 침묵 (`away_idle`)
+→ OCR probe도 수행하지 않음
+```
+근거: Work/Unknown + idle>600초는 부재로 보고 보류
 
 ### A-2. VSCode 코딩 중 5분만에 잠깐 멈춤 🔕
 ```
@@ -236,7 +246,7 @@ privacy gate 통과
 OCR redacted context class = work_document 또는 code_error
 → DeepPause Bubble (72)
 ```
-근거: Unknown을 키워드로 Work/NonWork 분류하지 않고, 화면 확인 결과를 `work_document`, `code_error`, `video_player`, `ai_chat_companion`, `private_chat`, `game`, `unknown` 같은 class로만 사용한다. 승격은 `work_document`/`code_error`만 허용한다.
+근거: Unknown을 키워드로 Work/NonWork 분류하지 않고, 화면 확인 결과를 `work_document`, `code_error`, `video_player`, `ai_chat_companion`, `private_chat`, `game`, `unknown` 같은 class로만 사용한다. 승격은 `work_document`/`code_error`만 허용한다. 단 idle>600초이면 `away_idle`로 보류하고 OCR probe도 하지 않는다.
 
 ### F-7. Unknown + 영상/게임/AI companion OCR class 🔕
 ```
@@ -250,29 +260,40 @@ OCR class = video_player / game / ai_chat_companion / private_chat / unknown
 
 ## G. OCR 막힘 계열
 
-### G-1. VSCode에서 컴파일 에러 30초째 응시 🔔
+### G-1. VSCode에서 컴파일 에러 30초째 응시 🔕
 ```
 00:00  VSCode 작업
 00:05  같은 앱 5분, idle 70초
        화면 OCR: "compile error: cannot resolve module"
-→ OCR blocked → DeepPause Conversation (72+8=80)
-   "잠깐 정리할 타이밍 같아. 지금은 한 가지만 같이 좁혀보자."
+→ 침묵
 ```
-근거: Work + 5분 + idle60 + blocked 키워드. **단 1회 키워드 기반이라 false positive 위험은 남음**
+근거: OCR blocked 키워드만으로는 단독 후보를 만들지 않는다. 1회 키워드 false positive를 막기 위한 정책이다.
 
-### G-2. 에러 이미 해결하고 다음 작업 중인데 에러 텍스트 남아있음 🔔 ⚠️
+### G-1b. 이미 DeepPause 후보가 있는 상태에서 에러 OCR이 붙음 🔔
+```
+00:00  VSCode 작업
+00:12  같은 앱 12분, idle 180초
+       화면 OCR: "compile error: cannot resolve module"
+→ 기존 DeepPause 후보 + OCR blocked 보정
+→ DeepPause Conversation (72+8=80)
+```
+근거: 기존 trigger 후보가 persist 가능한 경우에만 OCR blocked 신호를 +8 보정과 LLM context로 사용한다.
+
+### G-2. 에러 이미 해결하고 다음 작업 중인데 에러 텍스트 남아있음 🔕
 ```
 화면에 이전 에러 메시지 아직 떠있음 (이미 해결함)
-→ OCR blocked 1회 키워드로 오발동
+작업 5분, idle 70초처럼 기본 trigger 후보는 없음
+→ 침묵
 ```
-근거: 1회 키워드만 봄, 히스토리 없음. **false positive** (알려진 한계 #25)
+근거: 1회 키워드만으로는 단독 발화하지 않는다. 단, 같은 화면이 반복되는 진짜 막힘 판정은 아직 없다.
 
-### G-3. 그냥 문서에 "에러 처리 방법" 적는 중 🔔 ⚠️
+### G-3. 그냥 문서에 "에러 처리 방법" 적는 중 🔕
 ```
 Notion에 "에러 핸들링 가이드" 작성 중
 화면 OCR에 "에러" 단어 → blocked 오인
-→ 오발동 가능
+기본 trigger 후보가 없으면 침묵
 ```
+근거: OCR blocked는 단독 후보가 아니라 보정 신호다.
 근거: 키워드 단순 매칭. 맥락 구분 없음. **false positive 위험**
 
 ---

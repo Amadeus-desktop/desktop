@@ -18,8 +18,6 @@ const DEEP_PAUSE_MIN_FRONTMOST_MS: u128 = 10 * MINUTE_MS;
 const DEEP_PAUSE_MIN_WORK_CLUSTER_MS: u128 = 10 * MINUTE_MS;
 const DEEP_PAUSE_MIN_WORK_CLUSTER_SWITCHES: u32 = 3;
 const DEEP_PAUSE_MIN_IDLE_SECONDS: f64 = 120.0;
-const OCR_BLOCKED_MIN_FRONTMOST_MS: u128 = 5 * MINUTE_MS;
-const OCR_BLOCKED_MIN_IDLE_SECONDS: f64 = 60.0;
 const MILESTONE_MIN_FRONTMOST_MS: u128 = 60 * MINUTE_MS;
 const MILESTONE_MAX_IDLE_SECONDS: f64 = 600.0;
 const ACTIVE_INPUT_MAX_IDLE_SECONDS: f64 = 5.0;
@@ -102,18 +100,6 @@ pub(crate) fn should_capture_ocr_for_trigger(
     evaluation.should_persist && !privacy.should_suppress_capture && !privacy.is_sensitive
 }
 
-pub(crate) fn should_probe_ocr_for_candidate(
-    snapshot: &MacosContextSnapshot,
-    privacy: &PrivacyAssessment,
-) -> bool {
-    snapshot.category == AppCategory::Work
-        && snapshot.frontmost_duration_ms >= OCR_BLOCKED_MIN_FRONTMOST_MS
-        && snapshot.idle_seconds >= OCR_BLOCKED_MIN_IDLE_SECONDS
-        && snapshot.idle_seconds <= AWAY_IDLE_MIN_SECONDS
-        && !privacy.should_suppress_capture
-        && !privacy.is_sensitive
-}
-
 pub(crate) fn should_probe_unknown_ocr_for_candidate(
     snapshot: &MacosContextSnapshot,
     privacy: &PrivacyAssessment,
@@ -155,22 +141,6 @@ pub(crate) fn apply_ocr_signal_to_evaluation(
         TriggerAction::Bubble | TriggerAction::Conversation
     );
     evaluation
-}
-
-pub(crate) fn select_ocr_candidate(
-    snapshot: &MacosContextSnapshot,
-    redacted_ocr_summary: Option<&str>,
-) -> Option<TriggerCandidate> {
-    if snapshot.category != AppCategory::Work || !is_blocked_ocr_signal(redacted_ocr_summary) {
-        return None;
-    }
-
-    Some(TriggerCandidate {
-        trigger_type: TriggerType::DeepPause,
-        message: "잠깐 정리할 타이밍 같아. 지금은 한 가지만 같이 좁혀보자.".to_string(),
-        reason: "ocr_blocked_signal_after_sustained_work".to_string(),
-        base_score: 72,
-    })
 }
 
 pub(crate) fn select_unknown_ocr_candidate(

@@ -6,15 +6,17 @@ type DeepChatViewProps = {
   messages: CompanionMessage[];
   personaName: string;
   personaId: PersonaId;
+  isSending?: boolean;
 };
 
 export function DeepChatView({
   messages,
   personaName,
   personaId,
+  isSending = false,
 }: DeepChatViewProps) {
   return (
-    <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3">
+    <div className="space-y-3">
       {messages.map((message, index) => {
         const previous = messages[index - 1];
         const showAvatar =
@@ -33,6 +35,9 @@ export function DeepChatView({
           </ChatBubble>
         );
       })}
+      {isSending ? (
+        <p className="px-1 text-[11px] text-[color:var(--shell-ink-faint)]">…</p>
+      ) : null}
     </div>
   );
 }

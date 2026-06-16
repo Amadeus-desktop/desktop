@@ -1,6 +1,7 @@
 import type { IconType } from "react-icons";
+import type { PersonaId } from "../../domain/persona";
 
-export type CharacterId = "ruda" | "emilia" | "daon";
+export type CharacterId = PersonaId;
 
 export type Character = {
   id: CharacterId;

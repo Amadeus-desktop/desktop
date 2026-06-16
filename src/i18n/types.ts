@@ -139,10 +139,6 @@ export type AppLocale = {
     section: string;
     currentMode: string;
     currentModeTemplate: string;
-    profiles: Record<
-      "ruda" | "emilia" | "daon",
-      { name: string; description: string }
-    >;
   };
   perception: {
     eyebrow: string;
@@ -420,26 +416,6 @@ export type AppLocale = {
       description: string;
     };
     "makise-kurisu": {
-      name: string;
-      shortLabel: string;
-      description: string;
-    };
-    warm_friend: {
-      name: string;
-      shortLabel: string;
-      description: string;
-    };
-    loving_partner: {
-      name: string;
-      shortLabel: string;
-      description: string;
-    };
-    steady_ally: {
-      name: string;
-      shortLabel: string;
-      description: string;
-    };
-    soft_care: {
       name: string;
       shortLabel: string;
       description: string;

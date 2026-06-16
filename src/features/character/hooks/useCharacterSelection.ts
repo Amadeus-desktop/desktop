@@ -6,6 +6,7 @@ export function useCharacterSelection() {
 
   return {
     selectedCharacterId: characterId,
-    selectCharacter: (id: CharacterId) => patchAppSettings({ characterId: id }),
+    selectCharacter: (id: CharacterId) =>
+      patchAppSettings({ characterId: id, companionPersonaId: id }),
   };
 }

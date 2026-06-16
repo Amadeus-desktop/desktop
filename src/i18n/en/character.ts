@@ -7,18 +7,4 @@ export const character: CharacterMessages = {
   section: "Character",
   currentMode: "Current Mode",
   currentModeTemplate: "Bubbles and chat tone follow {name}.",
-  profiles: {
-    ruda: {
-      name: "Ruda",
-      description: "Playful little-sister energy",
-    },
-    emilia: {
-      name: "Emilia",
-      description: "Quietly caring warmth",
-    },
-    daon: {
-      name: "Daon",
-      description: "Calm, steady comfort",
-    },
-  },
 };

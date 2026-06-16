@@ -1,8 +1,8 @@
 use std::time::Duration;
 
 pub const DEFAULT_LOCALE: &str = "ko";
-pub const DEFAULT_CHARACTER_ID: &str = "emilia";
-pub const DEFAULT_COMPANION_PERSONA_ID: &str = "warm_friend";
+pub const DEFAULT_CHARACTER_ID: &str = "seoyeon-modern-senior";
+pub const DEFAULT_COMPANION_PERSONA_ID: &str = "seoyeon-modern-senior";
 pub const DEFAULT_COMPANION_MATE_ICON: &str = "bubble";
 pub const DEFAULT_APPEARANCE: &str = "system";
 pub const DEFAULT_ACCENT_COLOR: &str = "rose";
@@ -14,10 +14,9 @@ pub const DEFAULT_LLAMA_SERVER_PORT: u16 = 8080;
 pub const LOCALE_KO: &str = "ko";
 pub const LOCALE_EN: &str = "en";
 pub const LOCALE_JA: &str = "ja";
-pub const PERSONA_WARM_FRIEND: &str = "warm_friend";
-pub const PERSONA_LOVING_PARTNER: &str = "loving_partner";
-pub const PERSONA_STEADY_ALLY: &str = "steady_ally";
-pub const PERSONA_SOFT_CARE: &str = "soft_care";
+pub const PERSONA_SEOYEON_MODERN_SENIOR: &str = "seoyeon-modern-senior";
+pub const PERSONA_EIREN_FANTASY_GUARDIAN: &str = "eiren-fantasy-guardian";
+pub const PERSONA_MAKISE_KURISU: &str = "makise-kurisu";
 pub const MATE_ICON_BUBBLE: &str = "bubble";
 pub const MATE_ICON_LETTER: &str = "letter";
 pub const MATE_ICON_STAR: &str = "star";
