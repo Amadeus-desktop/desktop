@@ -161,6 +161,12 @@ fn builds_llama_endpoint_from_settings_host_and_port() {
 }
 
 #[test]
+fn test_talk_frequency_has_no_cooldown_for_fast_demo_loops() {
+    assert_eq!(talk_frequency_cooldown_minutes("test"), 0);
+    assert_eq!(talk_frequency_cooldown_minutes("balanced"), 30);
+}
+
+#[test]
 fn settings_store_rejects_invalid_model_route() {
     let path = temp_settings_path();
     let store = SettingsStore::new(path.clone());
