@@ -135,15 +135,36 @@ fn clears_local_timeline_data() {
             idempotency_key: "clear-test".to_string(),
         })
         .expect("sync payload is queued");
+    let session = repository
+        .get_or_create_conversation_session(GetOrCreateConversationSessionInput {
+            persona_id: "makise-kurisu".to_string(),
+        })
+        .expect("conversation session is stored");
+    repository
+        .append_conversation_message(AppendConversationMessageInput {
+            session_id: session.id,
+            role: "user".to_string(),
+            content: "오늘 유튜브로 샜어.".to_string(),
+            provider: None,
+            idempotency_key: "clear-message-1".to_string(),
+        })
+        .expect("conversation message is stored");
 
     let deleted = repository
         .clear_local_data()
         .expect("local data is cleared");
 
-    assert!(deleted >= 6);
+    assert!(deleted >= 8);
     assert!(repository
         .list_timeline_events(10)
         .expect("timeline rows are listed")
+        .is_empty());
+    assert!(repository
+        .list_conversation_messages_for_persona(ListConversationMessagesInput {
+            persona_id: "makise-kurisu".to_string(),
+            limit: None,
+        })
+        .expect("conversation messages are listed")
         .is_empty());
 }
 

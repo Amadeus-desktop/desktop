@@ -459,6 +459,8 @@ impl TimelineRepository {
         let mut deleted = 0;
         for table_name in [
             "sync_queue",
+            "conversation_messages",
+            "conversation_sessions",
             "local_memories",
             "work_sessions",
             "activity_observations",
