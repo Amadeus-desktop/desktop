@@ -59,7 +59,7 @@ describe("buildCompanionCurrentContextFromEvents", () => {
 
     expect(context).toMatchObject({
       source: "cloud_safe",
-      allowed_surface: "app",
+      allowed_surface: "both",
     });
     const summary = JSON.parse(context?.summary ?? "{}") as {
       currentReason: {
@@ -84,6 +84,55 @@ describe("buildCompanionCurrentContextFromEvents", () => {
     expect(summary.today.activities).toEqual([
       { label: "Zed", kind: "work", minutes: 72, observations: 1 },
       { label: "youtube.com", kind: "break", minutes: 15, observations: 1 },
+    ]);
+  });
+
+  it("accepts lower-case activity metadata emitted by desktop observations", () => {
+    const now = new Date();
+    now.setHours(15, 0, 0, 0);
+    const occurredAt = now.getTime();
+
+    const context = buildCompanionCurrentContextFromEvents(
+      [
+        {
+          id: "context-work",
+          kind: "context",
+          occurredAt,
+          title: "Zed",
+          subtitle: "[redacted]",
+          metadataJson: JSON.stringify({
+            category: "work",
+            frontmostDurationMs: 20 * 60 * 1000,
+          }),
+        },
+        {
+          id: "context-video",
+          kind: "context",
+          occurredAt: occurredAt + 60_000,
+          title: "Google Chrome",
+          subtitle: "[redacted]",
+          metadataJson: JSON.stringify({
+            category: "non_work",
+            browserContext: {
+              urlHost: "youtube.com",
+              urlClass: "video",
+            },
+            frontmostDurationMs: 10 * 60 * 1000,
+          }),
+        },
+      ],
+      { nowMs: occurredAt },
+    );
+
+    const summary = JSON.parse(context?.summary ?? "{}") as {
+      today: {
+        activities: Array<{ label: string; kind: string; minutes: number }>;
+      };
+    };
+
+    expect(summary.today.activities).toEqual([
+      { label: "Zed", kind: "work", minutes: 20, observations: 1 },
+      { label: "youtube.com", kind: "break", minutes: 10, observations: 1 },
     ]);
   });
 

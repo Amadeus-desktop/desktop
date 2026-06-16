@@ -82,7 +82,7 @@ export function buildCompanionCurrentContextFromEvents(
 
   return {
     source: "cloud_safe",
-    allowed_surface: "app",
+    allowed_surface: "both",
     summary: JSON.stringify(summary),
   };
 }
@@ -139,11 +139,17 @@ function activityLabel(event: TimelineEvent, metadata: ContextMetadata): string 
 }
 
 function activityKind(metadata: ContextMetadata): ActivitySummary["kind"] {
-  if (metadata.browserContext?.urlClass === "Video" || metadata.category === "NonWork") {
+  const urlClass = normalizeActivityClass(metadata.browserContext?.urlClass);
+  const category = normalizeActivityClass(metadata.category);
+  if (urlClass === "video" || category === "non_work") {
     return "break";
   }
-  if (metadata.category === "Work") return "work";
+  if (category === "work") return "work";
   return "unknown";
+}
+
+function normalizeActivityClass(value?: string | null): string {
+  return value?.replace(/([a-z])([A-Z])/g, "$1_$2").toLowerCase() ?? "";
 }
 
 function triggerTypeFromUtterance(event: TimelineEvent | undefined): string | null {
