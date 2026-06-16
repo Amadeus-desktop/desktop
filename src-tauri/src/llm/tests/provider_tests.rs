@@ -51,6 +51,26 @@ fn template_generates_locale_specific_utterance() {
 }
 
 #[test]
+fn template_chat_fallback_keeps_persona_hint() {
+    let provider = TemplateLlmProvider;
+    let mut request = chat_request(vec![LlmChatMessage {
+        role: "user".to_string(),
+        content: "오늘 작업 정리해줘.".to_string(),
+    }]);
+    request.persona_id = Some("makise-kurisu".to_string());
+    request.prompt_envelope = Some(serde_json::json!({
+        "personaStatic": {"identity": {"name": "마키세 크리스"}}
+    }));
+
+    let result = provider
+        .generate_chat_reply(&LlmChatEnvelope::from_request(request))
+        .expect("template chat succeeds");
+
+    assert_eq!(result.provider, "template");
+    assert!(result.message.contains("사실"));
+}
+
+#[test]
 fn local_provider_requires_model_path() {
     let provider = LocalLlamaProvider::new("http://127.0.0.1:8080");
 

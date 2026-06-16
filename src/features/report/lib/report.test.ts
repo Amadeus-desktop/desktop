@@ -74,7 +74,7 @@ describe("buildDailyCareInsight", () => {
     const insight = buildDailyCareInsight(events, getAppLocale("ko"));
 
     expect(insight.companionNarrative).toContain("한글");
-    expect(insight.companionNarrative).toContain("오래");
+    expect(insight.companionNarrative).toContain("흐름");
     expect(insight.activityDetails[0]).toMatchObject({
       label: "한글",
       kind: "work",

@@ -27,6 +27,7 @@ export async function generateChatReply(
     mode?: PromptMode;
     memoryCards?: MemoryCard[];
     currentContext?: PromptCurrentContext | null;
+    responseTokenCap?: number;
   } = {},
 ): Promise<LlmGeneration> {
   const input = toLlmChatRequest(messages, {
@@ -38,6 +39,16 @@ export async function generateChatReply(
     memoryCards: options.memoryCards,
     currentContext: options.currentContext,
   });
+
+  if (options.responseTokenCap) {
+    input.promptEnvelope = {
+      ...input.promptEnvelope,
+      outputContract: {
+        ...input.promptEnvelope.outputContract,
+        responseTokenCap: options.responseTokenCap,
+      },
+    };
+  }
 
   if (settings.modelRoute === "api-first") {
     try {

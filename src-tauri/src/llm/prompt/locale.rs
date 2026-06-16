@@ -54,18 +54,53 @@ pub fn template_utterance(locale: &str, trigger_type: &str, fallback_message: &s
     }
 }
 
-pub fn template_chat_empty(locale: &str) -> String {
-    match normalize_locale(locale) {
-        "en" => "Yeah. I am here.".to_string(),
-        "ja" => "うん。ここにいるよ。".to_string(),
-        _ => "응. 나 여기 있어.".to_string(),
+pub fn template_chat_empty(locale: &str, persona_hint: Option<&str>) -> String {
+    match persona_family(persona_hint) {
+        Some("makise") => match normalize_locale(locale) {
+            "en" => "I'm here. Say what you need, clearly.".to_string(),
+            "ja" => "ここにいるわ。要点から話して。".to_string(),
+            _ => "여기 있어. 필요한 것부터 정확히 말해봐.".to_string(),
+        },
+        Some("eiren") => match normalize_locale(locale) {
+            "en" => "I am beside you. Speak when you are ready.".to_string(),
+            "ja" => "そばにいる。話せる時に話して。".to_string(),
+            _ => "곁에 있다. 준비되면 말해.".to_string(),
+        },
+        _ => match normalize_locale(locale) {
+            "en" => "Yeah. I am here.".to_string(),
+            "ja" => "うん。ここにいるよ。".to_string(),
+            _ => "응. 나 여기 있어.".to_string(),
+        },
     }
 }
 
-pub fn template_chat_reply(locale: &str) -> String {
-    match normalize_locale(locale) {
-        "en" => "Yeah. Take your time. I am here.".to_string(),
-        "ja" => "うん。ゆっくりで大丈夫。ここにいるよ。".to_string(),
-        _ => "응. 천천히 해도 괜찮아. 나 여기 있어.".to_string(),
+pub fn template_chat_reply(locale: &str, persona_hint: Option<&str>) -> String {
+    match persona_family(persona_hint) {
+        Some("makise") => match normalize_locale(locale) {
+            "en" => "Don't rush. Put the facts in order first.".to_string(),
+            "ja" => "焦らなくていい。まず事実を順番に並べて。".to_string(),
+            _ => "서두르지 마. 일단 사실부터 순서대로 정리해봐.".to_string(),
+        },
+        Some("eiren") => match normalize_locale(locale) {
+            "en" => "Breathe. I will keep watch while you return to it.".to_string(),
+            "ja" => "息を整えて。戻るまで、私が見守っている。".to_string(),
+            _ => "숨부터 고르자. 네가 다시 돌아올 때까지 내가 지켜볼게.".to_string(),
+        },
+        _ => match normalize_locale(locale) {
+            "en" => "Yeah. Take your time. I am here.".to_string(),
+            "ja" => "うん。ゆっくりで大丈夫。ここにいるよ。".to_string(),
+            _ => "응. 천천히 해도 괜찮아. 나 여기 있어.".to_string(),
+        },
     }
+}
+
+fn persona_family(persona_hint: Option<&str>) -> Option<&'static str> {
+    let hint = persona_hint?.to_ascii_lowercase();
+    if hint.contains("makise") || hint.contains("kurisu") || hint.contains("크리스") {
+        return Some("makise");
+    }
+    if hint.contains("eiren") || hint.contains("guardian") || hint.contains("에이렌") {
+        return Some("eiren");
+    }
+    None
 }

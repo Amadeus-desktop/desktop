@@ -28,7 +28,7 @@ export function ReportPanel() {
     timelineState,
     refreshReport,
   } = useReport();
-  const insight = buildDailyCareInsight(events, t);
+  const insight = useMemo(() => buildDailyCareInsight(events, t), [events, t]);
 
   const openSummary = useCallback(() => {
     setSummaryMounted(true);
@@ -91,6 +91,8 @@ export function ReportPanel() {
           nickname={settings.nickname}
           companionName={companion.name}
           mateIcon={settings.companionMateIcon}
+          persona={companion}
+          settings={settings}
           onClose={closeSummary}
         />
       ) : null}

@@ -1,14 +1,14 @@
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import type { MateIconKind } from "../../../domain/mate";
+import type { Persona } from "../../../domain/persona/types";
 import { Button, MAIN_WINDOW_OVERLAY_ROOT_ID } from "../../../ui";
 import { cn } from "../../../lib/utils/cn";
-import { useChatAutoScroll } from "../../companion/chat/hooks/useChatAutoScroll";
+import { useMatchMedia } from "../../../lib/hooks/useMatchMedia";
 import { PersonaPresenceIcon } from "../../companion/ui/PersonaPresenceIcon";
 import type { AppLocale } from "../../../i18n";
-import { buildDailyCareSummarySteps } from "../lib/dailyCareSummarySteps";
-import { buildDailyCareTurns } from "../lib/dailyCareMessageScript";
+import type { GeneralSettings } from "../../settings/types";
 import type { DailyCareInsight, ReportMetric, WorkTimelineItem } from "../types";
 import { useDailyCareOverlayMotion } from "../hooks/useDailyCareOverlayMotion";
 import { useDailyCareMessageSession } from "../hooks/useDailyCareMessageSession";
@@ -24,6 +24,8 @@ type DailyCareSummaryOverlayProps = {
   nickname: string;
   companionName: string;
   mateIcon: MateIconKind;
+  persona: Persona;
+  settings: GeneralSettings;
   onClose: () => void;
 };
 
@@ -43,28 +45,29 @@ export function DailyCareSummaryOverlay(props: DailyCareSummaryOverlayProps) {
 function DailyCareSummaryOverlayContent({
   insight,
   metrics,
-  moments,
   labels,
   nickname,
   companionName,
   mateIcon,
+  persona,
+  settings,
   onClose,
 }: DailyCareSummaryOverlayProps) {
-  const steps = useMemo(
-    () => buildDailyCareSummarySteps(metrics, moments, insight),
-    [insight, metrics, moments],
-  );
-  const turns = useMemo(() => buildDailyCareTurns(steps, labels), [labels, steps]);
-  const { closing, prefersReducedMotion, requestClose } = useDailyCareOverlayMotion({
+  const prefersReducedMotion = useMatchMedia("(prefers-reduced-motion: reduce)");
+  const { closing, requestClose } = useDailyCareOverlayMotion({
     onClosed: onClose,
   });
   const { messages, replies, isTyping, selectReply } = useDailyCareMessageSession({
-    turns,
+    insight,
+    metrics,
+    labels,
+    persona,
+    settings,
     prefersReducedMotion,
     onComplete: requestClose,
   });
-  const bodyRef = useChatAutoScroll(messages.length + (isTyping ? 1 : 0));
   const displayName = nickname.trim() || labels.summaryOverlay.defaultName;
+  const scrollKey = messages.length + (isTyping ? 1 : 0);
 
   useEffect(() => {
     document.documentElement.dataset.dailyCareOverlay = "open";
@@ -124,10 +127,15 @@ function DailyCareSummaryOverlayContent({
             userName={displayName}
             isTyping={isTyping}
             labels={labels}
-            bodyRef={bodyRef}
+            scrollKey={scrollKey}
           />
 
-          <DailyCareReplyBar replies={replies} onSelect={selectReply} />
+          <DailyCareReplyBar
+            replies={replies}
+            hint={labels.summaryOverlay.replyHint}
+            disabled={isTyping}
+            onSelect={selectReply}
+          />
         </div>
       </div>
     </section>

@@ -123,12 +123,21 @@ impl LlmService {
         request: &LlmInputEnvelope,
         error: LlmError,
     ) -> Result<LlmGeneration, LlmError> {
-        if self.fallback_enabled {
-            self.template
-                .generate_utterance(&request.for_provider(ProviderInputGrade::Template))
-        } else {
-            Err(error)
+        if !self.fallback_enabled {
+            return Err(error);
         }
+
+        if matches!(self.route, LlmProviderRoute::Api) {
+            if let Ok(generation) = self
+                .local
+                .generate_utterance(&request.for_provider(ProviderInputGrade::LocalRedacted))
+            {
+                return Ok(generation);
+            }
+        }
+
+        self.template
+            .generate_utterance(&request.for_provider(ProviderInputGrade::Template))
     }
 
     fn fallback_chat_reply(
@@ -136,11 +145,20 @@ impl LlmService {
         request: &LlmChatEnvelope,
         error: LlmError,
     ) -> Result<LlmGeneration, LlmError> {
-        if self.fallback_enabled {
-            self.template
-                .generate_chat_reply(&request.for_provider(ProviderInputGrade::Template))
-        } else {
-            Err(error)
+        if !self.fallback_enabled {
+            return Err(error);
         }
+
+        if matches!(self.route, LlmProviderRoute::Api) {
+            if let Ok(generation) = self
+                .local
+                .generate_chat_reply(&request.for_provider(ProviderInputGrade::LocalRedacted))
+            {
+                return Ok(generation);
+            }
+        }
+
+        self.template
+            .generate_chat_reply(&request.for_provider(ProviderInputGrade::Template))
     }
 }

@@ -38,13 +38,15 @@ export const dailyCareStyles = {
   messageStatus: "truncate text-[11px] leading-4 text-[color:var(--shell-ink-faint)]",
   messageBody: "scrollbar-hide min-h-0 flex-1 overflow-y-auto px-4 py-4",
   replyBar: [
-    "shrink-0 space-y-2 border-t border-white/[0.06]",
+    "shrink-0 border-t border-white/[0.06]",
     "bg-[linear-gradient(180deg,rgb(21_18_20/0.2),rgb(21_18_20/0.96))]",
     "px-4 py-3",
   ].join(" "),
+  replyHint: "mb-2 text-[11px] font-medium text-[color:var(--shell-ink-faint)]",
+  replyOptions: "flex flex-col gap-2",
   replyOption: [
     "tauri-interactive w-full rounded-[14px] border border-[color:rgb(var(--accent-rgb)/0.34)]",
-    "bg-[color:rgb(var(--accent-rgb)/0.10)] px-4 py-3 text-[13px] font-medium",
+    "bg-[color:rgb(var(--accent-rgb)/0.10)] px-4 py-3 text-left text-[13px] font-medium leading-snug",
     "text-[color:var(--shell-ink)] shadow-[inset_0_1px_0_rgb(255_255_255/0.05)]",
     "transition hover:border-[color:rgb(var(--accent-rgb)/0.48)] hover:bg-[color:rgb(var(--accent-rgb)/0.16)]",
     "active:scale-[0.99]",

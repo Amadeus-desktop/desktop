@@ -15,6 +15,7 @@ export const report: ReportMessages = {
     defaultName: "きみ",
     typing: "入力中",
     status: "今日そばで見た流れ",
+    replyHint: "どう返す？",
     navigation: {
       next: "次へ",
       back: "戻る",
@@ -29,6 +30,12 @@ export const report: ReportMessages = {
     },
     replies: {
       acknowledge: "そうだったんだ",
+      continue: "うん、わかった",
+      curious: "もう少し聞かせて",
+      tired: "今日は少し疲れた",
+      later: "ちょっと待って",
+      warmClose: "ありがとう、今日もお疲れさま",
+      thanksClose: "また明日ね",
     },
     steps: {
       welcome: {

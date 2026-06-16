@@ -131,7 +131,7 @@ async function generateWithOpenAi(input: LlmChatRequest): Promise<string> {
     body: JSON.stringify({
       model,
       temperature: 0.7,
-      max_tokens: 160,
+      max_tokens: maxOutputTokens(input),
       messages: [
         { role: "system", content: systemPrompt(input) },
         ...input.messages.map((message) => ({
@@ -168,7 +168,7 @@ async function generateWithGemini(input: LlmChatRequest): Promise<string> {
         })),
         generationConfig: {
           temperature: 0.7,
-          maxOutputTokens: 160,
+          maxOutputTokens: maxOutputTokens(input),
         },
       }),
     },
@@ -182,6 +182,18 @@ async function generateWithGemini(input: LlmChatRequest): Promise<string> {
     throw new Error("gemini_empty_response");
   }
   return content.trim();
+}
+
+function maxOutputTokens(input: LlmChatRequest): number {
+  const envelope = input.promptEnvelope as
+    | { outputContract?: { responseTokenCap?: number } }
+    | null
+    | undefined;
+  const cap = envelope?.outputContract?.responseTokenCap;
+  if (typeof cap === "number" && cap > 0) {
+    return Math.min(Math.round(cap), 512);
+  }
+  return 160;
 }
 
 function systemPrompt(input: LlmChatRequest): string {

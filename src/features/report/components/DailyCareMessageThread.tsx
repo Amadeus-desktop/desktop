@@ -1,4 +1,4 @@
-import type { RefObject } from "react";
+import { useEffect, useRef } from "react";
 import type { AppLocale } from "../../../i18n";
 import type { MateIconKind } from "../../../domain/mate";
 import { cn } from "../../../lib/utils/cn";
@@ -16,7 +16,7 @@ type DailyCareMessageThreadProps = {
   userName: string;
   isTyping: boolean;
   labels: AppLocale["report"];
-  bodyRef: RefObject<HTMLDivElement | null>;
+  scrollKey: number;
 };
 
 function shouldShowSenderName(
@@ -35,8 +35,42 @@ export function DailyCareMessageThread({
   userName,
   isTyping,
   labels,
-  bodyRef,
+  scrollKey,
 }: DailyCareMessageThreadProps) {
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const container = bodyRef.current;
+    const thread = container?.firstElementChild;
+    if (!container) return;
+
+    const behavior: ScrollBehavior = scrollKey > 1 ? "smooth" : "auto";
+    const scrollToBottom = () => {
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior,
+      });
+    };
+
+    const frame = window.requestAnimationFrame(scrollToBottom);
+    const observer =
+      thread instanceof Element
+        ? new ResizeObserver(() => {
+            container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+          })
+        : null;
+
+    if (observer && thread instanceof Element) {
+      observer.observe(thread);
+    }
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer?.disconnect();
+    };
+  }, [scrollKey]);
+
   return (
     <div ref={bodyRef} className={dailyCareStyles.messageBody}>
       <div className={companionStyles.chatThread}>
@@ -144,6 +178,8 @@ export function DailyCareMessageThread({
             </div>
           </div>
         ) : null}
+
+        <div ref={bottomRef} aria-hidden="true" className="h-px w-full shrink-0" />
       </div>
     </div>
   );

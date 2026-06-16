@@ -43,10 +43,11 @@ impl LlmProvider for TemplateLlmProvider {
             .find(|message| message.role == "user")
             .map(|message| message.content.trim())
             .unwrap_or_default();
+        let persona_hint = template_persona_hint(&request);
         let message = if last_user_message.is_empty() {
-            template_chat_empty(&request.locale)
+            template_chat_empty(&request.locale, persona_hint.as_deref())
         } else {
-            template_chat_reply(&request.locale)
+            template_chat_reply(&request.locale, persona_hint.as_deref())
         };
 
         Ok(LlmGeneration {
@@ -54,4 +55,21 @@ impl LlmProvider for TemplateLlmProvider {
             provider: self.id().to_string(),
         })
     }
+}
+
+fn template_persona_hint(request: &LlmChatEnvelope) -> Option<String> {
+    if let Some(persona_id) = request.persona_id.as_deref().filter(|value| !value.is_empty()) {
+        return Some(persona_id.to_string());
+    }
+
+    let envelope = request.prompt_envelope.as_ref()?;
+    envelope
+        .pointer("/personaStatic/identity/name")
+        .and_then(|value| value.as_str())
+        .or_else(|| {
+            envelope
+                .pointer("/personaStatic/identity/id")
+                .and_then(|value| value.as_str())
+        })
+        .map(ToString::to_string)
 }

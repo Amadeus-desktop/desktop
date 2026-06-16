@@ -51,6 +51,8 @@ pub(crate) fn local_chat_prompt(request: &LlmChatEnvelope) -> String {
         "task": "companion_chat_reply",
         "locale": sanitize_prompt_field(&request.locale),
         "persona": persona_json(request.nickname.as_deref()),
+        "personaId": request.persona_id.as_deref().map(sanitize_prompt_field),
+        "promptEnvelope": request.prompt_envelope.clone().map(sanitize_prompt_json),
         "messages": messages,
         "instruction": chat_instruction(&request.locale),
         "outputContract": {

@@ -15,6 +15,7 @@ export const report: ReportMessages = {
     defaultName: "너",
     typing: "입력 중",
     status: "오늘 곁에서 본 흐름",
+    replyHint: "어떻게 답할까?",
     navigation: {
       next: "다음",
       back: "이전",
@@ -29,6 +30,12 @@ export const report: ReportMessages = {
     },
     replies: {
       acknowledge: "그랬구나",
+      continue: "응, 알겠어",
+      curious: "조금 더 말해줘",
+      tired: "오늘은 좀 피곤해",
+      later: "잠깐만",
+      warmClose: "고마워, 오늘도 수고했어",
+      thanksClose: "내일 또 보자",
     },
     steps: {
       welcome: {

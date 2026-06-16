@@ -15,6 +15,7 @@ export const report: ReportMessages = {
     defaultName: "you",
     typing: "Typing",
     status: "Today's flow from beside you",
+    replyHint: "How do you want to reply?",
     navigation: {
       next: "Next",
       back: "Back",
@@ -29,6 +30,12 @@ export const report: ReportMessages = {
     },
     replies: {
       acknowledge: "I see",
+      continue: "Okay, tell me",
+      curious: "Tell me a bit more",
+      tired: "I'm a little tired today",
+      later: "Hold on",
+      warmClose: "Thanks, you worked hard today",
+      thanksClose: "See you tomorrow",
     },
     steps: {
       welcome: {

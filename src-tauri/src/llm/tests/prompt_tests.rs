@@ -64,6 +64,27 @@ fn local_chat_prompt_redacts_token_like_content_without_slashes() {
 }
 
 #[test]
+fn local_completion_chat_prompt_preserves_prompt_envelope_persona() {
+    let mut request = chat_request(vec![LlmChatMessage {
+        role: "user".to_string(),
+        content: "오늘 작업 정리해줘.".to_string(),
+    }]);
+    request.persona_id = Some("makise-kurisu".to_string());
+    request.prompt_envelope = Some(serde_json::json!({
+        "mode": "deep",
+        "personaStatic": {"identity": {"name": "마키세 크리스"}},
+        "semanticMemories": [{"id": "m1", "content": "사용자는 직설적인 피드백을 선호"}]
+    }));
+
+    let prompt = local_chat_prompt(&LlmChatEnvelope::from_request(request));
+
+    assert!(prompt.contains("promptEnvelope"));
+    assert!(prompt.contains("makise-kurisu"));
+    assert!(prompt.contains("마키세 크리스"));
+    assert!(prompt.contains("직설적인 피드백"));
+}
+
+#[test]
 fn ocr_observation_attaches_only_redacted_summary_to_local_envelope() {
     let observation = redacted_observation_from_adapter_text(
         "planning token=abc123 /Users/user/private.pdf",

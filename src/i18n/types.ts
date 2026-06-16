@@ -232,6 +232,7 @@ export type AppLocale = {
       defaultName: string;
       typing: string;
       status: string;
+      replyHint: string;
       navigation: {
         next: string;
         back: string;
@@ -246,6 +247,12 @@ export type AppLocale = {
       };
       replies: {
         acknowledge: string;
+        continue: string;
+        curious: string;
+        tired: string;
+        later: string;
+        warmClose: string;
+        thanksClose: string;
       };
       steps: {
         welcome: {
