@@ -44,6 +44,32 @@ fn creates_deep_pause_bubble_for_work_idle() {
 }
 
 #[test]
+fn creates_deep_pause_for_multitask_work_cluster_idle() {
+    let mut history = ProcessHistoryWindow::default();
+    history.work_cluster_duration_ms = 12 * 60 * 1000;
+    history.app_switch_count = 4;
+
+    let evaluation = evaluate_trigger(
+        TriggerInput {
+            snapshot: snapshot(AppCategory::Work, 180.0, 2 * 60 * 1000),
+            privacy: normal_privacy("main.rs"),
+            history: Some(history),
+            recent_utterance_minutes_ago: None,
+            dismissed_recent_count: 0,
+            utterances_today: 0,
+        },
+        &AppSettings::default(),
+    );
+
+    let candidate = evaluation.candidate.expect("work cluster deep pause");
+    assert_eq!(candidate.trigger_type, TriggerType::DeepPause);
+    assert_eq!(candidate.reason, "work_cluster_idle_after_multitask");
+    assert_eq!(evaluation.action, TriggerAction::Bubble);
+    assert_eq!(evaluation.speakability_score, 72);
+    assert!(evaluation.should_persist);
+}
+
+#[test]
 fn ocr_blocked_signal_can_promote_deep_pause_to_conversation() {
     let evaluation = evaluate_trigger(
         TriggerInput {

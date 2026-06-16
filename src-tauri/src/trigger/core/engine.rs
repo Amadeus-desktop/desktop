@@ -5,7 +5,8 @@ use crate::settings::{
 use super::{
     scoring::{
         action_for_score, apply_ocr_signal_to_evaluation, exception_suppression, select_candidate,
-        select_ocr_candidate, should_probe_ocr_for_candidate, suppressed,
+        select_ocr_candidate, select_work_cluster_candidate, should_probe_ocr_for_candidate,
+        suppressed,
     },
     TriggerAction, TriggerEvaluation, TriggerInput,
 };
@@ -36,13 +37,16 @@ pub(crate) fn evaluate_trigger_with_ocr(
         return suppressed(reason);
     }
 
-    let Some(candidate) = select_candidate(&input.snapshot).or_else(|| {
-        if should_probe_ocr_for_candidate(&input.snapshot, &input.privacy) {
-            select_ocr_candidate(&input.snapshot, redacted_ocr_summary)
-        } else {
-            None
-        }
-    }) else {
+    let Some(candidate) = select_candidate(&input.snapshot)
+        .or_else(|| select_work_cluster_candidate(&input.snapshot, input.history.as_ref()))
+        .or_else(|| {
+            if should_probe_ocr_for_candidate(&input.snapshot, &input.privacy) {
+                select_ocr_candidate(&input.snapshot, redacted_ocr_summary)
+            } else {
+                None
+            }
+        })
+    else {
         return suppressed("no_trigger");
     };
     let speakability_score =

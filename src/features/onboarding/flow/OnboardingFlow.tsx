@@ -3,7 +3,7 @@ import { useI18n } from "../../../i18n";
 import { cn } from "../../../lib/utils/cn";
 import { isTauriRuntime } from "../../../lib/tauri/runtime";
 import { requestMainWindowLayout } from "../../lifecycle";
-import { MAIN_WINDOW_ANIMATION_DURATION_MS, waitForMainWindowAnimation } from "../../auth/lib/mainWindowLayout";
+import { MAIN_WINDOW_ANIMATION_DURATION_MS } from "../../auth/lib/mainWindowLayout";
 import { LogoutTransitionStep } from "../../auth/components/LogoutTransitionStep";
 import { useAuth } from "../../auth/hooks/useAuth";
 import { logger } from "../../../observability/logger";
@@ -99,7 +99,9 @@ export function OnboardingFlow({
           }),
         logError: (message, context) => logger.error("window", message, context),
       });
-      await waitForMainWindowAnimation();
+      // completeOnboardingWindowTransition resolves only after the native resize
+      // animation completes (the layout request awaits the completion event), so
+      // we can mark setup done immediately without an extra timing guess.
       markSetupDone();
     } finally {
       setPreparePhase(null);

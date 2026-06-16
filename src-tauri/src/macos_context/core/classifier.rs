@@ -8,6 +8,22 @@ pub fn classify_app(bundle_identifier: &str, display_name: &str) -> AppCategory 
     if contains_any(
         &haystack,
         &[
+            "youtube",
+            "netflix",
+            "twitch",
+            "disney",
+            "spotify",
+            "instagram",
+            "x.com",
+            "twitter",
+        ],
+    ) {
+        return AppCategory::NonWork;
+    }
+
+    if contains_any(
+        &haystack,
+        &[
             "visual studio code",
             "vscode",
             "xcode",
@@ -23,26 +39,24 @@ pub fn classify_app(bundle_identifier: &str, display_name: &str) -> AppCategory 
             "한글",
             "pages",
             "notion",
+            "slack",
+            "com.tinyspeck.slackmacgap",
+            "figma",
+            "com.figma.desktop",
+            "discord",
+            "jira",
+            "github",
+            "gitlab",
+            "stack overflow",
+            "stackoverflow",
+            "confluence",
+            "linear",
+            "google docs",
+            "google sheets",
+            "google slides",
         ],
     ) {
         return AppCategory::Work;
-    }
-
-    if contains_any(
-        &haystack,
-        &[
-            "youtube",
-            "netflix",
-            "twitch",
-            "disney",
-            "spotify",
-            "instagram",
-            "x.com",
-            "twitter",
-            "com.google.chrome",
-        ],
-    ) {
-        return AppCategory::NonWork;
     }
 
     AppCategory::Unknown

@@ -5,6 +5,7 @@ use crate::observability::{error as log_error, info as log_info, warn as log_war
 use tauri::{AppHandle, Emitter, LogicalSize, Manager, WebviewWindow};
 
 pub const COMPANION_SPACE_CHANGED_EVENT: &str = "companion-space-changed";
+pub const MAIN_WINDOW_ANIMATION_COMPLETE_EVENT: &str = "main-window-animation-complete";
 
 #[cfg(target_os = "macos")]
 #[derive(Default)]
@@ -273,21 +274,22 @@ pub fn animate_main_window_logical_size(
         });
 
         let completion = RcBlock::new(move || {
-            if let Err(error) = window_for_completion.set_size(LogicalSize::new(width, height)) {
-                log_error(
-                    LogArea::Window,
-                    format!("animate_main_window_logical_size: set_size sync failed: {error}"),
-                );
-            }
-            if let Err(error) =
-                center_main_window_with_logical_size(&window_for_completion, width, height)
-            {
-                log_error(
-                    LogArea::Window,
-                    format!("animate_main_window_logical_size: center sync failed: {error}"),
-                );
-            }
+            // The native animation already left the window at the exact
+            // monitor-centered target frame. We deliberately do NOT re-apply
+            // size/position here: mixing AppKit (visibleFrame) and Tauri
+            // (work_area) coordinate systems caused an end-of-animation jump.
+            // tao observes the resize notification and syncs Tauri's size state.
             refresh_macos_webview_layers(&window_for_completion);
+            if let Err(error) =
+                window_for_completion.emit(MAIN_WINDOW_ANIMATION_COMPLETE_EVENT, ())
+            {
+                log_warn(
+                    LogArea::Window,
+                    format!(
+                        "animate_main_window_logical_size: completion emit failed: {error}"
+                    ),
+                );
+            }
             log_info(
                 LogArea::Window,
                 format!(
@@ -315,7 +317,11 @@ pub fn animate_main_window_logical_size(
     height: f64,
     _duration_ms: u64,
 ) -> Result<(), String> {
-    set_main_window_logical_size(app, width, height)
+    set_main_window_logical_size(app, width, height)?;
+    // Keep the frontend contract identical across platforms: signal completion
+    // so the coordinator's await resolves without relying on its timeout.
+    let _ = app.emit(MAIN_WINDOW_ANIMATION_COMPLETE_EVENT, ());
+    Ok(())
 }
 
 /// Configure the companion overlay as a floating HUD that follows the active Space.

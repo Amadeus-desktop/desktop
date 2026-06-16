@@ -14,14 +14,8 @@ import {
 export type MainWindowLayoutMode = "control-center" | "onboarding";
 const enqueueMainWindowLayout = createSerializedAsyncQueue();
 export const MAIN_WINDOW_ANIMATION_DURATION_MS = 680;
-
-export function waitForMainWindowAnimation(
-  durationMs = MAIN_WINDOW_ANIMATION_DURATION_MS,
-) {
-  return new Promise<void>((resolve) => {
-    window.setTimeout(resolve, durationMs);
-  });
-}
+const MAIN_WINDOW_ANIMATION_COMPLETE_EVENT = "main-window-animation-complete";
+const ANIMATION_COMPLETION_TIMEOUT_BUFFER_MS = 400;
 
 function getMainWebviewWindow() {
   if (!isTauriRuntime()) return null;
@@ -176,9 +170,46 @@ export async function animateMainWindowLayoutMode(
     policy: "monitor-centered-native",
   });
 
-  await invoke("animate_main_window_logical_size_command", {
-    width: target.width,
-    height: target.height,
+  // Hold the serialized layout queue until the NATIVE animation actually
+  // finishes. The Rust command starts the NSAnimationContext animation and
+  // emits MAIN_WINDOW_ANIMATION_COMPLETE_EVENT on completion. Awaiting that
+  // event (instead of guessing with a JS sleep) keeps the queue's guarantee
+  // that two window animations can never overlap. A timeout fallback resolves
+  // the await if the event is ever missed.
+  let settled = false;
+  let resolveCompletion: () => void = () => {};
+  const completion = new Promise<void>((resolve) => {
+    resolveCompletion = resolve;
+  });
+  const finish = () => {
+    if (settled) return;
+    settled = true;
+    resolveCompletion();
+  };
+
+  const unlisten = await webviewWindow.once(
+    MAIN_WINDOW_ANIMATION_COMPLETE_EVENT,
+    () => finish(),
+  );
+  const timer = window.setTimeout(
+    finish,
+    durationMs + ANIMATION_COMPLETION_TIMEOUT_BUFFER_MS,
+  );
+
+  try {
+    await invoke("animate_main_window_logical_size_command", {
+      width: target.width,
+      height: target.height,
+      durationMs,
+    });
+    await completion;
+  } finally {
+    window.clearTimeout(timer);
+    unlisten();
+  }
+
+  logger.info("window", "main layout native animation settled", {
+    mode,
     durationMs,
   });
 }
@@ -194,12 +225,4 @@ export function requestAnimatedMainWindowLayoutMode(
   return enqueueMainWindowLayout(() =>
     animateMainWindowLayoutMode(mode, durationMs),
   );
-}
-
-export async function animateMainWindowToOnboarding(durationMs = 480) {
-  await animateMainWindowLayoutMode("onboarding", durationMs);
-}
-
-export async function animateMainWindowToControlCenter(durationMs = 480) {
-  await animateMainWindowLayoutMode("control-center", durationMs);
 }

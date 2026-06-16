@@ -14,6 +14,8 @@ use super::{
 
 const MINUTE_MS: u128 = 60 * 1000;
 const DEEP_PAUSE_MIN_FRONTMOST_MS: u128 = 10 * MINUTE_MS;
+const DEEP_PAUSE_MIN_WORK_CLUSTER_MS: u128 = 10 * MINUTE_MS;
+const DEEP_PAUSE_MIN_WORK_CLUSTER_SWITCHES: u32 = 3;
 const DEEP_PAUSE_MIN_IDLE_SECONDS: f64 = 120.0;
 const OCR_BLOCKED_MIN_FRONTMOST_MS: u128 = 5 * MINUTE_MS;
 const OCR_BLOCKED_MIN_IDLE_SECONDS: f64 = 60.0;
@@ -199,6 +201,27 @@ pub(super) fn select_candidate(snapshot: &MacosContextSnapshot) -> Option<Trigge
             message: "쉬는 중이면 괜찮아. 돌아가고 싶어지면 내가 옆에 있을게.".to_string(),
             reason: "non_work_duration_detected".to_string(),
             base_score: 64,
+        });
+    }
+
+    None
+}
+
+pub(super) fn select_work_cluster_candidate(
+    snapshot: &MacosContextSnapshot,
+    history: Option<&ProcessHistoryWindow>,
+) -> Option<TriggerCandidate> {
+    let history = history?;
+    if snapshot.category == AppCategory::Work
+        && snapshot.idle_seconds >= DEEP_PAUSE_MIN_IDLE_SECONDS
+        && history.work_cluster_duration_ms >= DEEP_PAUSE_MIN_WORK_CLUSTER_MS
+        && history.app_switch_count >= DEEP_PAUSE_MIN_WORK_CLUSTER_SWITCHES
+    {
+        return Some(TriggerCandidate {
+            trigger_type: TriggerType::DeepPause,
+            message: "작업 흐름이 잠깐 멈춘 것 같아. 이어갈 실마리만 같이 잡아보자.".to_string(),
+            reason: "work_cluster_idle_after_multitask".to_string(),
+            base_score: 72,
         });
     }
 

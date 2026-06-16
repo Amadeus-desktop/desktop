@@ -8,7 +8,7 @@ import {
   resetOnboardingProgress,
 } from "../../onboarding";
 import { requestMainWindowLayout } from "../../lifecycle";
-import { MAIN_WINDOW_ANIMATION_DURATION_MS, waitForMainWindowAnimation } from "../lib/mainWindowLayout";
+import { MAIN_WINDOW_ANIMATION_DURATION_MS } from "../lib/mainWindowLayout";
 import {
   AMADEUS_AUTH_CALLBACK_EVENT,
   consumePendingAuthCallback,
@@ -336,6 +336,8 @@ export async function signOutWithTransition() {
   try {
     // 2) Now shrink the onboarding background down to the onboarding size.
     try {
+      // requestMainWindowLayout({ animated: true }) now resolves only after the
+      // native animation truly completes, so no extra JS sleep is needed here.
       await requestMainWindowLayout({
         mode: "onboarding",
         reason: "logout",
@@ -343,7 +345,6 @@ export async function signOutWithTransition() {
         durationMs: MAIN_WINDOW_ANIMATION_DURATION_MS,
         priority: 40,
       });
-      await waitForMainWindowAnimation();
     } catch (error) {
       logger.error("auth", "logout window transition failed", { error });
       try {

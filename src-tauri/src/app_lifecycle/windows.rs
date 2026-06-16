@@ -6,6 +6,10 @@ use crate::{
     observability::{info as log_info, LogArea},
 };
 
+/// Fallback only. The authoritative animation duration lives in the frontend
+/// (`MAIN_WINDOW_ANIMATION_DURATION_MS`) and is always passed via `duration_ms`.
+const DEFAULT_MAIN_WINDOW_ANIMATION_DURATION_MS: u64 = 680;
+
 #[tauri::command]
 pub fn sync_companion_window_position(app: tauri::AppHandle) {
     sync_companion_window_position_only(&app);
@@ -37,7 +41,10 @@ pub fn animate_main_window_logical_size_command(
     height: f64,
     duration_ms: Option<u64>,
 ) -> Result<(), String> {
-    let duration_ms = duration_ms.unwrap_or(680);
+    // Source of truth is the frontend (MAIN_WINDOW_ANIMATION_DURATION_MS); the
+    // coordinator always supplies durationMs. This fallback only guards a direct
+    // invoke without the field and is intentionally clamped again downstream.
+    let duration_ms = duration_ms.unwrap_or(DEFAULT_MAIN_WINDOW_ANIMATION_DURATION_MS);
     log_info(
         LogArea::Window,
         format!(

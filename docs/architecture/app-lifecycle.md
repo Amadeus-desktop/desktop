@@ -281,14 +281,17 @@ type MainWindowLayoutRequest = {
 
 사실:
 
-- 현재 `animateMainWindowLayoutMode()`는 `requestAnimationFrame` 루프에서 매 frame `setSize`와 `setPosition`을 호출한다.
+- `animateMainWindowLayoutMode()`는 단일 native command(`animate_main_window_logical_size_command`)를 invoke하고, Rust가 `NSAnimationContext` + `setFrame_display_animate`로 한 번에 resize animation을 수행한다 (macOS).
+- 애니메이션 완료 시 Rust는 `main-window-animation-complete` 이벤트를 emit하고, frontend coordinator는 이 이벤트(또는 timeout fallback)까지 await하여 layout queue 점유를 유지한다.
 
 정책:
 
-- native window resize animation은 MVP에서 기본 금지한다.
-- onboarding/control-center 전환은 즉시 size apply + 내부 UI transition으로 처리한다.
-- animation이 필요하면 native side에서 throttle된 단일 command로 처리한다.
-- JS에서 native `setSize`/`setPosition`을 frame마다 호출하지 않는다.
+- JS에서 native `setSize`/`setPosition`을 frame마다 호출하지 않는다. (`requestAnimationFrame` resize 루프 금지)
+- resize animation이 필요하면 native side에서 throttle된 단일 command로만 처리한다. macOS는 `NSAnimationContext`를 사용한다.
+- 그 단일 command는 fire-and-forget이 아니라 완료 이벤트를 emit해야 하며, coordinator는 완료까지 await해서 두 window animation이 절대 겹치지 않게 한다 (serialized queue 보장).
+- native 애니메이션은 종료 시점의 frame을 최종 상태로 보고, 완료 핸들러에서 size/position을 다시 apply하지 않는다 (AppKit/Tauri 좌표계 혼용으로 인한 end-of-animation jump 방지).
+- 호출부(authStore / OnboardingFlow / useAuthWindow)는 애니메이션 시간을 직접 sleep하지 않고 `requestMainWindowLayout({ animated: true })`만 보낸다.
+- onboarding/control-center shell content 전환은 즉시 size apply가 아니라 CSS opacity transition으로 처리한다.
 - companion dynamic resize는 예외 후보지만 현재처럼 frontend `ResizeObserver`가 직접 `setSize()`를 호출하는 구조는 임시로만 허용한다. 장기적으로는 Rust window command 또는 serialized layout queue로 흡수한다.
 
 ### 7.3 drag
@@ -539,14 +542,17 @@ P2:
 ### Phase L3: Window Performance Stabilization
 
 - JS RAF native resize animation 제거.
-- onboarding/control-center 전환은 single apply + CSS transition으로 변경.
+- resize animation은 단일 native command(`NSAnimationContext`)로 수행하고, 완료 이벤트로 coordinator가 await한다.
+- shell content 전환은 CSS opacity transition으로 처리.
 - click/drag transparent regression check 추가.
 - layout slow log 추가.
 
 진행 상태:
 
-- `animateMainWindowLayoutMode()`는 더 이상 `requestAnimationFrame` 루프에서 native `setSize`/`setPosition`을 반복 호출하지 않는다.
-- animated layout request는 compatibility API를 유지하되, 내부적으로 `applyMainWindowLayoutMode()` single apply 경로를 사용한다.
+- `animateMainWindowLayoutMode()`는 `requestAnimationFrame` 루프를 사용하지 않고, 단일 native command를 invoke한 뒤 `main-window-animation-complete` 이벤트(또는 timeout fallback)까지 await한다.
+- animated layout request는 native `NSAnimationContext` resize animation을 사용하며, layout queue는 애니메이션 완료까지 직렬로 점유된다 (두 animation 동시 실행 불가).
+- 애니메이션 완료 핸들러는 size/position을 재적용하지 않고 webview layer refresh + 완료 이벤트 emit만 수행한다.
+- 호출부(authStore / OnboardingFlow)는 애니메이션 duration을 직접 sleep하지 않는다.
 - onboarding drag hook은 더 이상 `document.documentElement.style.opacity = "0"`을 실행하지 않는다.
 - onboarding drag hook은 click/drag threshold/release 진단 로그만 남긴다.
 - 남은 L3 항목: Playwright 또는 수동 smoke로 click/drag 투명화 회귀와 layout transition 체감 확인.
