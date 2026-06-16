@@ -195,11 +195,19 @@ export function filterPromptEnvelopeForProvider(
     episodicContext: envelope.episodicContext.filter(
       (episode) => episode.scope === "cloud_safe",
     ),
-    currentContext:
-      envelope.currentContext?.source === "local_desktop"
-        ? null
-        : envelope.currentContext,
+    currentContext: cloudSafeCurrentContext(envelope.currentContext),
   };
+}
+
+function cloudSafeCurrentContext(
+  context: PromptCurrentContext | null,
+): SafeCurrentContext | null {
+  if (!context || context.source === "local_desktop") {
+    return null;
+  }
+  return context.allowed_surface === "web" || context.allowed_surface === "both"
+    ? context
+    : null;
 }
 
 function assertNoForbiddenContextKeys(context: PromptCurrentContext): void {

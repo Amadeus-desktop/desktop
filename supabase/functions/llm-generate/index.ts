@@ -17,6 +17,19 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+const FORBIDDEN_PROMPT_CONTEXT_KEYS = new Set([
+  "raw_ocr_text",
+  "screenshot",
+  "raw_window_title",
+  "full_url",
+  "file_path",
+  "secret",
+  "token",
+]);
+
+const FORBIDDEN_PROMPT_CONTEXT_VALUE_PATTERN =
+  /(?:\/Users\/|[A-Z]:\\|https?:\/\/|\?.*=|token=|password=|passwd=|api_key=|apikey=|secret=|\.pdf|\.docx|\.xlsx|\.hwp)/i;
+
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -434,9 +447,146 @@ function stringField(value: unknown, fallback: string): string {
   return typeof value === "string" && value.trim() ? value : fallback;
 }
 
-function normalizePromptEnvelope(value: unknown): unknown | null {
-  if (!value || typeof value !== "object") return null;
-  return value;
+function normalizePromptEnvelope(value: unknown): Record<string, unknown> | null {
+  if (!isRecord(value)) return null;
+  assertNoForbiddenPromptContext(value);
+
+  return {
+    surface: stringOrNull(value.surface),
+    mode: stringOrNull(value.mode),
+    locale: stringOrNull(value.locale),
+    sectionOrder: stringArray(value.sectionOrder).slice(0, 16),
+    personaStatic: objectOrNull(value.personaStatic),
+    characterScenario: objectOrNull(value.characterScenario),
+    personaState: objectOrNull(value.personaState),
+    semanticMemories: normalizeSemanticMemories(value.semanticMemories),
+    episodicContext: normalizeEpisodicContext(value.episodicContext),
+    sessionMessages: normalizeSessionMessages(value.sessionMessages),
+    currentContext: normalizeCurrentContext(value.currentContext),
+    safetyContract: objectOrNull(value.safetyContract),
+    outputContract: objectOrNull(value.outputContract),
+  };
+}
+
+function normalizeSemanticMemories(value: unknown): Record<string, unknown>[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .flatMap((item) => {
+      if (!isRecord(item) || item.scope !== "cloud_safe") return [];
+      const id = stringOrNull(item.id);
+      const content = stringOrNull(item.content);
+      if (!id || !content) return [];
+      return [{
+        id: id.slice(0, 128),
+        content: content.slice(0, 1_000),
+        confidence: finiteNumber(item.confidence, 0),
+        scope: "cloud_safe",
+      }];
+    })
+    .slice(0, 8);
+}
+
+function normalizeEpisodicContext(value: unknown): Record<string, unknown>[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .flatMap((item) => {
+      if (!isRecord(item) || item.scope !== "cloud_safe") return [];
+      const id = stringOrNull(item.id);
+      const summary = stringOrNull(item.summary);
+      if (!id || !summary) return [];
+      return [{
+        id: id.slice(0, 128),
+        summary: summary.slice(0, 1_000),
+        createdAtMs: finiteNumber(item.createdAtMs, 0),
+        scope: "cloud_safe",
+      }];
+    })
+    .slice(0, 8);
+}
+
+function normalizeSessionMessages(value: unknown): Record<string, unknown>[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .flatMap((item) => {
+      if (!isRecord(item)) return [];
+      if (
+        item.role !== "assistant" &&
+        item.role !== "system_summary" &&
+        item.role !== "user"
+      ) {
+        return [];
+      }
+      const content = stringOrNull(item.content);
+      if (!content) return [];
+      return [{
+        id: stringOrNull(item.id)?.slice(0, 128) ?? "",
+        role: item.role,
+        content: content.slice(0, 2_000),
+        createdAtMs: finiteNumber(item.createdAtMs, 0),
+        clientSequence: finiteNumber(item.clientSequence, 0),
+      }];
+    })
+    .slice(-12);
+}
+
+function normalizeCurrentContext(value: unknown): Record<string, unknown> | null {
+  if (!isRecord(value)) return null;
+  if (value.source === "local_desktop") return null;
+  if (value.allowed_surface !== "web" && value.allowed_surface !== "both") {
+    return null;
+  }
+  if (value.source !== "cloud_safe" && value.source !== "user_visible") {
+    return null;
+  }
+  const summary = stringOrNull(value.summary);
+  if (!summary) return null;
+  return {
+    source: value.source,
+    summary: summary.slice(0, 1_000),
+    allowed_surface: value.allowed_surface,
+  };
+}
+
+function assertNoForbiddenPromptContext(value: unknown): void {
+  if (typeof value === "string") {
+    if (FORBIDDEN_PROMPT_CONTEXT_VALUE_PATTERN.test(value)) {
+      throw new Error("prompt_envelope_forbidden_context");
+    }
+    return;
+  }
+  if (Array.isArray(value)) {
+    value.forEach(assertNoForbiddenPromptContext);
+    return;
+  }
+  if (!isRecord(value)) return;
+  for (const [key, nestedValue] of Object.entries(value)) {
+    if (FORBIDDEN_PROMPT_CONTEXT_KEYS.has(key)) {
+      throw new Error("prompt_envelope_forbidden_context");
+    }
+    assertNoForbiddenPromptContext(nestedValue);
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function objectOrNull(value: unknown): Record<string, unknown> | null {
+  return isRecord(value) ? value : null;
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
+function stringOrNull(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function finiteNumber(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
 function jsonResponse(body: unknown, status = 200): Response {

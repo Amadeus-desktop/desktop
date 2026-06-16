@@ -98,6 +98,40 @@ describe("buildCompanionPromptEnvelope", () => {
     expect(filtered.semanticMemories).toHaveLength(2);
   });
 
+  it("strips app-only current context for web cloud provider input", () => {
+    const envelope = buildCompanionPromptEnvelope({
+      ...input,
+      currentContext: {
+        source: "cloud_safe",
+        summary: "앱 안에서만 쓸 수 있는 요약",
+        allowed_surface: "app",
+      },
+    });
+
+    const filtered = filterPromptEnvelopeForProvider(envelope, "web_cloud");
+
+    expect(filtered.currentContext).toBeNull();
+  });
+
+  it("keeps web-allowed current context for web cloud provider input", () => {
+    const envelope = buildCompanionPromptEnvelope({
+      ...input,
+      currentContext: {
+        source: "cloud_safe",
+        summary: "클라우드 전송 가능한 사용자 가시 요약",
+        allowed_surface: "both",
+      },
+    });
+
+    const filtered = filterPromptEnvelopeForProvider(envelope, "web_cloud");
+
+    expect(filtered.currentContext).toEqual({
+      source: "cloud_safe",
+      summary: "클라우드 전송 가능한 사용자 가시 요약",
+      allowed_surface: "both",
+    });
+  });
+
   it("strips local private episodic context for web cloud provider input", () => {
     const envelope = buildCompanionPromptEnvelope({
       ...input,
