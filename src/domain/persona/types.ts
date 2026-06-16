@@ -17,6 +17,7 @@ export type Persona = {
   name: string;
   shortLabel: string;
   description: string;
+  speechExample?: string;
   icon: PresenceIconKind;
 };
 

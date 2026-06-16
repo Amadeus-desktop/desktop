@@ -57,7 +57,7 @@ pub(crate) fn evaluate_trigger_with_ocr_context(
     if should_suppress_active_input_milestone(&input, sensitivity) {
         return suppressed("active_input_guard");
     }
-    if let Some(reason) = exception_suppression(&input) {
+    if let Some(reason) = exception_suppression(&input, &settings.talk_frequency) {
         return suppressed(reason);
     }
 

@@ -1,13 +1,10 @@
 import { cn } from "../../../lib/utils/cn";
 import type { MateIconKind } from "../../../domain/mate";
-import type { PersonaId, PresenceIconKind } from "../../../domain/persona/types";
 import type { CompanionLocale } from "../../../i18n";
 import { PersonaPresenceIcon } from "../ui/PersonaPresenceIcon";
 import type { CompanionMode } from "../types";
 
 type MateAnchorProps = {
-  personaId: PersonaId;
-  personaIcon: PresenceIconKind;
   mateIcon: MateIconKind;
   mode: CompanionMode;
   expanded: boolean;
@@ -16,8 +13,6 @@ type MateAnchorProps = {
 };
 
 export function MateAnchor({
-  personaId,
-  personaIcon,
   mateIcon,
   mode,
   expanded,
@@ -25,7 +20,7 @@ export function MateAnchor({
   onClick,
 }: MateAnchorProps) {
   const sleeping = mode === "sleep";
-  const showPersonaMark = mode === "nudge" || expanded;
+  const filled = mode === "nudge" || expanded;
 
   return (
     <button
@@ -40,11 +35,10 @@ export function MateAnchor({
       )}
     >
       <PersonaPresenceIcon
-        personaId={personaId}
-        kind={showPersonaMark ? personaIcon : mateIcon}
-        accentSource={showPersonaMark ? "persona" : "settings"}
+        kind={mateIcon}
+        accentSource="settings"
         size="lg"
-        variant={expanded ? "filled" : "outline"}
+        variant={filled ? "filled" : "outline"}
       />
     </button>
   );

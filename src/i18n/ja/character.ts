@@ -7,4 +7,5 @@ export const character: CharacterMessages = {
   section: "Character",
   currentMode: "Current Mode",
   currentModeTemplate: "{name}基準で吹き出しとチャットのトーンを合わせます。",
+  speechPreview: "口調プレビュー",
 };

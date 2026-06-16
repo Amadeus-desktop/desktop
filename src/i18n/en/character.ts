@@ -7,4 +7,5 @@ export const character: CharacterMessages = {
   section: "Character",
   currentMode: "Current Mode",
   currentModeTemplate: "Bubbles and chat tone follow {name}.",
+  speechPreview: "Voice preview",
 };

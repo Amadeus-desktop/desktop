@@ -1,13 +1,12 @@
+import type { MateIconKind } from "../../../domain/mate";
 import type { CompanionLocale } from "../../../i18n";
-import type { PersonaId, PresenceIconKind } from "../../../domain/persona/types";
 import { formatNudgePreview } from "../lib/formatNudgePreview";
 import { PersonaPresenceIcon } from "../ui/PersonaPresenceIcon";
 import { companionStyles } from "../ui/styles";
 import { NoteBubble } from "./NoteBubble";
 
 type NudgeCardProps = {
-  personaId: PersonaId;
-  personaIcon: PresenceIconKind;
+  mateIcon: MateIconKind;
   personaName: string;
   nudge: string;
   labels: CompanionLocale;
@@ -16,8 +15,7 @@ type NudgeCardProps = {
 };
 
 export function NudgeCard({
-  personaId,
-  personaIcon,
+  mateIcon,
   personaName,
   nudge,
   labels,
@@ -30,9 +28,8 @@ export function NudgeCard({
     <NoteBubble>
       <div className={companionStyles.noteHeader}>
         <PersonaPresenceIcon
-          personaId={personaId}
-          kind={personaIcon}
-          accentSource="persona"
+          kind={mateIcon}
+          accentSource="settings"
           size="sm"
           variant="filled"
           className={companionStyles.noteMark}

@@ -28,8 +28,7 @@ export function CompanionShell() {
     <CompanionViewport>
       {presentationEnabled && showNudge ? (
         <NudgeCard
-          personaId={shell.selectedPersonaId}
-          personaIcon={shell.selectedPersona.icon}
+          mateIcon={shell.mateIcon}
           personaName={shell.selectedPersona.name}
           nudge={shell.nudge}
           labels={shell.t}
@@ -71,8 +70,6 @@ export function CompanionShell() {
 
       {presentationEnabled && showMateAnchor ? (
         <MateAnchor
-          personaId={shell.selectedPersonaId}
-          personaIcon={shell.selectedPersona.icon}
           mode={shell.mode}
           mateIcon={shell.mateIcon}
           expanded={showNudge || showChat}

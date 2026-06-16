@@ -40,7 +40,7 @@ export function AccentColorPicker() {
                 className={cn(
                   "size-6 rounded-[8px] border",
                   selected
-                    ? "border-white/80 shadow-[0_4px_12px_rgb(var(--accent-rgb)/0.25)]"
+                    ? "border-[color:var(--shell-border-strong)] shadow-[0_4px_12px_rgb(var(--accent-rgb)/0.25)]"
                     : "border-[color:var(--shell-border-strong)]",
                 )}
                 style={{
@@ -52,8 +52,8 @@ export function AccentColorPicker() {
                 className={cn(
                   "w-full truncate text-center text-[10px] leading-4",
                   selected
-                    ? "font-semibold text-[color:var(--accent-soft)]"
-                    : "font-medium text-[color:var(--shell-ink-muted)]",
+                    ? "font-semibold text-[color:var(--accent)]"
+                    : cn("font-medium", "text-[color:var(--shell-ink-muted)]"),
                 )}
               >
                 {label}

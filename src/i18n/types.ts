@@ -139,6 +139,7 @@ export type AppLocale = {
     section: string;
     currentMode: string;
     currentModeTemplate: string;
+    speechPreview: string;
   };
   perception: {
     eyebrow: string;
@@ -479,16 +480,19 @@ export type AppLocale = {
       name: string;
       shortLabel: string;
       description: string;
+      speechExample: string;
     };
     "eiren-fantasy-guardian": {
       name: string;
       shortLabel: string;
       description: string;
+      speechExample: string;
     };
     "makise-kurisu": {
       name: string;
       shortLabel: string;
       description: string;
+      speechExample: string;
     };
   };
 };

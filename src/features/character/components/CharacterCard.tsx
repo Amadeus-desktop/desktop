@@ -4,7 +4,7 @@ import {
   CHARACTER_AVATAR_TILE,
   type CharacterAvatarSize,
 } from "../../../ui/tokens/avatarSizes";
-import { glassStyles } from "../../../ui";
+import { glassStyles, shellText } from "../../../ui/theme/shellStyles";
 import type { Character } from "../types";
 
 type CharacterAvatarProps = {
@@ -38,6 +38,7 @@ type CharacterCardProps = {
   character: Character;
   selected: boolean;
   activeLabel: string;
+  speechPreviewLabel: string;
   onSelect: () => void;
 };
 
@@ -45,6 +46,7 @@ export function CharacterCard({
   character,
   selected,
   activeLabel,
+  speechPreviewLabel,
   onSelect,
 }: CharacterCardProps) {
   return (
@@ -53,11 +55,11 @@ export function CharacterCard({
       aria-pressed={selected}
       onClick={onSelect}
       className={cn(
-        "flex w-full items-center gap-3 px-3.5 py-3 text-left transition",
+        "flex w-full flex-col gap-2.5 px-3.5 py-3 text-left transition",
         glassStyles.radiusCard,
         selected
-          ? `${glassStyles.rowSelected} ${glassStyles.panelStrong}`
-          : `${glassStyles.row} hover:bg-[#2a2a2e]`,
+          ? cn(glassStyles.rowSelected, glassStyles.panelStrong)
+          : glassStyles.row,
       )}
       style={
         selected
@@ -67,25 +69,38 @@ export function CharacterCard({
           : undefined
       }
     >
-      <CharacterAvatar character={character} />
-      <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-2">
-          <span className="text-sm font-medium text-white">{character.name}</span>
-          {selected ? (
-            <span
-              className={cn(
-                "rounded-full bg-[#2a2a2e] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-                character.accentText,
-              )}
-            >
-              {activeLabel}
+      <span className="flex items-center gap-3">
+        <CharacterAvatar character={character} />
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-2">
+            <span className={cn("text-sm font-medium", shellText.primary)}>
+              {character.name}
             </span>
-          ) : null}
-        </span>
-        <span className="mt-0.5 block text-[12px] leading-5 text-white/55">
-          {character.description}
+            {selected ? (
+              <span
+                className={cn(
+                  "rounded-full border border-[color:var(--shell-border-subtle)] bg-[color:var(--shell-row-hover)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                  character.accentText,
+                )}
+              >
+                {activeLabel}
+              </span>
+            ) : null}
+          </span>
+          <span className={cn("mt-0.5 block text-[12px] leading-5", shellText.muted)}>
+            {character.description}
+          </span>
         </span>
       </span>
+
+      <div className="rounded-[14px] border border-[color:var(--companion-paper-border)] bg-[linear-gradient(168deg,var(--companion-paper-bg)_0%,var(--companion-paper-bg-deep)_100%)] px-3 py-2.5 shadow-[var(--companion-paper-shadow)] ring-1 ring-[color:var(--companion-paper-ring)]">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-[color:var(--companion-paper-muted)]">
+          {speechPreviewLabel}
+        </p>
+        <p className="mt-1 text-[12px] leading-[1.6] text-[color:var(--companion-paper-ink)]">
+          “{character.speechExample}”
+        </p>
+      </div>
     </button>
   );
 }

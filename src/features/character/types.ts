@@ -7,6 +7,7 @@ export type Character = {
   id: CharacterId;
   name: string;
   description: string;
+  speechExample: string;
   icon: IconType;
   gradient: string;
   glow: string;

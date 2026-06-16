@@ -43,6 +43,8 @@ export const shellVariablesDark = {
   "--companion-paper-ink": "#3f372f",
   "--companion-paper-muted": "#8c8174",
   "--companion-paper-shadow": "0 16px 36px rgb(62 48 32 / 0.2)",
+  "--companion-paper-ring": "rgb(255 255 255 / 0.42)",
+  "--companion-paper-highlight": "rgb(255 255 255 / 0.62)",
 } as const;
 
 /** Light appearance overrides (applied via `.light` on `html`). */
@@ -74,4 +76,12 @@ export const shellVariablesLight = {
   "--report-tone-mint": "#4ade80",
   "--report-tone-mint-soft": "#16a34a",
   "--report-tone-mint-bg": "#f0fdf4",
+  "--companion-paper-bg": "#faf6ee",
+  "--companion-paper-bg-deep": "#f2e8d8",
+  "--companion-paper-border": "#dccdb8",
+  "--companion-paper-ink": "#3f372f",
+  "--companion-paper-muted": "#756959",
+  "--companion-paper-shadow": "0 14px 32px rgb(62 48 32 / 0.14)",
+  "--companion-paper-ring": "rgb(255 255 255 / 0.72)",
+  "--companion-paper-highlight": "rgb(255 255 255 / 0.82)",
 } as const;

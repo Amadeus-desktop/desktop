@@ -7,4 +7,5 @@ export const character: CharacterMessages = {
   section: "Character",
   currentMode: "Current Mode",
   currentModeTemplate: "{name} 기준으로 말풍선과 채팅 톤을 맞춥니다.",
+  speechPreview: "말투 미리보기",
 };

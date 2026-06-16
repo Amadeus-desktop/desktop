@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useI18n } from "../../../i18n";
+import { cn } from "../../../lib/utils/cn";
 import {
   AdvancedSection,
   Button,
@@ -11,6 +12,7 @@ import {
   SettingRow,
   SettingsGroup,
 } from "../../../ui";
+import { shellBadgeClass, shellFieldClass, shellText } from "../../../ui/theme/shellStyles";
 import { AccentColorPicker } from "./AccentColorPicker";
 import { AppearancePicker } from "./AppearancePicker";
 import { MateIconPicker } from "./MateIconPicker";
@@ -22,9 +24,6 @@ import {
   type LlmProviderHealth,
 } from "../adapters/settingsStore";
 import { useSettings } from "../hooks/useSettings";
-
-const pathInputClass =
-  "w-full rounded-[14px] border border-[#48484f] bg-[#2c2c30] px-3 py-2 text-left text-[12px] text-white outline-none transition focus:border-[color:rgb(var(--accent-rgb)/0.45)]";
 
 export function SettingsPanel() {
   const t = useI18n();
@@ -208,7 +207,7 @@ export function SettingsPanel() {
             title={t.settings.modelPreset.label}
             subtitle={t.settings.modelPreset.subtitle}
           >
-            <p className="text-right text-[10px] leading-4 text-white/55">
+            <p className={cn("text-right text-[10px] leading-4", shellText.faint)}>
               {t.settings.modelPreset.recommended}
             </p>
           </SettingRow>
@@ -221,7 +220,7 @@ export function SettingsPanel() {
               value={localModelPath ?? ""}
               onChange={(value) => setLocalModelPath(value.trim() || null)}
               label={t.settings.localModelPath.inputLabel}
-              className={pathInputClass}
+              className={shellFieldClass}
             />
           </SettingRow>
           <SettingRow
@@ -233,7 +232,7 @@ export function SettingsPanel() {
               value={llamaServerBinaryPath ?? ""}
               onChange={(value) => setLlamaServerBinaryPath(value.trim() || null)}
               label={t.settings.llamaBinaryPath.inputLabel}
-              className={pathInputClass}
+              className={shellFieldClass}
             />
           </SettingRow>
           <SettingRow
@@ -246,7 +245,7 @@ export function SettingsPanel() {
                 value={llamaServerHost}
                 onChange={setLlamaServerHost}
                 label={t.settings.llamaServer.hostLabel}
-                className={pathInputClass}
+                className={shellFieldClass}
               />
               <MacInput
                 value={String(llamaServerPort)}
@@ -257,7 +256,7 @@ export function SettingsPanel() {
                   }
                 }}
                 label={t.settings.llamaServer.portLabel}
-                className={pathInputClass}
+                className={shellFieldClass}
               />
             </div>
           </SettingRow>
@@ -265,7 +264,7 @@ export function SettingsPanel() {
             title={t.settings.sidecarStatus.label}
             subtitle={sidecarStatus.detail}
           >
-            <span className="rounded-full border border-[#48484f] bg-[#2c2c30] px-2.5 py-1 text-[11px] font-medium text-white/70">
+            <span className={shellBadgeClass}>
               {sidecarLabel}
             </span>
           </SettingRow>
@@ -286,7 +285,7 @@ export function SettingsPanel() {
                     .join(" · ")
             }
           >
-            <div className="max-w-[9.5rem] space-y-0.5 text-right text-[10px] leading-4 text-white/45">
+            <div className={cn("max-w-[9.5rem] space-y-0.5 text-right text-[10px] leading-4", shellText.faint)}>
               {healthState === "loading"
                 ? t.settings.llmHealth.checking
                 : providerHealth.map((health) => (

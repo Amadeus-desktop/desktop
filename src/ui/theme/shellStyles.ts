@@ -28,3 +28,9 @@ export const shellText = {
   muted: "text-[color:var(--shell-ink-muted)]",
   faint: "text-[color:var(--shell-ink-faint)]",
 } as const;
+
+export const shellFieldClass =
+  "w-full rounded-[14px] border border-[color:var(--shell-border-strong)] bg-[color:var(--shell-panel-strong)] px-3 py-2 text-left text-[12px] text-[color:var(--shell-ink)] outline-none transition focus:border-[color:rgb(var(--accent-rgb)/0.45)]";
+
+export const shellBadgeClass =
+  "rounded-full border border-[color:var(--shell-border-strong)] bg-[color:var(--shell-panel-strong)] px-2.5 py-1 text-[11px] font-medium text-[color:var(--shell-ink-muted)]";

@@ -36,7 +36,7 @@ export function MacWindow({ children, variant = "control-center" }: MacWindowPro
   return (
     <section
       className={cn(
-        "relative flex h-full w-full min-h-0 overflow-hidden text-white",
+        "relative flex h-full w-full min-h-0 overflow-hidden text-[color:var(--shell-ink)]",
         glassStyles.shell,
         glassStyles.radiusWindow,
         "tauri-no-drag",

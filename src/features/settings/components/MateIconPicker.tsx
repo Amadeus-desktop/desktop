@@ -37,7 +37,7 @@ export function MateIconOption({ kind, label, selected, onSelect }: MateIconOpti
       <span
         className={cn(
           "w-full truncate text-[10px] font-semibold leading-4",
-          selected ? "text-[color:var(--accent-soft)]" : shellText.muted,
+          selected ? "text-[color:var(--accent)]" : shellText.muted,
         )}
       >
         {label}

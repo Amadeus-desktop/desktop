@@ -460,6 +460,59 @@ fn migration_prepares_phase_6_local_tables() {
 }
 
 #[test]
+fn local_persona_cache_can_be_upserted_and_listed() {
+    let mut repository = TimelineRepository::open_in_memory().expect("in-memory db opens");
+    repository.migrate().expect("migration succeeds");
+
+    repository
+        .upsert_local_personas(UpsertLocalPersonasInput {
+            personas: vec![LocalPersonaCacheInput {
+                id: "local-persona-1".to_string(),
+                remote_persona_id: "remote-persona-kurisu".to_string(),
+                slug: "makise-kurisu".to_string(),
+                name: "Makise Kurisu".to_string(),
+                base_tone: "dry".to_string(),
+                relationship_type: "peer".to_string(),
+                world_type: "modern".to_string(),
+                static_prompt_json: r#"{"style":"scientist"}"#.to_string(),
+                persona_state_json: Some(r#"{"affinity":12}"#.to_string()),
+                remote_version: 2,
+                last_pulled_version: 2,
+                pending_mutation_id: None,
+                sync_status: "synced".to_string(),
+                updated_at_ms: 1_700_000_000_000,
+            }],
+        })
+        .expect("local persona is cached");
+
+    let personas = repository
+        .list_local_personas()
+        .expect("local personas are listed");
+
+    assert_eq!(personas.len(), 1);
+    assert_eq!(personas[0].slug, "makise-kurisu");
+    assert_eq!(personas[0].remote_persona_id, "remote-persona-kurisu");
+
+    let by_slug = repository
+        .get_local_persona(GetLocalPersonaInput {
+            slug_or_remote_id: "makise-kurisu".to_string(),
+        })
+        .expect("local persona lookup succeeds")
+        .expect("local persona exists by slug");
+
+    assert_eq!(by_slug.name, "Makise Kurisu");
+
+    let by_remote_id = repository
+        .get_local_persona(GetLocalPersonaInput {
+            slug_or_remote_id: "remote-persona-kurisu".to_string(),
+        })
+        .expect("local persona lookup succeeds")
+        .expect("local persona exists by remote id");
+
+    assert_eq!(by_remote_id.id, by_slug.id);
+}
+
+#[test]
 fn stores_conversation_sessions_per_persona_and_messages_idempotently() {
     let mut repository = TimelineRepository::open_in_memory().expect("in-memory db opens");
     repository.migrate().expect("migration succeeds");

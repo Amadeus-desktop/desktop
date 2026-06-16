@@ -15,6 +15,7 @@ function persona(id: PersonaId): Persona {
     name: id,
     shortLabel: id,
     description: id,
+    speechExample: id,
     icon: "bubble",
   };
 }

@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { cn } from "../../lib/utils/cn";
-import { glassStyles } from "../theme/shellStyles";
+import { glassStyles, shellText } from "../theme/shellStyles";
 import { SettingsGroupContext } from "./SettingsGroup";
 
 type AdvancedSectionProps = {
@@ -27,19 +27,21 @@ export function AdvancedSection({
         className={cn(
           "flex w-full items-center justify-between gap-3 px-3.5 py-3 text-left transition",
           glassStyles.radiusCard,
-          "border border-[#333338] bg-[#222226]",
-          "hover:border-[#48484f] hover:bg-[#2a2a2e]",
+          glassStyles.row,
         )}
       >
         <span className="min-w-0">
-          <span className="block text-xs font-medium text-white">{title}</span>
-          <span className="mt-0.5 block text-[10px] leading-4 text-white/42">
+          <span className={cn("block text-xs font-medium", shellText.primary)}>
+            {title}
+          </span>
+          <span className={cn("mt-0.5 block text-[10px] leading-4", shellText.faint)}>
             {hint}
           </span>
         </span>
         <span
           className={cn(
-            "shrink-0 text-[11px] text-white/45 transition-transform duration-200",
+            "shrink-0 text-[11px] transition-transform duration-200",
+            shellText.faint,
             open && "rotate-180",
           )}
           aria-hidden="true"

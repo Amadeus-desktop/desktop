@@ -64,7 +64,7 @@ function App() {
   return (
     <main
       className={cn(
-        "relative flex h-dvh w-dvw overflow-hidden bg-transparent p-0 text-white",
+        "relative flex h-dvh w-dvw overflow-hidden bg-transparent p-0 text-[color:var(--shell-ink)]",
       )}
     >
       <div

@@ -1,4 +1,5 @@
 import { cn } from "../../lib/utils/cn";
+import { shellText } from "../theme/shellStyles";
 
 type SectionHeadingProps = {
   children: string;
@@ -12,7 +13,7 @@ export function SectionHeading({ children, className }: SectionHeadingProps) {
         className="h-3.5 w-0.5 shrink-0 rounded-full bg-[color:rgb(var(--accent-rgb)/0.65)]"
         aria-hidden="true"
       />
-      <h3 className="text-[11px] font-semibold tracking-wide text-white/52">
+      <h3 className={cn("text-[11px] font-semibold tracking-wide", shellText.muted)}>
         {children}
       </h3>
     </div>

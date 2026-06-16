@@ -332,6 +332,44 @@ fn test_frequency_creates_non_work_drift_after_short_video_duration() {
 }
 
 #[test]
+fn test_frequency_allows_video_drift_inside_recent_work_cluster() {
+    let mut settings = AppSettings::default();
+    settings.talk_frequency = "test".to_string();
+    let mut current = snapshot(AppCategory::NonWork, 62.0, 148_000);
+    current.browser_context = Some(BrowserTabContext {
+        browser_name: "Google Chrome".to_string(),
+        url_host: Some("youtube.com".to_string()),
+        url_class: BrowserUrlClass::Video,
+        source: "chrome_apple_script".to_string(),
+    });
+    let mut history = ProcessHistoryWindow::default();
+    history.work_cluster_duration_ms = 12 * 60 * 1000;
+    history.app_switch_count = 4;
+    history.non_work_single_app_max_duration_ms = 148_000;
+
+    let evaluation = evaluate_trigger(
+        TriggerInput {
+            snapshot: current,
+            privacy: normal_privacy("Google Chrome"),
+            history: Some(history),
+            recent_utterance_minutes_ago: None,
+            repeated_app_utterance_blocked: false,
+            work_session_duration_ms: 0,
+            dismissed_recent_count: 0,
+            utterances_today: 0,
+        },
+        &settings,
+    );
+
+    let candidate = evaluation.candidate.expect("test video drift");
+    assert_eq!(candidate.trigger_type, TriggerType::Drift);
+    assert_eq!(candidate.reason, "non_work_duration_detected");
+    assert_eq!(evaluation.suppression_reason, None);
+    assert_eq!(evaluation.action, TriggerAction::Bubble);
+    assert!(evaluation.should_persist);
+}
+
+#[test]
 fn ocr_blocked_signal_alone_does_not_create_deep_pause_candidate_before_idle_threshold() {
     let mut settings = AppSettings::default();
     settings.talk_frequency = "quiet".to_string();

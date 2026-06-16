@@ -7,6 +7,7 @@ const kurisu: Persona = {
   name: "마키세 크리스",
   shortLabel: "크리스",
   description: "logical lab partner",
+  speechExample: "…뭐, 수고했어.",
   icon: "bubble",
 };
 
