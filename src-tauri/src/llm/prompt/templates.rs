@@ -6,8 +6,8 @@ use super::{
     utterance_instruction,
 };
 use crate::llm::{
-    redaction::sanitize_prompt_field, LlmChatEnvelope, LlmChatMessage, LlmError, LlmInputEnvelope,
-    ProviderInputGrade,
+    redaction::{sanitize_prompt_field, sanitize_prompt_json},
+    LlmChatEnvelope, LlmChatMessage, LlmError, LlmInputEnvelope, ProviderInputGrade,
 };
 
 pub(crate) fn local_utterance_prompt(request: &LlmInputEnvelope) -> String {

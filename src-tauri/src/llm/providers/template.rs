@@ -58,7 +58,11 @@ impl LlmProvider for TemplateLlmProvider {
 }
 
 fn template_persona_hint(request: &LlmChatEnvelope) -> Option<String> {
-    if let Some(persona_id) = request.persona_id.as_deref().filter(|value| !value.is_empty()) {
+    if let Some(persona_id) = request
+        .persona_id
+        .as_deref()
+        .filter(|value| !value.is_empty())
+    {
         return Some(persona_id.to_string());
     }
 
