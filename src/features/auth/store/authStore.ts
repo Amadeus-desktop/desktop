@@ -41,6 +41,7 @@ let deepLinkAuthPromise: Promise<void> | null = null;
 let deepLinkUnlisten: (() => void) | null = null;
 let loopbackUnlisten: (() => void) | null = null;
 const consumedAuthCodes = new Set<string>();
+const authCodesInFlight = new Set<string>();
 
 export function getAuthSnapshot() {
   return authStore.getSnapshot();
@@ -246,12 +247,17 @@ async function consumeAuthDeepLinks(urls: string[]) {
       logger.warn("auth", "ignored duplicate auth callback code");
       continue;
     }
-    consumedAuthCodes.add(code);
+    if (authCodesInFlight.has(code)) {
+      logger.warn("auth", "ignored in-flight auth callback code");
+      continue;
+    }
+    authCodesInFlight.add(code);
 
     try {
       logger.info("auth", "supabase auth callback exchange started");
       const user = await completeSupabaseAuthCallback(url);
       if (!user) continue;
+      consumedAuthCodes.add(code);
       applyAuthenticatedUser(user);
       logger.info("auth", "supabase auth callback exchange completed", {
         hasUser: true,
@@ -267,6 +273,8 @@ async function consumeAuthDeepLinks(urls: string[]) {
       return;
     } catch (error) {
       logger.error("auth", "supabase auth callback failed", { error });
+    } finally {
+      authCodesInFlight.delete(code);
     }
   }
 }
@@ -278,6 +286,7 @@ export function signOut() {
   loopbackUnlisten = null;
   deepLinkAuthPromise = null;
   consumedAuthCodes.clear();
+  authCodesInFlight.clear();
   resetCompanionSession();
   writeStoredUser(null);
   authStore.setSnapshot({

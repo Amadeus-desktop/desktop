@@ -48,8 +48,10 @@ export async function kickMainWindowCompositor() {
 
   await window.setSize(new LogicalSize(width + 1, height));
   await window.setSize(new LogicalSize(width, height));
-  logger.info("window", "main compositor kick completed", {
-    durationMs: Math.round(performance.now() - beganAt),
+  const durationMs = Math.round(performance.now() - beganAt);
+  const level = durationMs > 34 ? "warn" : "info";
+  logger[level]("window", "main compositor kick completed", {
+    durationMs,
     width,
     height,
   });
@@ -72,8 +74,12 @@ export function scheduleMainWindowCompositorKick(delayMs = 200) {
 
     compositorKickInFlight = true;
     logger.info("window", "main compositor kick scheduled", { delayMs });
-    void kickMainWindowCompositor().finally(() => {
-      compositorKickInFlight = false;
-    });
+    void kickMainWindowCompositor()
+      .catch((error) => {
+        logger.error("window", "main compositor kick failed", { error });
+      })
+      .finally(() => {
+        compositorKickInFlight = false;
+      });
   }, delayMs);
 }

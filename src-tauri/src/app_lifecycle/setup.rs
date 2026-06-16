@@ -1,5 +1,11 @@
 #[cfg(not(target_os = "macos"))]
 use crate::macos_window::position_companion_window;
+#[cfg(target_os = "macos")]
+use crate::macos_window::{
+    configure_macos_companion_window, configure_macos_main_window,
+    restore_companion_window_on_active_space, schedule_macos_webview_layer_refresh,
+    watch_macos_companion_space_changes,
+};
 use crate::{
     app_lifecycle::{
         auth_callback::start_dev_auth_callback_server,
@@ -11,11 +17,7 @@ use crate::{
     llama_sidecar::LlamaSidecarState,
     llm::{LlmService, LlmState},
     macos_context::ContextBridgeState,
-    macos_window::{
-        configure_macos_companion_window, configure_macos_main_window,
-        restore_companion_window_on_active_space, schedule_macos_webview_layer_refresh,
-        watch_macos_companion_space_changes, CompanionWindowVisibility,
-    },
+    macos_window::CompanionWindowVisibility,
     observability::{error as log_error, info as log_info, init as init_logger, LogArea},
     ocr::{OcrState, ScreenCaptureState},
     settings::{llama_endpoint, SettingsState},

@@ -233,7 +233,7 @@ type MainWindowLayoutRequest = {
     | "logout"
     | "tray-open"
     | "protocol-open";
-  priority: number;
+  priority?: number; // observability only; current scheduler is FIFO serialized.
 };
 ```
 
@@ -249,7 +249,7 @@ type MainWindowLayoutRequest = {
 - L1b: `src-tauri/src/app_lifecycle/windows.rs`가 main drag command와 companion position sync command wrapper를 소유한다.
 - L1b: `src-tauri/src/lib.rs`는 Tauri builder composition과 invoke handler registry만 남긴다.
 - L2: `src/features/lifecycle/mainWindowLifecycle.ts`가 main window layout request의 단일 coordinator다.
-- L2: `authStore`, `useAuthWindow`, `OnboardingFlow`는 직접 layout mode helper를 호출하지 않고 `requestMainWindowLayout()`에 `reason`, `priority`, `animated`를 담아 요청한다.
+- L2: `authStore`, `useAuthWindow`, `OnboardingFlow`는 직접 layout mode helper를 호출하지 않고 `requestMainWindowLayout()`에 `reason`, 관찰용 `priority`, `animated`를 담아 요청한다.
 - L2a: native resize animation 제거/대체와 `useControlCenterWindow`까지의 완전 흡수는 다음 phase로 남긴다.
 
 ---
@@ -437,18 +437,16 @@ Amadeus에 적용할 점:
 
 P1:
 
-- JS frame loop로 native resize animation을 수행한다. layout request serialization 1차 queue는 들어갔지만, frame마다 `setSize`/`setPosition`을 치는 구조는 아직 L3 제거 대상이다.
-- drag 중 root opacity를 직접 0으로 만드는 코드가 있음.
 - startup critical path와 deferred warmup이 분리되지 않음.
-- `lib.rs`가 auth callback, setup, window, tray 책임을 여전히 한 파일에 많이 가진다.
 
 P2:
 
 - transparent/compositor refresh owner가 명확하지 않음.
-- auth callback owner 판정이 Tauri window label이 아니라 `?view=companion` URL 계약에 의존한다.
-- layout request에 reason/priority object가 아직 없다.
+- layout request priority는 현재 스케줄링 우선순위가 아니라 관찰용 값이다. 실제 scheduling은 FIFO serialized queue다.
 - frontend auth callback getCurrent/onOpenUrl/dev loopback event의 integration-level duplicate consume 테스트가 아직 없다.
 - config/capability regression test가 없음.
+- first-paint invoke payload는 런타임 smoke 또는 단위 테스트가 아직 부족하다.
+- compositor kick 1px resize는 아직 남은 버벅임 후보이며, 장기적으로 Rust layer refresh owner로 수렴해야 한다.
 
 해소됨:
 
@@ -457,6 +455,12 @@ P2:
 - local mirror가 `hydrated=true`를 최종 확정하던 auth source-of-truth 문제는 bootstrap/storage path 모두 Supabase verification을 다시 타도록 수정됨.
 - companion window가 auth callback listener/dev callback server를 소유하던 문제는 main-only owner guard로 1차 차단됨.
 - companion resize loop는 size skip/in-flight coalesce/debounce/position-only sync로 hotfix됨.
+- JS frame loop native resize animation은 L3에서 제거됨.
+- drag 중 root opacity 직접 변경은 L3에서 제거됨.
+- `lib.rs`는 builder composition과 invoke handler registry 중심으로 축소됨.
+- Rust auth callback event/pending replay consume은 main window만 대상으로 제한됨.
+- dev auth callback server deadline은 server reuse마다 연장되도록 수정됨.
+- companion event resync는 size unchanged 상태에서도 position-only sync를 수행하도록 수정됨.
 
 ---
 
@@ -529,7 +533,7 @@ P2:
 - `src-tauri/src/app_lifecycle/frontend_ready.rs`가 `record_frontend_ready` command와 first-paint 중복 방지 state를 소유한다.
 - main window는 `main_window_first_paint`, companion window는 `companion_window_first_paint`를 double `requestAnimationFrame` 이후 Rust로 전송한다.
 - Rust auth callback router는 callback received, pending replay overwrite, event emit, pending consume 결과를 로그로 남긴다.
-- frontend main window lifecycle coordinator는 layout requested/completed/failed를 reason/priority와 함께 로그로 남긴다.
+- frontend main window lifecycle coordinator는 layout requested/completed/failed를 reason, 관찰용 priority, request id, total duration과 함께 로그로 남긴다.
 - Rust setup phase duration log와 debug dev callback server failure log는 기존 구현을 유지한다.
 
 ### Phase L3: Window Performance Stabilization

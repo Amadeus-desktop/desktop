@@ -6,7 +6,7 @@ use std::{
         Mutex,
     },
     thread,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use tauri::Emitter;
@@ -20,7 +20,9 @@ use crate::{
 const DEV_AUTH_CALLBACK_PORT: u16 = 17421;
 const DEV_AUTH_CALLBACK_URL: &str = "http://127.0.0.1:17421/auth/callback";
 const AUTH_CALLBACK_EVENT: &str = "amadeus-auth-callback";
+const DEV_AUTH_CALLBACK_TTL: Duration = Duration::from_secs(300);
 static DEV_AUTH_CALLBACK_SERVER_RUNNING: AtomicBool = AtomicBool::new(false);
+static DEV_AUTH_CALLBACK_SERVER_DEADLINE: Mutex<Option<Instant>> = Mutex::new(None);
 static PENDING_AUTH_CALLBACK_URL: Mutex<Option<String>> = Mutex::new(None);
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -37,7 +39,7 @@ pub fn route_auth_callback(app: &tauri::AppHandle, url: String) {
         );
     }
     let payload = AuthCallbackPayload { url };
-    if let Err(error) = app.emit(AUTH_CALLBACK_EVENT, payload) {
+    if let Err(error) = app.emit_to("main", AUTH_CALLBACK_EVENT, payload) {
         log_error(
             LogArea::Auth,
             format!("auth callback event emit failed; pending replay retained: {error}"),
@@ -48,7 +50,20 @@ pub fn route_auth_callback(app: &tauri::AppHandle, url: String) {
 }
 
 #[tauri::command]
-pub fn consume_pending_auth_callback() -> Option<AuthCallbackPayload> {
+pub fn consume_pending_auth_callback(
+    window: tauri::WebviewWindow,
+) -> Result<Option<AuthCallbackPayload>, String> {
+    if !can_consume_pending_auth_callback(window.label()) {
+        log_error(
+            LogArea::Auth,
+            format!(
+                "auth callback pending replay rejected for non-main window: label={}",
+                window.label()
+            ),
+        );
+        return Err("auth callback replay is only available to the main window".to_string());
+    }
+
     let pending = take_pending_auth_callback().map(|url| AuthCallbackPayload { url });
     log_info(
         LogArea::Auth,
@@ -57,18 +72,22 @@ pub fn consume_pending_auth_callback() -> Option<AuthCallbackPayload> {
             pending.is_some()
         ),
     );
-    pending
+    Ok(pending)
 }
 
 #[tauri::command]
 pub fn start_dev_auth_callback_server(app: tauri::AppHandle) -> Result<String, String> {
+    let deadline = extend_dev_auth_callback_deadline(Instant::now());
     if DEV_AUTH_CALLBACK_SERVER_RUNNING
         .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
         .is_err()
     {
         log_info(
             LogArea::Auth,
-            "dev auth callback server already running; reusing loopback redirect",
+            format!(
+                "dev auth callback server already running; deadline extended by {}s",
+                DEV_AUTH_CALLBACK_TTL.as_secs()
+            ),
         );
         return Ok(DEV_AUTH_CALLBACK_URL.to_string());
     }
@@ -86,7 +105,11 @@ pub fn start_dev_auth_callback_server(app: tauri::AppHandle) -> Result<String, S
     bind_timer.finish();
     log_info(
         LogArea::Auth,
-        format!("dev auth callback server listening: url={DEV_AUTH_CALLBACK_URL}"),
+        format!(
+            "dev auth callback server listening: url={DEV_AUTH_CALLBACK_URL} ttl_seconds={} deadline_in_ms={}",
+            DEV_AUTH_CALLBACK_TTL.as_secs(),
+            deadline.saturating_duration_since(Instant::now()).as_millis()
+        ),
     );
 
     thread::spawn(move || {
@@ -97,6 +120,7 @@ pub fn start_dev_auth_callback_server(app: tauri::AppHandle) -> Result<String, S
             );
         }
         DEV_AUTH_CALLBACK_SERVER_RUNNING.store(false, Ordering::SeqCst);
+        clear_dev_auth_callback_deadline();
     });
 
     Ok(DEV_AUTH_CALLBACK_URL.to_string())
@@ -133,12 +157,38 @@ fn take_pending_auth_callback() -> Option<String> {
         .and_then(|mut pending| pending.take())
 }
 
+fn can_consume_pending_auth_callback(window_label: &str) -> bool {
+    window_label == "main"
+}
+
+fn extend_dev_auth_callback_deadline(now: Instant) -> Instant {
+    let deadline = now + DEV_AUTH_CALLBACK_TTL;
+    if let Ok(mut stored) = DEV_AUTH_CALLBACK_SERVER_DEADLINE.lock() {
+        *stored = Some(deadline);
+    }
+    deadline
+}
+
+fn clear_dev_auth_callback_deadline() {
+    if let Ok(mut stored) = DEV_AUTH_CALLBACK_SERVER_DEADLINE.lock() {
+        *stored = None;
+    }
+}
+
+fn dev_auth_callback_deadline_expired(now: Instant) -> bool {
+    DEV_AUTH_CALLBACK_SERVER_DEADLINE
+        .lock()
+        .ok()
+        .and_then(|deadline| *deadline)
+        .is_none_or(|deadline| now >= deadline)
+}
+
 fn serve_dev_auth_callback(app: tauri::AppHandle, listener: TcpListener) -> std::io::Result<()> {
     listener.set_nonblocking(true)?;
-    let deadline = std::time::Instant::now() + Duration::from_secs(300);
 
     loop {
-        if std::time::Instant::now() >= deadline {
+        if dev_auth_callback_deadline_expired(Instant::now()) {
+            log_info(LogArea::Auth, "dev auth callback server deadline reached");
             return Ok(());
         }
 
@@ -335,5 +385,27 @@ mod tests {
             Some("amadeus://auth/callback?code=oauth-code".to_string())
         );
         assert_eq!(take_pending_auth_callback(), None);
+    }
+
+    #[test]
+    fn pending_auth_callback_can_only_be_consumed_by_main_window() {
+        assert!(can_consume_pending_auth_callback("main"));
+        assert!(!can_consume_pending_auth_callback("companion"));
+        assert!(!can_consume_pending_auth_callback("settings"));
+    }
+
+    #[test]
+    fn dev_auth_callback_deadline_extends_on_reuse() {
+        clear_dev_auth_callback_deadline();
+        let now = Instant::now();
+        let first = extend_dev_auth_callback_deadline(now);
+        let second = extend_dev_auth_callback_deadline(now + Duration::from_secs(60));
+
+        assert!(second > first);
+        assert!(!dev_auth_callback_deadline_expired(
+            second - Duration::from_millis(1)
+        ));
+        assert!(dev_auth_callback_deadline_expired(second));
+        clear_dev_auth_callback_deadline();
     }
 }

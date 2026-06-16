@@ -31,6 +31,8 @@ export type MainWindowLifecycleDeps = {
   log?: typeof logger;
 };
 
+let nextMainWindowLayoutRequestId = 1;
+
 export function createMainWindowLifecycle({
   applyLayoutMode,
   animateLayoutMode,
@@ -38,12 +40,16 @@ export function createMainWindowLifecycle({
 }: MainWindowLifecycleDeps) {
   return {
     async requestMainWindowLayout(request: MainWindowLayoutRequest) {
+      const requestId = nextMainWindowLayoutRequestId;
+      nextMainWindowLayoutRequestId += 1;
+      const requestedAt = performance.now();
       log.info("window", "main lifecycle layout requested", {
+        requestId,
         mode: request.mode,
         reason: request.reason,
         animated: Boolean(request.animated),
         durationMs: request.durationMs,
-        priority: request.priority ?? 0,
+        observabilityPriority: request.priority ?? 0,
       });
 
       try {
@@ -53,17 +59,21 @@ export function createMainWindowLifecycle({
           await applyLayoutMode(request.mode);
         }
         log.info("window", "main lifecycle layout completed", {
+          requestId,
           mode: request.mode,
           reason: request.reason,
           animated: Boolean(request.animated),
-          priority: request.priority ?? 0,
+          observabilityPriority: request.priority ?? 0,
+          totalMs: Math.round(performance.now() - requestedAt),
         });
       } catch (error) {
         log.error("window", "main lifecycle layout failed", {
+          requestId,
           mode: request.mode,
           reason: request.reason,
           animated: Boolean(request.animated),
-          priority: request.priority ?? 0,
+          observabilityPriority: request.priority ?? 0,
+          totalMs: Math.round(performance.now() - requestedAt),
           error,
         });
         throw error;

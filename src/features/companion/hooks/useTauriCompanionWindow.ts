@@ -19,7 +19,14 @@ let syncTimer: ReturnType<typeof setTimeout> | null = null;
 
 const COMPANION_RESIZE_DEBOUNCE_MS = 80;
 
-export async function syncTauriWindowToElement(element: HTMLElement | null) {
+type CompanionWindowSyncOptions = {
+  forcePositionSync?: boolean;
+};
+
+export async function syncTauriWindowToElement(
+  element: HTMLElement | null,
+  options: CompanionWindowSyncOptions = {},
+) {
   if (!element || !isTauriRuntime()) return;
 
   if (syncInFlight) {
@@ -39,7 +46,15 @@ export async function syncTauriWindowToElement(element: HTMLElement | null) {
     logger.info("window", "companion native resize skipped unchanged size", {
       width: nextSize.width,
       height: nextSize.height,
+      forcePositionSync: Boolean(options.forcePositionSync),
     });
+    if (options.forcePositionSync) {
+      await invoke("sync_companion_window_position");
+      logger.info("window", "companion position-only sync completed", {
+        width: nextSize.width,
+        height: nextSize.height,
+      });
+    }
     return;
   }
 
@@ -70,17 +85,20 @@ export async function syncTauriWindowToElement(element: HTMLElement | null) {
 
 export async function resyncTauriCompanionWindow() {
   if (!contentElement) return;
-  scheduleTauriWindowSync(contentElement);
+  scheduleTauriWindowSync(contentElement, { forcePositionSync: true });
 }
 
-function scheduleTauriWindowSync(element: HTMLElement) {
+function scheduleTauriWindowSync(
+  element: HTMLElement,
+  options: CompanionWindowSyncOptions = {},
+) {
   if (syncTimer !== null) {
     clearTimeout(syncTimer);
   }
 
   syncTimer = window.setTimeout(() => {
     syncTimer = null;
-    void syncTauriWindowToElement(element);
+    void syncTauriWindowToElement(element, options);
   }, COMPANION_RESIZE_DEBOUNCE_MS);
 }
 
