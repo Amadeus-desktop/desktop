@@ -10,6 +10,16 @@ use super::{
     AppSettings,
 };
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct TriggerSensitivityPolicy {
+    pub deep_pause_min_frontmost: u128,
+    pub deep_pause_min_idle_seconds: f64,
+    pub milestone_min_frontmost: u128,
+    pub unknown_ocr_probe_min_frontmost: u128,
+}
+
+const MINUTE_MS: u128 = 60 * 1000;
+
 pub fn llama_endpoint(host: &str, port: u16) -> String {
     format!("http://{host}:{port}")
 }
@@ -27,6 +37,29 @@ pub fn talk_frequency_poll_interval(talk_frequency: &str) -> Duration {
         TALK_FREQUENCY_QUIET => QUIET_POLL_INTERVAL,
         TALK_FREQUENCY_ACTIVE => ACTIVE_POLL_INTERVAL,
         _ => BALANCED_POLL_INTERVAL,
+    }
+}
+
+pub fn talk_frequency_trigger_sensitivity(talk_frequency: &str) -> TriggerSensitivityPolicy {
+    match talk_frequency {
+        TALK_FREQUENCY_QUIET => TriggerSensitivityPolicy {
+            deep_pause_min_frontmost: 10 * MINUTE_MS,
+            deep_pause_min_idle_seconds: 120.0,
+            milestone_min_frontmost: 60 * MINUTE_MS,
+            unknown_ocr_probe_min_frontmost: 10 * MINUTE_MS,
+        },
+        TALK_FREQUENCY_ACTIVE => TriggerSensitivityPolicy {
+            deep_pause_min_frontmost: MINUTE_MS,
+            deep_pause_min_idle_seconds: 15.0,
+            milestone_min_frontmost: 3 * MINUTE_MS,
+            unknown_ocr_probe_min_frontmost: 5_000,
+        },
+        _ => TriggerSensitivityPolicy {
+            deep_pause_min_frontmost: 5 * MINUTE_MS,
+            deep_pause_min_idle_seconds: 60.0,
+            milestone_min_frontmost: 20 * MINUTE_MS,
+            unknown_ocr_probe_min_frontmost: 30_000,
+        },
     }
 }
 

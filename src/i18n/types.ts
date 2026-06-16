@@ -255,6 +255,7 @@ export type AppLocale = {
     timeline: {
       loading: string;
       empty: string;
+      refresh: string;
       expand: string;
       collapse: string;
     };

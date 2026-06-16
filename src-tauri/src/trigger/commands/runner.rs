@@ -6,7 +6,10 @@ use crate::{
     observability::{info as log_info, warn as log_warn, LogArea},
     ocr::{capture_gate_input_for_command, OcrObservation, OcrState, ScreenCaptureState},
     privacy::{assess_privacy, get_screen_capture_permission_status},
-    settings::{privacy_keywords_for, talk_frequency_poll_interval, SettingsState},
+    settings::{
+        privacy_keywords_for, talk_frequency_poll_interval, talk_frequency_trigger_sensitivity,
+        SettingsState,
+    },
     timeline::TimelineState,
 };
 
@@ -15,7 +18,7 @@ use crate::trigger::{
     core::evaluate_trigger_with_ocr_context,
     scoring::{
         apply_ocr_signal_to_evaluation, should_capture_ocr_for_trigger,
-        should_probe_unknown_ocr_for_candidate, suppressed,
+        should_probe_unknown_ocr_for_candidate, should_probe_unknown_ocr_for_context, suppressed,
     },
     TriggerEngineState, TriggerPollDecision, TriggerPollResult, TriggerRunResult,
     TriggerRuntimeSnapshot,
@@ -42,8 +45,25 @@ pub fn run_trigger_engine_once(
     };
     let snapshot = read_current_snapshot(&context_state)?;
     let privacy = assess_privacy(&snapshot, &effective_keywords);
+    log_info(
+        LogArea::Trigger,
+        format!(
+            "trigger snapshot read: app={} pid={} category={:?} idle_seconds={:.1} frontmost_ms={} sensitive={} capture_suppressed={}",
+            snapshot.app_name,
+            snapshot.process_id,
+            snapshot.category,
+            snapshot.idle_seconds,
+            snapshot.frontmost_duration_ms,
+            privacy.is_sensitive,
+            privacy.should_suppress_capture
+        ),
+    );
 
     if !settings.proactive_trigger_enabled {
+        log_info(
+            LogArea::Trigger,
+            "trigger run suppressed: proactive_disabled",
+        );
         return Ok(TriggerRunResult {
             snapshot,
             privacy,
@@ -58,7 +78,24 @@ pub fn run_trigger_engine_once(
         .lock()
         .map_err(|_| CommandError::from("trigger runtime lock was poisoned".to_string()))?
         .input_for(snapshot.clone(), privacy.clone());
-    let mut ocr_observation = should_probe_unknown_ocr_for_candidate(&snapshot, &privacy)
+    let sensitivity = talk_frequency_trigger_sensitivity(&settings.talk_frequency);
+    let unknown_context_probe =
+        should_probe_unknown_ocr_for_context(&snapshot, &privacy, sensitivity);
+    let unknown_candidate_probe =
+        should_probe_unknown_ocr_for_candidate(&snapshot, &privacy, sensitivity);
+    let should_probe_unknown_ocr = unknown_context_probe || unknown_candidate_probe;
+    log_info(
+        LogArea::Trigger,
+        format!(
+            "trigger OCR probe decision: should_probe={} unknown_context_probe={} unknown_candidate_probe={} frontmost_ms={} idle_seconds={:.1}",
+            should_probe_unknown_ocr,
+            unknown_context_probe,
+            unknown_candidate_probe,
+            snapshot.frontmost_duration_ms,
+            snapshot.idle_seconds
+        ),
+    );
+    let mut ocr_observation = should_probe_unknown_ocr
         .then(|| {
             capture_trigger_ocr_observation(
                 &ocr_state,
@@ -113,6 +150,21 @@ pub fn run_trigger_engine_once(
     } else {
         (None, None)
     };
+    log_info(
+        LogArea::Trigger,
+        format!(
+            "trigger run evaluated: action={:?} should_persist={} candidate={} suppression_reason={} utterance_persisted={}",
+            evaluation.action,
+            evaluation.should_persist,
+            evaluation
+                .candidate
+                .as_ref()
+                .map(|candidate| candidate.trigger_type.as_str())
+                .unwrap_or("none"),
+            evaluation.suppression_reason.as_deref().unwrap_or("none"),
+            utterance_event.is_some()
+        ),
+    );
 
     if utterance_event.is_some() {
         trigger_state
@@ -147,6 +199,7 @@ pub fn poll_trigger_engine(
         .map_err(|error| CommandError::from(error.to_string()))?;
 
     if !settings.proactive_trigger_enabled {
+        log_info(LogArea::Trigger, "trigger poll skipped: proactive_disabled");
         return Ok(TriggerPollResult {
             did_evaluate: false,
             decision: TriggerPollDecision {
@@ -172,12 +225,21 @@ pub fn poll_trigger_engine(
     };
 
     if !decision.ready {
+        log_info(
+            LogArea::Trigger,
+            format!(
+                "trigger poll deferred: wait_seconds={} suppression_reason={}",
+                decision.wait_seconds,
+                decision.suppression_reason.as_deref().unwrap_or("none")
+            ),
+        );
         return Ok(TriggerPollResult {
             did_evaluate: false,
             decision,
             run_result: None,
         });
     }
+    log_info(LogArea::Trigger, "trigger poll evaluating");
 
     let run_result = run_trigger_engine_once(
         context_state,

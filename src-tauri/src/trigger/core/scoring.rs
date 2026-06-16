@@ -4,7 +4,7 @@ use crate::{
     ocr::OcrContextClass,
     policy::{LlmGateDecision, PolicyScores},
     privacy::PrivacyAssessment,
-    settings::AppSettings,
+    settings::{AppSettings, TriggerSensitivityPolicy},
 };
 
 use super::{
@@ -14,11 +14,8 @@ use super::{
 };
 
 const MINUTE_MS: u128 = 60 * 1000;
-const DEEP_PAUSE_MIN_FRONTMOST_MS: u128 = 10 * MINUTE_MS;
 const DEEP_PAUSE_MIN_WORK_CLUSTER_MS: u128 = 10 * MINUTE_MS;
 const DEEP_PAUSE_MIN_WORK_CLUSTER_SWITCHES: u32 = 3;
-const DEEP_PAUSE_MIN_IDLE_SECONDS: f64 = 120.0;
-const MILESTONE_MIN_FRONTMOST_MS: u128 = 60 * MINUTE_MS;
 const MILESTONE_MAX_IDLE_SECONDS: f64 = 600.0;
 const ACTIVE_INPUT_MAX_IDLE_SECONDS: f64 = 5.0;
 const AWAY_IDLE_MIN_SECONDS: f64 = 600.0;
@@ -103,20 +100,36 @@ pub(crate) fn should_capture_ocr_for_trigger(
 pub(crate) fn should_probe_unknown_ocr_for_candidate(
     snapshot: &MacosContextSnapshot,
     privacy: &PrivacyAssessment,
+    sensitivity: TriggerSensitivityPolicy,
 ) -> bool {
     snapshot.category == AppCategory::Unknown
-        && snapshot.frontmost_duration_ms >= DEEP_PAUSE_MIN_FRONTMOST_MS
-        && snapshot.idle_seconds >= DEEP_PAUSE_MIN_IDLE_SECONDS
+        && snapshot.frontmost_duration_ms >= sensitivity.deep_pause_min_frontmost
+        && snapshot.idle_seconds >= sensitivity.deep_pause_min_idle_seconds
         && snapshot.idle_seconds <= AWAY_IDLE_MIN_SECONDS
         && !privacy.should_suppress_capture
         && !privacy.is_sensitive
 }
 
-pub(crate) fn should_suppress_active_input_milestone(input: &TriggerInput) -> bool {
+pub(crate) fn should_probe_unknown_ocr_for_context(
+    snapshot: &MacosContextSnapshot,
+    privacy: &PrivacyAssessment,
+    sensitivity: TriggerSensitivityPolicy,
+) -> bool {
+    snapshot.category == AppCategory::Unknown
+        && snapshot.frontmost_duration_ms >= sensitivity.unknown_ocr_probe_min_frontmost
+        && snapshot.idle_seconds <= AWAY_IDLE_MIN_SECONDS
+        && !privacy.should_suppress_capture
+        && !privacy.is_sensitive
+}
+
+pub(crate) fn should_suppress_active_input_milestone(
+    input: &TriggerInput,
+    sensitivity: TriggerSensitivityPolicy,
+) -> bool {
     input.snapshot.category == AppCategory::Work
         && input.snapshot.idle_seconds < ACTIVE_INPUT_MAX_IDLE_SECONDS
-        && (input.snapshot.frontmost_duration_ms >= MILESTONE_MIN_FRONTMOST_MS
-            || input.work_session_duration_ms >= MILESTONE_MIN_FRONTMOST_MS)
+        && (input.snapshot.frontmost_duration_ms >= sensitivity.milestone_min_frontmost
+            || input.work_session_duration_ms >= sensitivity.milestone_min_frontmost)
 }
 
 pub(crate) fn should_suppress_away_idle(input: &TriggerInput) -> bool {
@@ -146,13 +159,35 @@ pub(crate) fn apply_ocr_signal_to_evaluation(
 pub(crate) fn select_unknown_ocr_candidate(
     snapshot: &MacosContextSnapshot,
     context_class: Option<OcrContextClass>,
+    history: Option<&ProcessHistoryWindow>,
+    sensitivity: TriggerSensitivityPolicy,
 ) -> Option<TriggerCandidate> {
     let context_class = context_class?;
+    if let Some(candidate) =
+        select_unknown_video_drift_candidate(snapshot, context_class, history, sensitivity)
+    {
+        return Some(candidate);
+    }
+
     if snapshot.category != AppCategory::Unknown
         || !context_class.can_promote_unknown_to_work_like()
-        || snapshot.idle_seconds < DEEP_PAUSE_MIN_IDLE_SECONDS
-        || snapshot.frontmost_duration_ms < DEEP_PAUSE_MIN_FRONTMOST_MS
+        || snapshot.frontmost_duration_ms < sensitivity.deep_pause_min_frontmost
     {
+        return None;
+    }
+
+    if snapshot.idle_seconds < MILESTONE_MAX_IDLE_SECONDS
+        && snapshot.frontmost_duration_ms >= sensitivity.milestone_min_frontmost
+    {
+        return Some(TriggerCandidate {
+            trigger_type: TriggerType::Milestone,
+            message: "조용히 오래 해내고 있었네.".to_string(),
+            reason: "unknown_work_like_ocr_milestone".to_string(),
+            base_score: 82,
+        });
+    }
+
+    if snapshot.idle_seconds < sensitivity.deep_pause_min_idle_seconds {
         return None;
     }
 
@@ -161,6 +196,31 @@ pub(crate) fn select_unknown_ocr_candidate(
         message: "잠깐 정리할 타이밍 같아. 이어갈 한 가지만 같이 잡아보자.".to_string(),
         reason: "unknown_work_like_ocr_after_pause".to_string(),
         base_score: 72,
+    })
+}
+
+fn select_unknown_video_drift_candidate(
+    snapshot: &MacosContextSnapshot,
+    context_class: OcrContextClass,
+    history: Option<&ProcessHistoryWindow>,
+    sensitivity: TriggerSensitivityPolicy,
+) -> Option<TriggerCandidate> {
+    let history = history?;
+    if snapshot.category != AppCategory::Unknown
+        || context_class != OcrContextClass::VideoPlayer
+        || history.work_cluster_duration_ms < sensitivity.deep_pause_min_frontmost
+        || history.app_switch_count == 0
+        || (snapshot.idle_seconds < sensitivity.deep_pause_min_idle_seconds
+            && snapshot.frontmost_duration_ms < sensitivity.deep_pause_min_frontmost)
+    {
+        return None;
+    }
+
+    Some(TriggerCandidate {
+        trigger_type: TriggerType::Drift,
+        message: "쉬는 중이면 괜찮아. 돌아가고 싶어지면 내가 옆에 있을게.".to_string(),
+        reason: "unknown_video_ocr_after_work".to_string(),
+        base_score: 64,
     })
 }
 
@@ -189,10 +249,13 @@ pub(crate) fn is_blocked_ocr_signal(redacted_ocr_summary: Option<&str>) -> bool 
     .any(|keyword| summary.contains(keyword))
 }
 
-pub(super) fn select_candidate(snapshot: &MacosContextSnapshot) -> Option<TriggerCandidate> {
+pub(super) fn select_candidate(
+    snapshot: &MacosContextSnapshot,
+    sensitivity: TriggerSensitivityPolicy,
+) -> Option<TriggerCandidate> {
     if snapshot.category == AppCategory::Work
-        && snapshot.frontmost_duration_ms >= DEEP_PAUSE_MIN_FRONTMOST_MS
-        && snapshot.idle_seconds >= DEEP_PAUSE_MIN_IDLE_SECONDS
+        && snapshot.frontmost_duration_ms >= sensitivity.deep_pause_min_frontmost
+        && snapshot.idle_seconds >= sensitivity.deep_pause_min_idle_seconds
     {
         return Some(TriggerCandidate {
             trigger_type: TriggerType::DeepPause,
@@ -203,7 +266,7 @@ pub(super) fn select_candidate(snapshot: &MacosContextSnapshot) -> Option<Trigge
     }
 
     if snapshot.category == AppCategory::Work
-        && snapshot.frontmost_duration_ms >= MILESTONE_MIN_FRONTMOST_MS
+        && snapshot.frontmost_duration_ms >= sensitivity.milestone_min_frontmost
         && snapshot.idle_seconds < MILESTONE_MAX_IDLE_SECONDS
     {
         return Some(TriggerCandidate {
@@ -231,10 +294,11 @@ pub(super) fn select_candidate(snapshot: &MacosContextSnapshot) -> Option<Trigge
 pub(super) fn select_work_cluster_candidate(
     snapshot: &MacosContextSnapshot,
     history: Option<&ProcessHistoryWindow>,
+    sensitivity: TriggerSensitivityPolicy,
 ) -> Option<TriggerCandidate> {
     let history = history?;
     if snapshot.category == AppCategory::Work
-        && snapshot.idle_seconds >= DEEP_PAUSE_MIN_IDLE_SECONDS
+        && snapshot.idle_seconds >= sensitivity.deep_pause_min_idle_seconds
         && history.work_cluster_duration_ms >= DEEP_PAUSE_MIN_WORK_CLUSTER_MS
         && history.app_switch_count >= DEEP_PAUSE_MIN_WORK_CLUSTER_SWITCHES
     {
@@ -252,9 +316,10 @@ pub(super) fn select_work_cluster_candidate(
 pub(super) fn select_work_session_milestone_candidate(
     snapshot: &MacosContextSnapshot,
     work_session_duration_ms: u128,
+    sensitivity: TriggerSensitivityPolicy,
 ) -> Option<TriggerCandidate> {
     if snapshot.category == AppCategory::Work
-        && work_session_duration_ms >= MILESTONE_MIN_FRONTMOST_MS
+        && work_session_duration_ms >= sensitivity.milestone_min_frontmost
         && snapshot.idle_seconds < MILESTONE_MAX_IDLE_SECONDS
     {
         return Some(TriggerCandidate {

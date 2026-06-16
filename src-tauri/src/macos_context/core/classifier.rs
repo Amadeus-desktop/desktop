@@ -32,6 +32,8 @@ pub fn classify_app(bundle_identifier: &str, display_name: &str) -> AppCategory 
             "zed",
             "terminal",
             "iterm",
+            "ghostty",
+            "com.mitchellh.ghostty",
             "com.apple.dt.xcode",
             "com.microsoft.vscode",
             "com.todesktop.230313mzl4w4u92",

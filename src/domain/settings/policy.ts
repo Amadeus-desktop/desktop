@@ -22,7 +22,7 @@ const POLICY_BY_FREQUENCY: Record<TalkFrequency, TalkFrequencyPolicy> = {
   },
   active: {
     cooldownMinutes: 15,
-    pollIntervalMs: 30_000,
+    pollIntervalMs: 20_000,
     dailyUtteranceLimit: 18,
     mockTriggerDelayMs: 450,
   },

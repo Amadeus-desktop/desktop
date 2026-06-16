@@ -2,7 +2,7 @@ use super::*;
 use crate::{
     macos_context::classify_app,
     ocr::OcrContextClass,
-    settings::AppSettings,
+    settings::{talk_frequency_trigger_sensitivity, AppSettings},
     trigger::core::{evaluate_trigger_with_ocr, evaluate_trigger_with_ocr_context},
     trigger::scoring::should_probe_unknown_ocr_for_candidate,
 };
@@ -24,6 +24,13 @@ fn input(snapshot: MacosContextSnapshot) -> TriggerInput {
 
 fn evaluate(snapshot: MacosContextSnapshot) -> TriggerEvaluation {
     evaluate_trigger(input(snapshot), &AppSettings::default())
+}
+
+fn quiet_settings() -> AppSettings {
+    AppSettings {
+        talk_frequency: "quiet".to_string(),
+        ..AppSettings::default()
+    }
 }
 
 fn assert_suppressed(evaluation: &TriggerEvaluation, reason: &str) {
@@ -149,7 +156,7 @@ fn docs_scenario_05_long_work_creates_milestone_when_idle_is_not_deep_pause() {
 fn docs_scenario_06_work_ocr_blocked_signal_alone_stays_silent() {
     let evaluation = evaluate_trigger_with_ocr(
         input(snapshot(AppCategory::Work, 70.0, 6 * MINUTE_MS)),
-        &AppSettings::default(),
+        &quiet_settings(),
         Some("compile error failed cannot resolve module"),
     );
 
@@ -467,7 +474,8 @@ fn docs_scenario_24_very_long_idle_is_treated_as_away_and_suppressed() {
     let away_unknown = snapshot(AppCategory::Unknown, 30.0 * 60.0, 12 * MINUTE_MS);
     assert!(!should_probe_unknown_ocr_for_candidate(
         &away_unknown,
-        &normal_privacy("Unknown Browser")
+        &normal_privacy("Unknown Browser"),
+        talk_frequency_trigger_sensitivity("quiet")
     ));
 }
 
@@ -475,7 +483,7 @@ fn docs_scenario_24_very_long_idle_is_treated_as_away_and_suppressed() {
 fn docs_scenario_25_repeated_ocr_stuckness_is_required_before_standalone_help() {
     let evaluation = evaluate_trigger_with_ocr(
         input(snapshot(AppCategory::Work, 70.0, 6 * MINUTE_MS)),
-        &AppSettings::default(),
+        &quiet_settings(),
         Some("compile error failed cannot resolve module"),
     );
 

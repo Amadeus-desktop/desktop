@@ -41,6 +41,7 @@ export const report: ReportMessages = {
   timeline: {
     loading: "Loading today's moments…",
     empty: "No shared moments yet today.",
+    refresh: "Refresh",
     expand: "Show {count} more",
     collapse: "Show less",
   },

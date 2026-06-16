@@ -1,6 +1,11 @@
 use super::*;
-use crate::trigger::scoring::should_capture_ocr_for_trigger;
-use crate::{macos_context::AppCategory, settings::AppSettings};
+use crate::trigger::scoring::{
+    should_capture_ocr_for_trigger, should_probe_unknown_ocr_for_context,
+};
+use crate::{
+    macos_context::AppCategory,
+    settings::{talk_frequency_trigger_sensitivity, AppSettings},
+};
 use std::time::Duration;
 
 #[test]
@@ -186,6 +191,22 @@ fn trigger_ocr_capture_runs_only_for_persistable_safe_context() {
     assert!(!should_capture_ocr_for_trigger(
         &sensitive_privacy(),
         &persistable
+    ));
+}
+
+#[test]
+fn unknown_safe_context_can_probe_ocr_before_candidate_exists() {
+    let unknown = snapshot(AppCategory::Unknown, 1.0, 5_000);
+
+    assert!(should_probe_unknown_ocr_for_context(
+        &unknown,
+        &normal_privacy("Ghostty"),
+        talk_frequency_trigger_sensitivity("active")
+    ));
+    assert!(!should_probe_unknown_ocr_for_context(
+        &unknown,
+        &sensitive_privacy(),
+        talk_frequency_trigger_sensitivity("active")
     ));
 }
 

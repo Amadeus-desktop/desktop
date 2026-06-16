@@ -10,6 +10,10 @@ fn classifies_known_work_apps() {
         classify_app("com.apple.dt.Xcode", "Xcode"),
         AppCategory::Work
     );
+    assert_eq!(
+        classify_app("com.mitchellh.ghostty", "Ghostty"),
+        AppCategory::Work
+    );
     assert_eq!(classify_app("", "한글"), AppCategory::Work);
 }
 

@@ -49,6 +49,57 @@ fn creates_deep_pause_bubble_for_work_idle() {
 }
 
 #[test]
+fn active_frequency_uses_more_sensitive_deep_pause_threshold() {
+    let mut settings = AppSettings::default();
+    settings.talk_frequency = "active".to_string();
+
+    let evaluation = evaluate_trigger(
+        TriggerInput {
+            snapshot: snapshot(AppCategory::Work, 15.0, 60 * 1000),
+            privacy: normal_privacy("Ghostty"),
+            history: None,
+            recent_utterance_minutes_ago: None,
+            repeated_app_utterance_blocked: false,
+            work_session_duration_ms: 0,
+            dismissed_recent_count: 0,
+            utterances_today: 0,
+        },
+        &settings,
+    );
+
+    let candidate = evaluation.candidate.expect("active deep pause");
+    assert_eq!(candidate.trigger_type, TriggerType::DeepPause);
+    assert_eq!(candidate.reason, "work_idle_after_sustained_focus");
+    assert_eq!(evaluation.action, TriggerAction::Bubble);
+}
+
+#[test]
+fn quiet_frequency_keeps_default_deep_pause_threshold_conservative() {
+    let mut settings = AppSettings::default();
+    settings.talk_frequency = "quiet".to_string();
+
+    let evaluation = evaluate_trigger(
+        TriggerInput {
+            snapshot: snapshot(AppCategory::Work, 15.0, 60 * 1000),
+            privacy: normal_privacy("Ghostty"),
+            history: None,
+            recent_utterance_minutes_ago: None,
+            repeated_app_utterance_blocked: false,
+            work_session_duration_ms: 0,
+            dismissed_recent_count: 0,
+            utterances_today: 0,
+        },
+        &settings,
+    );
+
+    assert_eq!(evaluation.action, TriggerAction::NoAction);
+    assert_eq!(
+        evaluation.suppression_reason,
+        Some("no_trigger".to_string())
+    );
+}
+
+#[test]
 fn suppresses_repeated_utterance_in_same_frontmost_app() {
     let evaluation = evaluate_trigger(
         TriggerInput {
@@ -153,7 +204,66 @@ fn neutral_ocr_summary_does_not_change_trigger_score() {
 }
 
 #[test]
+fn unknown_work_like_ocr_can_create_active_work_milestone() {
+    let evaluation = evaluate_trigger_with_ocr_context(
+        TriggerInput {
+            snapshot: snapshot(AppCategory::Unknown, 1.0, 60 * 60 * 1000),
+            privacy: normal_privacy("Ghostty"),
+            history: None,
+            recent_utterance_minutes_ago: None,
+            repeated_app_utterance_blocked: false,
+            work_session_duration_ms: 0,
+            dismissed_recent_count: 0,
+            utterances_today: 0,
+        },
+        &AppSettings::default(),
+        Some("cargo check failed cannot resolve symbol"),
+        Some(OcrContextClass::CodeError),
+    );
+
+    let candidate = evaluation.candidate.expect("OCR work milestone");
+    assert_eq!(candidate.trigger_type, TriggerType::Milestone);
+    assert_eq!(candidate.reason, "unknown_work_like_ocr_milestone");
+    assert_eq!(evaluation.action, TriggerAction::Conversation);
+    assert!(evaluation.should_persist);
+}
+
+#[test]
+fn unknown_video_ocr_after_work_history_can_create_drift() {
+    let mut settings = AppSettings::default();
+    settings.talk_frequency = "active".to_string();
+    let mut history = ProcessHistoryWindow::default();
+    history.work_cluster_duration_ms = 5 * 60 * 1000;
+    history.app_switch_count = 1;
+
+    let evaluation = evaluate_trigger_with_ocr_context(
+        TriggerInput {
+            snapshot: snapshot(AppCategory::Unknown, 46.0, 1),
+            privacy: normal_privacy("Google Chrome"),
+            history: Some(history),
+            recent_utterance_minutes_ago: None,
+            repeated_app_utterance_blocked: false,
+            work_session_duration_ms: 0,
+            dismissed_recent_count: 0,
+            utterances_today: 0,
+        },
+        &settings,
+        Some("video player timeline subtitles"),
+        Some(OcrContextClass::VideoPlayer),
+    );
+
+    let candidate = evaluation.candidate.expect("video drift candidate");
+    assert_eq!(candidate.trigger_type, TriggerType::Drift);
+    assert_eq!(candidate.reason, "unknown_video_ocr_after_work");
+    assert_eq!(evaluation.action, TriggerAction::Bubble);
+    assert!(evaluation.should_persist);
+}
+
+#[test]
 fn ocr_blocked_signal_alone_does_not_create_deep_pause_candidate_before_idle_threshold() {
+    let mut settings = AppSettings::default();
+    settings.talk_frequency = "quiet".to_string();
+
     let evaluation = evaluate_trigger_with_ocr(
         TriggerInput {
             snapshot: snapshot(AppCategory::Work, 70.0, 6 * 60 * 1000),
@@ -165,7 +275,7 @@ fn ocr_blocked_signal_alone_does_not_create_deep_pause_candidate_before_idle_thr
             dismissed_recent_count: 0,
             utterances_today: 0,
         },
-        &AppSettings::default(),
+        &settings,
         Some("compile error failed cannot resolve module"),
     );
 

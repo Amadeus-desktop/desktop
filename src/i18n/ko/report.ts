@@ -41,6 +41,7 @@ export const report: ReportMessages = {
   timeline: {
     loading: "오늘의 순간을 불러오는 중이에요.",
     empty: "아직 함께한 기록이 없어요.",
+    refresh: "새로고침",
     expand: "더 보기 ({count}개)",
     collapse: "접기",
   },

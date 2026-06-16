@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { REPORT_TIMELINE_LIMIT } from "../../../domain/report";
 import { getLocale, LOCALE_TAGS, useI18n } from "../../../i18n";
 import { useLifecycleFetch } from "../../../lib/hooks/useLifecycleFetch";
@@ -13,9 +13,15 @@ export function useReport() {
   const [timelineState, setTimelineState] = useState<"loading" | "ready">(
     "loading",
   );
+  const [refreshRevision, setRefreshRevision] = useState(0);
+
+  const refreshReport = useCallback(() => {
+    setTimelineState("loading");
+    setRefreshRevision((revision) => revision + 1);
+  }, []);
 
   useLifecycleFetch({
-    deps: [t],
+    deps: [t, refreshRevision],
     fetch: async (isActive) => {
       try {
         const nextEvents = await listTimelineEvents(REPORT_TIMELINE_LIMIT);
@@ -44,6 +50,7 @@ export function useReport() {
     reportMetrics,
     workTimeline,
     timelineState,
+    refreshReport,
   };
 }
 

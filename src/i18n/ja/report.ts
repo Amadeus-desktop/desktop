@@ -41,6 +41,7 @@ export const report: ReportMessages = {
   timeline: {
     loading: "今日の瞬間を読み込んでいます。",
     empty: "まだ一緒にした記録がありません。",
+    refresh: "更新",
     expand: "さらに{count}件表示",
     collapse: "閉じる",
   },

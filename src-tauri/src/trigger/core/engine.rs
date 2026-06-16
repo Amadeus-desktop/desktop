@@ -1,6 +1,7 @@
 use crate::ocr::OcrContextClass;
 use crate::settings::{
-    talk_frequency_cooldown_minutes, talk_frequency_daily_utterance_limit, AppSettings,
+    talk_frequency_cooldown_minutes, talk_frequency_daily_utterance_limit,
+    talk_frequency_trigger_sensitivity, AppSettings,
 };
 
 use super::{
@@ -33,6 +34,8 @@ pub(crate) fn evaluate_trigger_with_ocr_context(
     redacted_ocr_summary: Option<&str>,
     ocr_context_class: Option<OcrContextClass>,
 ) -> TriggerEvaluation {
+    let sensitivity = talk_frequency_trigger_sensitivity(&settings.talk_frequency);
+
     if input.privacy.should_suppress_utterance {
         return suppressed("privacy");
     }
@@ -51,19 +54,32 @@ pub(crate) fn evaluate_trigger_with_ocr_context(
     if should_suppress_away_idle(&input) {
         return suppressed("away_idle");
     }
-    if should_suppress_active_input_milestone(&input) {
+    if should_suppress_active_input_milestone(&input, sensitivity) {
         return suppressed("active_input_guard");
     }
     if let Some(reason) = exception_suppression(&input) {
         return suppressed(reason);
     }
 
-    let Some(candidate) = select_candidate(&input.snapshot)
-        .or_else(|| select_work_cluster_candidate(&input.snapshot, input.history.as_ref()))
+    let Some(candidate) = select_candidate(&input.snapshot, sensitivity)
         .or_else(|| {
-            select_work_session_milestone_candidate(&input.snapshot, input.work_session_duration_ms)
+            select_work_cluster_candidate(&input.snapshot, input.history.as_ref(), sensitivity)
         })
-        .or_else(|| select_unknown_ocr_candidate(&input.snapshot, ocr_context_class))
+        .or_else(|| {
+            select_work_session_milestone_candidate(
+                &input.snapshot,
+                input.work_session_duration_ms,
+                sensitivity,
+            )
+        })
+        .or_else(|| {
+            select_unknown_ocr_candidate(
+                &input.snapshot,
+                ocr_context_class,
+                input.history.as_ref(),
+                sensitivity,
+            )
+        })
     else {
         return suppressed("no_trigger");
     };
