@@ -18,7 +18,7 @@ export function NoteBubble({ children, className, animate = true }: NoteBubblePr
         className,
       )}
     >
-      {children}
+      <div className={companionStyles.noteBubbleContent}>{children}</div>
     </article>
   );
 }

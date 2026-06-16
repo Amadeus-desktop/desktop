@@ -1,5 +1,6 @@
 import type { AppLocale } from "../../../i18n";
 import { cn } from "../../../lib/utils/cn";
+import { glassStyles, shellBadgeClass, shellText } from "../../../ui/theme/shellStyles";
 import type {
   PrivacyAssessment,
   ScreenCapturePermissionStatus,
@@ -16,8 +17,8 @@ type PerceptionStatusBarProps = {
 
 const toneDotClass = {
   active: "bg-[color:var(--accent)] shadow-[0_0_10px_rgb(var(--accent-rgb)/0.55)]",
-  paused: "bg-white/35 shadow-none",
-  blocked: "bg-[#fdba74] shadow-[0_0_8px_rgb(253_186_116_/_0.4)]",
+  paused: "bg-[color:var(--shell-ink-faint)] shadow-none",
+  blocked: "bg-[color:var(--report-tone-peach)] shadow-[0_0_8px_rgb(251_146_60_/_0.35)]",
   error: "bg-[#fca5a5] shadow-[0_0_8px_rgb(252_165_165_/_0.35)]",
 } as const;
 
@@ -37,14 +38,21 @@ export function PerceptionStatusBar({
       : labels.inactive;
 
   return (
-    <article className="mt-4 overflow-hidden rounded-[18px] border border-[color:rgb(var(--accent-rgb)/0.18)] bg-gradient-to-br from-[color:rgb(var(--accent-rgb)/0.10)] via-[#222226] to-[#222226] px-3.5 py-3">
+    <article
+      className={cn(
+        "mt-4 overflow-hidden px-3.5 py-3",
+        glassStyles.radiusCard,
+        "border border-[color:var(--shell-selection-border)]",
+        "bg-gradient-to-br from-[color:var(--shell-selection-bg)] via-[color:var(--shell-row)] to-[color:var(--shell-panel)]",
+      )}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2.5">
           <span
             className={cn("size-2 shrink-0 rounded-full", toneDotClass[tone])}
             aria-hidden="true"
           />
-          <p className="text-[13px] font-medium leading-5 text-[color:var(--accent-soft)]">
+          <p className={cn("text-[13px] font-medium leading-5", shellText.primary)}>
             {statusLabel}
           </p>
         </div>
@@ -52,19 +60,25 @@ export function PerceptionStatusBar({
           className={cn(
             "shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-medium",
             enabled && !sensitive
-              ? "border border-[color:rgb(var(--accent-rgb)/0.28)] bg-[color:rgb(var(--accent-rgb)/0.12)] text-[color:var(--accent-soft)]"
+              ? "border border-[color:var(--shell-selection-border)] bg-[color:var(--shell-selection-bg)] text-[color:var(--accent)]"
               : sensitive
-                ? "border border-[#fdba74]/28 bg-[#fdba74]/12 text-[#fed7aa]"
-                : "border border-[#48484f] bg-[#2c2c30] text-white/45",
+                ? "border border-[color:var(--report-tone-peach)/0.28)] bg-[color:var(--report-tone-peach-bg)] text-[color:var(--report-tone-peach)]"
+                : shellBadgeClass,
           )}
         >
           {labels.title} · {privacyLabel}
         </span>
       </div>
-      <div className="mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-[10px] leading-4 text-white/42">
+      <div className={cn("mt-2.5 flex flex-wrap gap-x-4 gap-y-1 text-[10px] leading-4", shellText.faint)}>
         <span>
           {labels.screenPermission}:{" "}
-          <span className={permissionStatus?.granted ? "text-[color:var(--accent-soft)]" : "text-white/55"}>
+          <span
+            className={cn(
+              permissionStatus?.granted
+                ? "font-medium text-[color:var(--accent)]"
+                : shellText.muted,
+            )}
+          >
             {permissionStatus?.granted
               ? labels.permissionGranted
               : labels.permissionNeeded}
@@ -72,7 +86,13 @@ export function PerceptionStatusBar({
         </span>
         <span>
           {labels.sensitiveState}:{" "}
-          <span className={sensitive ? "text-[#fed7aa]" : "text-[color:var(--accent-soft)]"}>
+          <span
+            className={
+              sensitive
+                ? "text-[color:var(--report-tone-peach)]"
+                : "text-[color:var(--accent)]"
+            }
+          >
             {sensitive
               ? reasonLabel(assessment?.reason, labels)
               : labels.passed}

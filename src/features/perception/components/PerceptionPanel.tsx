@@ -1,3 +1,4 @@
+import { useI18n } from "../../../i18n";
 import {
   AdvancedSection,
   IosSwitch,
@@ -11,7 +12,7 @@ import {
   formatPrivacyKeywordsInput,
   parsePrivacyKeywordsInput,
 } from "../../../domain/context";
-import { useI18n } from "../../../i18n";
+import { shellFieldClass } from "../../../ui/theme/shellStyles";
 import { useSettings } from "../../settings";
 import { LiveContextLog } from "./LiveContextLog";
 import { PerceptionStatusBar } from "./PerceptionStatusBar";
@@ -110,7 +111,7 @@ export function PerceptionPanel() {
                 setCustomPrivacyKeywords(parsePrivacyKeywordsInput(value))
               }
               label={t.perception.privacyKeywords.inputLabel}
-              className="w-full rounded-[14px] border border-[#48484f] bg-[#2c2c30] px-3 py-2 text-left text-[12px] text-white outline-none transition focus:border-[color:rgb(var(--accent-rgb)/0.45)]"
+              className={shellFieldClass}
             />
           </SettingRow>
         ) : null}
