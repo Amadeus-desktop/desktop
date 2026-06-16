@@ -7,11 +7,13 @@ import {
   createMockUtteranceEvent,
   enqueueMockSyncPayload,
   getOrCreateMockConversationSession,
+  listMockActivityObservations,
   listMockTimelineEvents,
 } from "../../../mocks/timeline";
 import { isTauriRuntime } from "../../../lib/tauri/runtime";
 import type {
   ContextEvent,
+  ActivityObservation,
   AppendConversationMessageInput,
   ConversationMessage,
   ConversationSession,
@@ -119,6 +121,16 @@ export async function listTimelineEvents(limit = 20): Promise<TimelineEvent[]> {
   }
 
   return listMockTimelineEvents(limit);
+}
+
+export async function listActivityObservations(
+  limit = 80,
+): Promise<ActivityObservation[]> {
+  if (isTauriRuntime()) {
+    return invoke<ActivityObservation[]>("list_activity_observations", { limit });
+  }
+
+  return listMockActivityObservations();
 }
 
 export async function clearLocalTimelineData(): Promise<number> {

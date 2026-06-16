@@ -1,11 +1,11 @@
 use tauri::State;
 
 use super::{
-    AppendConversationMessageInput, CommandError, ContextEvent, ConversationMessage,
-    ConversationSession, CreateContextEventInput, CreateLocalMemoryInput, CreateUserReactionInput,
-    CreateUtteranceEventInput, EnqueueSyncPayloadInput, GetOrCreateConversationSessionInput,
-    ListConversationMessagesInput, LocalMemory, SyncQueueRow, TimelineError, TimelineEvent,
-    TimelineState, UserReaction, UtteranceEvent,
+    ActivityObservation, AppendConversationMessageInput, CommandError, ContextEvent,
+    ConversationMessage, ConversationSession, CreateContextEventInput, CreateLocalMemoryInput,
+    CreateUserReactionInput, CreateUtteranceEventInput, EnqueueSyncPayloadInput,
+    GetOrCreateConversationSessionInput, ListConversationMessagesInput, LocalMemory, SyncQueueRow,
+    TimelineError, TimelineEvent, TimelineState, UserReaction, UtteranceEvent,
 };
 
 #[tauri::command]
@@ -86,6 +86,16 @@ pub fn list_timeline_events(
     limit: i64,
 ) -> Result<Vec<TimelineEvent>, CommandError> {
     with_repository(&state, |repository| repository.list_timeline_events(limit))
+}
+
+#[tauri::command]
+pub fn list_activity_observations(
+    state: State<'_, TimelineState>,
+    limit: i64,
+) -> Result<Vec<ActivityObservation>, CommandError> {
+    with_repository(&state, |repository| {
+        repository.list_activity_observations(limit)
+    })
 }
 
 #[tauri::command]

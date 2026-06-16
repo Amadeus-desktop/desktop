@@ -1,5 +1,6 @@
 import type {
   AppendConversationMessageInput,
+  ActivityObservation,
   ConversationMessage,
   ConversationSession,
   ContextEvent,
@@ -179,6 +180,10 @@ export function listMockTimelineEvents(limit = 20): TimelineEvent[] {
   return [...events]
     .sort((left, right) => right.occurredAt - left.occurredAt)
     .slice(0, limit);
+}
+
+export function listMockActivityObservations(): ActivityObservation[] {
+  return [];
 }
 
 function nextMockId(prefix: string) {

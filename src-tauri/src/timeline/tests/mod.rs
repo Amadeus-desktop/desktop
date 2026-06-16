@@ -148,6 +148,70 @@ fn clears_local_timeline_data() {
 }
 
 #[test]
+fn lists_activity_observations_newest_first() {
+    let mut repository = TimelineRepository::open_in_memory().expect("in-memory db opens");
+    repository.migrate().expect("migration succeeds");
+
+    repository
+        .record_activity_observation(RecordActivityObservationInput {
+            app_name: "Zed".to_string(),
+            bundle_identifier: "dev.zed.Zed".to_string(),
+            process_id: 123,
+            app_category: "Work".to_string(),
+            browser_url_host: None,
+            browser_url_class: None,
+            idle_seconds: 0.5,
+            frontmost_duration_ms: 60_000,
+            is_fullscreen: false,
+            sensitive: false,
+            capture_suppressed: false,
+            trigger_action: "NoAction".to_string(),
+            trigger_candidate_type: None,
+            speakability_score: 0,
+            source_kind: "Process".to_string(),
+            metadata_json: "{}".to_string(),
+        })
+        .expect("first activity observation is stored");
+    repository
+        .record_activity_observation(RecordActivityObservationInput {
+            app_name: "Google Chrome".to_string(),
+            bundle_identifier: "com.google.Chrome".to_string(),
+            process_id: 456,
+            app_category: "NonWork".to_string(),
+            browser_url_host: Some("youtube.com".to_string()),
+            browser_url_class: Some("Video".to_string()),
+            idle_seconds: 1.0,
+            frontmost_duration_ms: 120_000,
+            is_fullscreen: true,
+            sensitive: false,
+            capture_suppressed: false,
+            trigger_action: "Bubble".to_string(),
+            trigger_candidate_type: Some("drift".to_string()),
+            speakability_score: 74,
+            source_kind: "TriggerPoll".to_string(),
+            metadata_json: "{}".to_string(),
+        })
+        .expect("second activity observation is stored");
+
+    let observations = repository
+        .list_activity_observations(10)
+        .expect("activity observations are listed");
+
+    assert_eq!(observations.len(), 2);
+    assert_eq!(observations[0].app_name, "Google Chrome");
+    assert_eq!(
+        observations[0].browser_url_host.as_deref(),
+        Some("youtube.com")
+    );
+    assert_eq!(
+        observations[0].trigger_candidate_type.as_deref(),
+        Some("drift")
+    );
+    assert!(observations[0].is_fullscreen);
+    assert_eq!(observations[1].app_name, "Zed");
+}
+
+#[test]
 fn migration_prepares_phase_6_local_tables() {
     let mut repository = TimelineRepository::open_in_memory().expect("in-memory db opens");
     repository.migrate().expect("migration succeeds");

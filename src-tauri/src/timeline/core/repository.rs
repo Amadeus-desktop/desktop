@@ -438,6 +438,22 @@ impl TimelineRepository {
             .map_err(TimelineError::from)
     }
 
+    pub fn list_activity_observations(
+        &self,
+        limit: i64,
+    ) -> Result<Vec<ActivityObservation>, TimelineError> {
+        let safe_limit = limit.clamp(1, 200);
+        let mut statement = self.connection.prepare(
+            "SELECT id, observed_at_ms, app_name, bundle_identifier, process_id, app_category, browser_url_host, browser_url_class, idle_seconds, frontmost_duration_ms, is_fullscreen, sensitive, capture_suppressed, trigger_action, trigger_candidate_type, speakability_score, source_kind, metadata_json
+             FROM activity_observations
+             ORDER BY observed_at_ms DESC
+             LIMIT ?1",
+        )?;
+        let rows = statement.query_map(params![safe_limit], activity_observation_from_row)?;
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(TimelineError::from)
+    }
+
     pub fn clear_local_data(&mut self) -> Result<usize, TimelineError> {
         let transaction = self.connection.transaction()?;
         let mut deleted = 0;
@@ -497,6 +513,31 @@ fn conversation_message_from_row(
         client_sequence: row.get(8)?,
         created_at_ms: row.get(9)?,
         server_received_at_ms: row.get(10)?,
+    })
+}
+
+fn activity_observation_from_row(
+    row: &rusqlite::Row<'_>,
+) -> Result<ActivityObservation, rusqlite::Error> {
+    Ok(ActivityObservation {
+        id: row.get(0)?,
+        observed_at_ms: row.get(1)?,
+        app_name: row.get(2)?,
+        bundle_identifier: row.get(3)?,
+        process_id: row.get(4)?,
+        app_category: row.get(5)?,
+        browser_url_host: row.get(6)?,
+        browser_url_class: row.get(7)?,
+        idle_seconds: row.get(8)?,
+        frontmost_duration_ms: row.get(9)?,
+        is_fullscreen: row.get::<_, i64>(10)? != 0,
+        sensitive: row.get::<_, i64>(11)? != 0,
+        capture_suppressed: row.get::<_, i64>(12)? != 0,
+        trigger_action: row.get(13)?,
+        trigger_candidate_type: row.get(14)?,
+        speakability_score: row.get(15)?,
+        source_kind: row.get(16)?,
+        metadata_json: row.get(17)?,
     })
 }
 

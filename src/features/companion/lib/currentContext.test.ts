@@ -136,6 +136,75 @@ describe("buildCompanionCurrentContextFromEvents", () => {
     ]);
   });
 
+  it("uses stored activity observations before timeline context summaries", () => {
+    const now = new Date();
+    now.setHours(16, 0, 0, 0);
+    const occurredAt = now.getTime();
+
+    const context = buildCompanionCurrentContextFromEvents(
+      [
+        {
+          id: "context-stale",
+          kind: "context",
+          occurredAt,
+          title: "Unknown App",
+          subtitle: "[redacted]",
+          metadataJson: JSON.stringify({
+            category: "Unknown",
+            frontmostDurationMs: 90 * 60 * 1000,
+          }),
+        },
+      ],
+      {
+        nowMs: occurredAt,
+        activityObservations: [
+          {
+            id: "act-work",
+            observedAtMs: occurredAt + 1_000,
+            appName: "Zed",
+            bundleIdentifier: "dev.zed.Zed",
+            processId: 123,
+            appCategory: "Work",
+            browserUrlHost: null,
+            browserUrlClass: null,
+            idleSeconds: 0,
+            frontmostDurationMs: 35 * 60 * 1000,
+            isFullscreen: false,
+            sensitive: false,
+            captureSuppressed: false,
+            triggerAction: "Bubble",
+            triggerCandidateType: "deep_pause",
+            speakabilityScore: 71,
+            sourceKind: "TriggerPoll",
+            metadataJson: "{}",
+          },
+        ],
+      },
+    );
+
+    const summary = JSON.parse(context?.summary ?? "{}") as {
+      currentReason: {
+        triggerType: string | null;
+        triggerReason: string | null;
+        speakabilityScore: number | null;
+      };
+      today: {
+        focusMinutes: number;
+        activities: Array<{ label: string; kind: string; minutes: number }>;
+      };
+    };
+
+    expect(summary.currentReason).toMatchObject({
+      triggerType: "deep_pause",
+      triggerReason: "Bubble",
+      speakabilityScore: 71,
+    });
+    expect(summary.today.focusMinutes).toBe(35);
+    expect(summary.today.activities).toEqual([
+      { label: "Zed", kind: "work", minutes: 35, observations: 1 },
+    ]);
+  });
+
   it("returns null when there is no nudge and no timeline context today", () => {
     expect(buildCompanionCurrentContextFromEvents([], { nowMs: Date.now() })).toBeNull();
   });

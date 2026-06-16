@@ -55,6 +55,27 @@ export type ContextEvent = CreateContextEventInput & {
   occurredAt: number;
 };
 
+export type ActivityObservation = {
+  id: string;
+  observedAtMs: number;
+  appName: string;
+  bundleIdentifier: string;
+  processId: number;
+  appCategory: string;
+  browserUrlHost?: string | null;
+  browserUrlClass?: string | null;
+  idleSeconds: number;
+  frontmostDurationMs: number;
+  isFullscreen: boolean;
+  sensitive: boolean;
+  captureSuppressed: boolean;
+  triggerAction: string;
+  triggerCandidateType?: string | null;
+  speakabilityScore: number;
+  sourceKind: string;
+  metadataJson: string;
+};
+
 export type UtteranceEvent = CreateUtteranceEventInput & {
   id: string;
   occurredAt: number;
