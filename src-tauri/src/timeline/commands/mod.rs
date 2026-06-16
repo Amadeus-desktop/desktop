@@ -4,8 +4,9 @@ use super::{
     ActivityObservation, AppendConversationMessageInput, CommandError, ContextEvent,
     ConversationMessage, ConversationSession, CreateContextEventInput, CreateLocalMemoryInput,
     CreateUserReactionInput, CreateUtteranceEventInput, EnqueueSyncPayloadInput,
-    GetOrCreateConversationSessionInput, ListConversationMessagesInput, LocalMemory, SyncQueueRow,
-    TimelineError, TimelineEvent, TimelineState, UserReaction, UtteranceEvent, WorkSession,
+    GetLocalPersonaInput, GetOrCreateConversationSessionInput, ListConversationMessagesInput,
+    LocalMemory, LocalPersonaCacheRow, SyncQueueRow, TimelineError, TimelineEvent, TimelineState,
+    UpsertLocalPersonasInput, UserReaction, UtteranceEvent, WorkSession,
 };
 
 #[tauri::command]
@@ -40,6 +41,29 @@ pub fn create_local_memory(
     input: CreateLocalMemoryInput,
 ) -> Result<LocalMemory, CommandError> {
     with_repository(&state, |repository| repository.create_local_memory(input))
+}
+
+#[tauri::command]
+pub fn upsert_local_personas(
+    state: State<'_, TimelineState>,
+    input: UpsertLocalPersonasInput,
+) -> Result<Vec<LocalPersonaCacheRow>, CommandError> {
+    with_repository(&state, |repository| repository.upsert_local_personas(input))
+}
+
+#[tauri::command]
+pub fn list_local_personas(
+    state: State<'_, TimelineState>,
+) -> Result<Vec<LocalPersonaCacheRow>, CommandError> {
+    with_repository(&state, |repository| repository.list_local_personas())
+}
+
+#[tauri::command]
+pub fn get_local_persona(
+    state: State<'_, TimelineState>,
+    input: GetLocalPersonaInput,
+) -> Result<Option<LocalPersonaCacheRow>, CommandError> {
+    with_repository(&state, |repository| repository.get_local_persona(input))
 }
 
 #[tauri::command]

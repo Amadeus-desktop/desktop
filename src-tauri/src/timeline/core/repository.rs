@@ -4,6 +4,10 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+use crate::timeline::{
+    GetLocalPersonaInput, LocalPersonaCacheInput, LocalPersonaCacheRow, UpsertLocalPersonasInput,
+};
+
 use super::{
     migrations::{apply_local_schema, local_schema_environment_from_env},
     validate_local_memory_input, validate_sync_payload_envelope, ActivityObservation,
@@ -157,6 +161,110 @@ impl TimelineRepository {
             params![memory.id, memory.persona_id, memory.memory_type, memory.content, memory.scope, memory.confidence, memory.created_at_ms, memory.updated_at_ms],
         )?;
         Ok(memory)
+    }
+
+    pub fn upsert_local_personas(
+        &mut self,
+        input: UpsertLocalPersonasInput,
+    ) -> Result<Vec<LocalPersonaCacheRow>, TimelineError> {
+        for persona in &input.personas {
+            validate_local_persona_cache_input(persona)?;
+        }
+
+        let rows = input
+            .personas
+            .iter()
+            .map(LocalPersonaCacheRow::from)
+            .collect::<Vec<_>>();
+        let transaction = self.connection.transaction()?;
+        {
+            let mut statement = transaction.prepare(
+                "INSERT INTO local_personas (
+                    id,
+                    remote_persona_id,
+                    slug,
+                    name,
+                    base_tone,
+                    relationship_type,
+                    world_type,
+                    static_prompt_json,
+                    persona_state_json,
+                    remote_version,
+                    last_pulled_version,
+                    pending_mutation_id,
+                    sync_status,
+                    updated_at_ms
+                 )
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)
+                 ON CONFLICT(id) DO UPDATE SET
+                    remote_persona_id = excluded.remote_persona_id,
+                    slug = excluded.slug,
+                    name = excluded.name,
+                    base_tone = excluded.base_tone,
+                    relationship_type = excluded.relationship_type,
+                    world_type = excluded.world_type,
+                    static_prompt_json = excluded.static_prompt_json,
+                    persona_state_json = excluded.persona_state_json,
+                    remote_version = excluded.remote_version,
+                    last_pulled_version = excluded.last_pulled_version,
+                    pending_mutation_id = excluded.pending_mutation_id,
+                    sync_status = excluded.sync_status,
+                    updated_at_ms = excluded.updated_at_ms",
+            )?;
+            for persona in &input.personas {
+                statement.execute(params![
+                    persona.id,
+                    persona.remote_persona_id,
+                    persona.slug,
+                    persona.name,
+                    persona.base_tone,
+                    persona.relationship_type,
+                    persona.world_type,
+                    persona.static_prompt_json,
+                    persona.persona_state_json,
+                    persona.remote_version,
+                    persona.last_pulled_version,
+                    persona.pending_mutation_id,
+                    persona.sync_status,
+                    persona.updated_at_ms,
+                ])?;
+            }
+        }
+        transaction.commit()?;
+        Ok(rows)
+    }
+
+    pub fn list_local_personas(&self) -> Result<Vec<LocalPersonaCacheRow>, TimelineError> {
+        let mut statement = self.connection.prepare(
+            "SELECT id, remote_persona_id, slug, name, base_tone, relationship_type, world_type, static_prompt_json, persona_state_json, remote_version, last_pulled_version, pending_mutation_id, sync_status, updated_at_ms
+             FROM local_personas
+             WHERE sync_status != 'deleted'
+             ORDER BY updated_at_ms DESC, name ASC",
+        )?;
+        let rows = statement.query_map([], local_persona_cache_row_from_row)?;
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(TimelineError::from)
+    }
+
+    pub fn get_local_persona(
+        &self,
+        input: GetLocalPersonaInput,
+    ) -> Result<Option<LocalPersonaCacheRow>, TimelineError> {
+        let slug_or_remote_id = input.slug_or_remote_id.trim();
+        if slug_or_remote_id.is_empty() {
+            return Ok(None);
+        }
+
+        let mut statement = self.connection.prepare(
+            "SELECT id, remote_persona_id, slug, name, base_tone, relationship_type, world_type, static_prompt_json, persona_state_json, remote_version, last_pulled_version, pending_mutation_id, sync_status, updated_at_ms
+             FROM local_personas
+             WHERE (slug = ?1 OR remote_persona_id = ?1) AND sync_status != 'deleted'
+             ORDER BY updated_at_ms DESC, name ASC
+             LIMIT 1",
+        )?;
+        let mut rows =
+            statement.query_map(params![slug_or_remote_id], local_persona_cache_row_from_row)?;
+        rows.next().transpose().map_err(TimelineError::from)
     }
 
     pub fn record_activity_observation(
@@ -594,6 +702,48 @@ fn conversation_session_from_row(
     })
 }
 
+impl From<&LocalPersonaCacheInput> for LocalPersonaCacheRow {
+    fn from(input: &LocalPersonaCacheInput) -> Self {
+        Self {
+            id: input.id.clone(),
+            remote_persona_id: input.remote_persona_id.clone(),
+            slug: input.slug.clone(),
+            name: input.name.clone(),
+            base_tone: input.base_tone.clone(),
+            relationship_type: input.relationship_type.clone(),
+            world_type: input.world_type.clone(),
+            static_prompt_json: input.static_prompt_json.clone(),
+            persona_state_json: input.persona_state_json.clone(),
+            remote_version: input.remote_version,
+            last_pulled_version: input.last_pulled_version,
+            pending_mutation_id: input.pending_mutation_id.clone(),
+            sync_status: input.sync_status.clone(),
+            updated_at_ms: input.updated_at_ms,
+        }
+    }
+}
+
+fn local_persona_cache_row_from_row(
+    row: &rusqlite::Row<'_>,
+) -> Result<LocalPersonaCacheRow, rusqlite::Error> {
+    Ok(LocalPersonaCacheRow {
+        id: row.get(0)?,
+        remote_persona_id: row.get(1)?,
+        slug: row.get(2)?,
+        name: row.get(3)?,
+        base_tone: row.get(4)?,
+        relationship_type: row.get(5)?,
+        world_type: row.get(6)?,
+        static_prompt_json: row.get(7)?,
+        persona_state_json: row.get(8)?,
+        remote_version: row.get(9)?,
+        last_pulled_version: row.get(10)?,
+        pending_mutation_id: row.get(11)?,
+        sync_status: row.get(12)?,
+        updated_at_ms: row.get(13)?,
+    })
+}
+
 fn conversation_message_from_row(
     row: &rusqlite::Row<'_>,
 ) -> Result<ConversationMessage, rusqlite::Error> {
@@ -738,6 +888,20 @@ fn merge_work_session_summary(existing: Option<&str>, next_label: &str) -> Strin
 
 fn parse_metadata_json(metadata_json: &str) -> serde_json::Value {
     serde_json::from_str(metadata_json).unwrap_or_else(|_| serde_json::json!({}))
+}
+
+fn validate_local_persona_cache_input(input: &LocalPersonaCacheInput) -> Result<(), TimelineError> {
+    if input.slug.trim().is_empty() {
+        return Err(TimelineError::Validation(
+            "local persona slug is required".to_string(),
+        ));
+    }
+    if input.remote_persona_id.trim().is_empty() {
+        return Err(TimelineError::Validation(
+            "local persona remote_persona_id is required".to_string(),
+        ));
+    }
+    Ok(())
 }
 
 fn validate_conversation_message_input(
