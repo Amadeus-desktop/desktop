@@ -21,6 +21,20 @@ type AutoUpdateOptions = {
 
 const DEFAULT_UPDATE_DELAY_MS = 8_000;
 
+function describeUpdateError(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === "string") {
+    return error;
+  }
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return "unknown";
+  }
+}
+
 async function defaultCheck(): Promise<UpdateCheckResult> {
   const { check } = await import("@tauri-apps/plugin-updater");
   return check();
@@ -59,7 +73,7 @@ export function scheduleAutoUpdateCheck(options: AutoUpdateOptions = {}) {
         await relaunch();
       } catch (error) {
         logger.warn("updates", "auto update check failed", {
-          error: error instanceof Error ? error.message : "unknown",
+          error: describeUpdateError(error),
         });
       }
     })();

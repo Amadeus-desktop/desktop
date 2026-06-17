@@ -32,6 +32,9 @@ jobs:
       APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
       TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
       TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      PUBLIC_SUPABASE_URL: ${{ vars.PUBLIC_SUPABASE_URL }}
+      PUBLIC_SUPABASE_ANON_KEY: ${{ vars.PUBLIC_SUPABASE_ANON_KEY }}
+      PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
 
     steps:
       - name: Checkout repository
@@ -72,6 +75,21 @@ jobs:
 
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Validate frontend public env
+        run: |
+          missing=0
+          if [ -z "$PUBLIC_SUPABASE_URL" ]; then
+            echo "::error title=Missing Actions variable::PUBLIC_SUPABASE_URL is not set"
+            missing=1
+          fi
+          if [ -z "$PUBLIC_SUPABASE_ANON_KEY" ] && [ -z "$PUBLIC_SUPABASE_PUBLISHABLE_KEY" ]; then
+            echo "::error title=Missing Actions variable::PUBLIC_SUPABASE_ANON_KEY or PUBLIC_SUPABASE_PUBLISHABLE_KEY is required"
+            missing=1
+          fi
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
 
       - name: Validate signing secrets
         run: |
