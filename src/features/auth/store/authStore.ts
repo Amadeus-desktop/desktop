@@ -1,6 +1,7 @@
 import { createExternalStore } from "../../../lib/store/createExternalStore";
 import { isTauriRuntime } from "../../../lib/tauri/runtime";
 import { logger } from "../../../observability/logger";
+import { listen } from "@tauri-apps/api/event";
 import { resetCompanionSession } from "../../companion/lib/companionSessionStore";
 import {
   getOnboardingSnapshot,
@@ -126,8 +127,7 @@ export function hydrateAuth() {
     if (ownsAuthCallbacks) {
       startDeepLinkAuthListener();
     }
-    hydratePromise = (ownsAuthCallbacks ? ensureDevAuthCallbackServer() : Promise.resolve())
-      .then(() => getCurrentSupabaseUser())
+    hydratePromise = getCurrentSupabaseUser()
       .then((supabaseUser) => {
         const user = supabaseUser;
         replaceSnapshot(user, true);
@@ -227,7 +227,6 @@ function startDeepLinkAuthListener() {
 async function startLoopbackAuthListener() {
   if (loopbackUnlisten) return;
 
-  const { listen } = await import("@tauri-apps/api/event");
   loopbackUnlisten = await listen<{ url?: string }>(AMADEUS_AUTH_CALLBACK_EVENT, (event) => {
     const url = event.payload.url;
     if (typeof url !== "string") return;

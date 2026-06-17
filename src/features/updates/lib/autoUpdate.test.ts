@@ -8,6 +8,7 @@ describe("scheduleAutoUpdateCheck", () => {
 
     scheduleAutoUpdateCheck({
       isTauriRuntime: false,
+      isDevBuild: false,
       delayMs: 10,
       check,
       relaunch: vi.fn(),
@@ -28,6 +29,7 @@ describe("scheduleAutoUpdateCheck", () => {
 
     scheduleAutoUpdateCheck({
       isTauriRuntime: true,
+      isDevBuild: false,
       delayMs: 10,
       check: vi.fn().mockResolvedValue({
         version: "0.2.0",

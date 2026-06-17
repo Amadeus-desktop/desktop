@@ -13,6 +13,7 @@ type AutoUpdateLogger = {
 
 type AutoUpdateOptions = {
   isTauriRuntime?: boolean;
+  isDevBuild?: boolean;
   delayMs?: number;
   check?: () => Promise<UpdateCheckResult>;
   relaunch?: () => Promise<void>;
@@ -48,13 +49,14 @@ async function defaultRelaunch(): Promise<void> {
 export function scheduleAutoUpdateCheck(options: AutoUpdateOptions = {}) {
   const {
     isTauriRuntime = detectTauriRuntime(),
+    isDevBuild = import.meta.env.DEV,
     delayMs = DEFAULT_UPDATE_DELAY_MS,
     check = defaultCheck,
     relaunch = defaultRelaunch,
     logger = defaultLogger,
   } = options;
 
-  if (!isTauriRuntime) return;
+  if (!isTauriRuntime || isDevBuild) return;
 
   window.setTimeout(() => {
     void (async () => {

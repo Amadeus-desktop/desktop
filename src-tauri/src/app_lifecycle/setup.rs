@@ -8,7 +8,6 @@ use crate::macos_window::{
 use crate::macos_window::{center_main_window_at_startup, position_companion_window};
 use crate::{
     app_lifecycle::{
-        auth_callback::start_dev_auth_callback_server,
         frontend_ready::FrontendLifecycleState,
         resident_windows::{watch_companion_window_layout, watch_resident_window_close},
         startup::StartupPhaseTimer,
@@ -18,7 +17,7 @@ use crate::{
     llm::{LlmService, LlmState},
     macos_context::ContextBridgeState,
     macos_window::CompanionWindowVisibility,
-    observability::{error as log_error, info as log_info, init as init_logger, LogArea},
+    observability::{info as log_info, init as init_logger, LogArea},
     ocr::{OcrState, ScreenCaptureState},
     settings::{llama_endpoint, SettingsState},
     shared::constants::{APP_DATABASE_FILE_NAME, APP_LOG_FILE_NAME, APP_SETTINGS_FILE_NAME},
@@ -127,19 +126,6 @@ pub fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>>
             position_companion_window(&win);
             watch_companion_window_layout(app.handle(), &win);
             watch_resident_window_close(&win);
-        }
-        phase.finish();
-    }
-
-    #[cfg(debug_assertions)]
-    {
-        let phase = StartupPhaseTimer::start("debug_dev_auth_callback_server_start");
-        match start_dev_auth_callback_server(app.handle().clone()) {
-            Ok(_) => log_info(LogArea::Auth, "debug dev auth callback server ready"),
-            Err(error) => log_error(
-                LogArea::Auth,
-                format!("debug dev auth callback server start failed: {error}"),
-            ),
         }
         phase.finish();
     }
