@@ -73,11 +73,36 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Validate signing secrets
+        run: |
+          missing=0
+          for name in \
+            APPLE_ID \
+            APPLE_PASSWORD \
+            APPLE_TEAM_ID \
+            APPLE_CERTIFICATE \
+            APPLE_CERTIFICATE_PASSWORD \
+            TAURI_SIGNING_PRIVATE_KEY \
+            TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+          do
+            if [ -z "${!name}" ]; then
+              echo "::error title=Missing signing secret::$name is not set"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+
       - name: Import Apple Developer certificate
         env:
           KEYCHAIN_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}
         run: |
-          echo "$APPLE_CERTIFICATE" | base64 --decode > certificate.p12
+          printf "%s" "$APPLE_CERTIFICATE" | base64 --decode > certificate.p12
+          if [ ! -s certificate.p12 ]; then
+            echo "::error title=Invalid Apple certificate::APPLE_CERTIFICATE_BASE64 decoded to an empty file"
+            exit 1
+          fi
           security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
           security default-keychain -s build.keychain
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain

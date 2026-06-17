@@ -1,4 +1,5 @@
 import type { Persona } from "../types";
+import { getPersonaStaticPrompt } from "../../../domain/persona/cards";
 
 const POCKET_INTRO_SUFFIX: Record<Persona["id"], string> = {
   "seoyeon-modern-senior":
@@ -10,7 +11,11 @@ const POCKET_INTRO_SUFFIX: Record<Persona["id"], string> = {
 };
 
 export function generatePocketIntro(nudge: string, persona: Persona): string {
+  const firstMessage = getPersonaStaticPrompt(persona).first_message?.trim();
+  if (firstMessage) {
+    return firstMessage;
+  }
+
   const suffix = POCKET_INTRO_SUFFIX[persona.id];
-  const trimmedNudge = nudge.trim();
-  return trimmedNudge || suffix;
+  return suffix || nudge.trim();
 }

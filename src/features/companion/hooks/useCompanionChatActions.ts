@@ -88,7 +88,8 @@ export function useCompanionChatActions({
     });
     setMessages([]);
     setIsSending(true);
-    const restoredMessages = await restoreCompanionMessagesForPersona(
+
+    const restoredMessagesPromise = restoreCompanionMessagesForPersona(
       selectedPersona.id,
     ).catch((error) => {
       logger.warn("ui", "conversation restore failed", {
@@ -97,76 +98,36 @@ export function useCompanionChatActions({
       });
       return [];
     });
-    if (!isCurrentRestore(restoreId)) {
-      return;
-    }
-    const currentContext = await buildCompanionCurrentContext({
-      nudge,
-    }).catch((error) => {
-      logger.warn("ui", "companion opening context build failed", { error });
-      return nudge
-        ? {
-            source: "user_visible" as const,
-            summary: nudge,
-            allowed_surface: "both" as const,
-          }
-        : null;
-    });
-    if (!isCurrentRestore(restoreId)) {
-      return;
-    }
-
-    const speakFirst = async () => {
-      try {
-        const generation = await resolveCompanionReply(
-          [],
-          selectedPersona,
-          settings,
-          {
-            currentContext,
-          },
-        );
-        return {
-          id: openingId,
-          sender: "companion" as const,
-          text: generation.message,
-        };
-      } catch (error) {
-        logger.warn("ui", "companion opening generation failed", { error });
-        return buildPocketOpeningMessages({
-          nudge,
-          persona: selectedPersona,
-          openingId,
-          restoredMessages: [],
-        })[0];
-      }
-    };
-
-    if (restoredMessages.length > 0) {
-      const openingMessage = await speakFirst();
-      if (!isCurrentRestore(restoreId)) {
-        return;
-      }
-      setMessages(
-        openingMessage ? [openingMessage, ...restoredMessages] : restoredMessages,
-      );
-      setIsSending(false);
-      void recordReaction("opened").catch(() => undefined);
-      return;
-    }
     window.setTimeout(() => {
       if (!isCurrentRestore(restoreId)) {
         setIsSending(false);
         return;
       }
       void (async () => {
-        const openingMessage = await speakFirst();
+        const openingMessage = buildPocketOpeningMessages({
+          nudge,
+          persona: selectedPersona,
+          openingId,
+          restoredMessages: [],
+        })[0];
         if (!isCurrentRestore(restoreId)) {
           setIsSending(false);
           return;
         }
         setMessages(openingMessage ? [openingMessage] : []);
         setIsSending(false);
+
+        const restoredMessages = await restoredMessagesPromise;
+        if (!isCurrentRestore(restoreId) || restoredMessages.length === 0) {
+          return;
+        }
+        setMessages((currentMessages) => {
+          const currentIds = new Set(currentMessages.map((message) => message.id));
+          return [
+            ...currentMessages,
+            ...restoredMessages.filter((message) => !currentIds.has(message.id)),
+          ];
+        });
       })();
     }, POCKET_FIRST_SPEAK_DELAY_MS);
     void recordReaction("opened").catch(() => undefined);
@@ -179,7 +140,6 @@ export function useCompanionChatActions({
     selectedPersona,
     setIsSending,
     setMessages,
-    settings,
   ]);
 
   const openIcon = useCallback(async () => {

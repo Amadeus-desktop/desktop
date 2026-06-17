@@ -8,8 +8,10 @@ import type { AuthUser } from "../types";
 type SupabaseUserLike = Pick<User, "id" | "email" | "app_metadata" | "user_metadata">;
 
 export const AMADEUS_AUTH_CALLBACK_URL = "amadeus://auth/callback";
-export const AMADEUS_WEB_AUTH_CALLBACK_URL = "https://amadeus0.kro.kr/auth/callback";
-export const AMADEUS_DEV_AUTH_CALLBACK_URL = "http://127.0.0.1:17421/auth/callback";
+export const AMADEUS_WEB_AUTH_CALLBACK_URL =
+  "https://amadeus0.kro.kr/auth/callback?client=desktop";
+export const AMADEUS_DEV_AUTH_CALLBACK_URL =
+  "http://127.0.0.1:17421/auth/callback";
 export const AMADEUS_DEV_AUTH_CALLBACK_PORT = "17421";
 export const AMADEUS_AUTH_CALLBACK_EVENT = "amadeus-auth-callback";
 

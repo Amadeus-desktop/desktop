@@ -12,13 +12,13 @@ const kurisu: Persona = {
 };
 
 describe("generatePocketIntro", () => {
-  it("uses the trigger utterance as the first opened-chat message", () => {
+  it("uses the persona card first message instead of repeating the trigger utterance", () => {
     expect(generatePocketIntro("쉬는 중이면 괜찮아.", kurisu)).toBe(
-      "쉬는 중이면 괜찮아.",
+      "아직도 붙잡고 있어? 하아... 그 결론은 너무 성급해. 그래도 네가 막힌 건 사실이니까, 변수부터 줄이자.",
     );
   });
 
-  it("falls back to a persona intro when opened without a nudge", () => {
-    expect(generatePocketIntro("", kurisu)).toContain("관찰 가능한 변수");
+  it("uses the persona card first message when opened without a nudge", () => {
+    expect(generatePocketIntro("", kurisu)).toContain("변수부터 줄이자");
   });
 });

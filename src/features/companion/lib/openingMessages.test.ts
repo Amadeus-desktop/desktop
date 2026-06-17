@@ -11,7 +11,7 @@ const persona: Persona = {
 };
 
 describe("buildPocketOpeningMessages", () => {
-  it("prepends the visible nudge before restored messages", () => {
+  it("prepends the persona opening before restored messages", () => {
     const messages = buildPocketOpeningMessages({
       nudge: "잠깐 쉬어도 괜찮아.",
       persona,
@@ -22,7 +22,7 @@ describe("buildPocketOpeningMessages", () => {
     });
 
     expect(messages.map((message) => message.text)).toEqual([
-      "잠깐 쉬어도 괜찮아.",
+      "헤어진 사람한테 이런 말 하는 거 웃긴데, 늦은 시간이네. 물 한 모금 마실래?",
       "전에 하던 얘기",
     ]);
     expect(messages[0]).toMatchObject({
