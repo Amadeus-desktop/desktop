@@ -4,11 +4,14 @@ use super::{
     ActivityObservation, AppendConversationMessageInput, CommandError, ContextEvent,
     ConversationMessage, ConversationSession, CreateContextEventInput, CreateLocalMemoryInput,
     CreateUserReactionInput, CreateUtteranceEventInput, EnqueueSyncPayloadInput,
-    GetLocalPersonaInput, GetOrCreateConversationSessionInput, ListConversationMessagesInput,
-    ListLocalMemoryCardsInput, ListPendingSyncQueueInput, LocalMemory, LocalMemoryCardRow,
-    LocalPersonaCacheRow, MarkSyncQueueSyncedInput, RecordSyncQueueFailureInput, SyncQueueRow,
-    TimelineError, TimelineEvent, TimelineState, UpsertLocalPersonasInput, UserReaction,
-    UtteranceEvent, WorkSession,
+    GetConversationSessionForMessageInput, GetLocalPersonaInput,
+    GetOrCreateConversationSessionInput, ListConversationMessagesInput, ListLocalMemoryCardsInput,
+    ListPendingConversationMessagesInput, ListPendingSyncQueueInput, LocalMemory,
+    LocalMemoryCardRow, LocalPersonaCacheRow, MarkConversationMessageSyncFailedInput,
+    MarkConversationMessageSyncedInput, MarkConversationSessionSyncedInput,
+    MarkSyncQueueSyncedInput, RecordSyncQueueFailureInput, SyncQueueRow, TimelineError,
+    TimelineEvent, TimelineState, UpsertCloudConversationMessageInput, UpsertLocalPersonasInput,
+    UserReaction, UtteranceEvent, WorkSession,
 };
 
 #[tauri::command]
@@ -85,6 +88,66 @@ pub fn append_conversation_message(
 ) -> Result<ConversationMessage, CommandError> {
     with_repository(&state, |repository| {
         repository.append_conversation_message(input)
+    })
+}
+
+#[tauri::command]
+pub fn list_pending_conversation_messages(
+    state: State<'_, TimelineState>,
+    input: ListPendingConversationMessagesInput,
+) -> Result<Vec<ConversationMessage>, CommandError> {
+    with_repository(&state, |repository| {
+        repository.list_pending_conversation_messages(input)
+    })
+}
+
+#[tauri::command]
+pub fn get_conversation_session_for_message(
+    state: State<'_, TimelineState>,
+    input: GetConversationSessionForMessageInput,
+) -> Result<Option<ConversationSession>, CommandError> {
+    with_repository(&state, |repository| {
+        repository.get_conversation_session_for_message(input)
+    })
+}
+
+#[tauri::command]
+pub fn mark_conversation_session_synced(
+    state: State<'_, TimelineState>,
+    input: MarkConversationSessionSyncedInput,
+) -> Result<ConversationSession, CommandError> {
+    with_repository(&state, |repository| {
+        repository.mark_conversation_session_synced(input)
+    })
+}
+
+#[tauri::command]
+pub fn mark_conversation_message_synced(
+    state: State<'_, TimelineState>,
+    input: MarkConversationMessageSyncedInput,
+) -> Result<ConversationMessage, CommandError> {
+    with_repository(&state, |repository| {
+        repository.mark_conversation_message_synced(input)
+    })
+}
+
+#[tauri::command]
+pub fn mark_conversation_message_sync_failed(
+    state: State<'_, TimelineState>,
+    input: MarkConversationMessageSyncFailedInput,
+) -> Result<ConversationMessage, CommandError> {
+    with_repository(&state, |repository| {
+        repository.mark_conversation_message_sync_failed(input)
+    })
+}
+
+#[tauri::command]
+pub fn upsert_cloud_conversation_message(
+    state: State<'_, TimelineState>,
+    input: UpsertCloudConversationMessageInput,
+) -> Result<ConversationMessage, CommandError> {
+    with_repository(&state, |repository| {
+        repository.upsert_cloud_conversation_message(input)
     })
 }
 

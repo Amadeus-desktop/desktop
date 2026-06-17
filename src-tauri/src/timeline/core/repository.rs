@@ -13,11 +13,13 @@ use super::{
     validate_local_memory_input, validate_sync_payload_envelope, ActivityObservation,
     AppendConversationMessageInput, ContextEvent, ConversationMessage, ConversationSession,
     CreateContextEventInput, CreateLocalMemoryInput, CreateUserReactionInput,
-    CreateUtteranceEventInput, EnqueueSyncPayloadInput, GetOrCreateConversationSessionInput,
-    ListConversationMessagesInput, ListLocalMemoryCardsInput, ListPendingSyncQueueInput,
-    LocalMemory, LocalMemoryCardRow, MarkSyncQueueSyncedInput, RecordActivityObservationInput,
-    RecordSyncQueueFailureInput, SyncQueueRow, TimelineError, TimelineEvent, UserReaction,
-    UtteranceEvent, WorkSession,
+    CreateUtteranceEventInput, EnqueueSyncPayloadInput, GetConversationSessionForMessageInput,
+    GetOrCreateConversationSessionInput, ListConversationMessagesInput, ListLocalMemoryCardsInput,
+    ListPendingConversationMessagesInput, ListPendingSyncQueueInput, LocalMemory,
+    LocalMemoryCardRow, MarkConversationMessageSyncFailedInput, MarkConversationMessageSyncedInput,
+    MarkConversationSessionSyncedInput, MarkSyncQueueSyncedInput, RecordActivityObservationInput,
+    RecordSyncQueueFailureInput, SyncQueueRow, TimelineError, TimelineEvent,
+    UpsertCloudConversationMessageInput, UserReaction, UtteranceEvent, WorkSession,
 };
 
 const WORK_SESSION_MERGE_GAP_MS: i64 = 15 * 60 * 1000;
@@ -456,6 +458,248 @@ impl TimelineRepository {
         Ok(message)
     }
 
+    pub fn list_pending_conversation_messages(
+        &self,
+        input: ListPendingConversationMessagesInput,
+    ) -> Result<Vec<ConversationMessage>, TimelineError> {
+        let limit = input.limit.unwrap_or(20).clamp(1, 100);
+        let mut statement = self.connection.prepare(
+            "SELECT id, cloud_message_id, session_id, role, content, provider, sync_status, idempotency_key, client_sequence, created_at_ms, server_received_at_ms
+             FROM conversation_messages
+             WHERE sync_status IN ('pending', 'retrying')
+             ORDER BY created_at_ms ASC, client_sequence ASC
+             LIMIT ?1",
+        )?;
+        let rows = statement.query_map(params![limit], conversation_message_from_row)?;
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(TimelineError::from)
+    }
+
+    pub fn get_conversation_session_for_message(
+        &self,
+        input: GetConversationSessionForMessageInput,
+    ) -> Result<Option<ConversationSession>, TimelineError> {
+        let local_message_id = input.local_message_id.trim();
+        if local_message_id.is_empty() {
+            return Ok(None);
+        }
+        let mut statement = self.connection.prepare(
+            "SELECT cs.id, cs.cloud_conversation_id, cs.persona_id, cs.source, cs.sync_status, cs.last_synced_message_at_ms, cs.created_at_ms, cs.updated_at_ms
+             FROM conversation_sessions cs
+             INNER JOIN conversation_messages cm ON cm.session_id = cs.id
+             WHERE cm.id = ?1
+             LIMIT 1",
+        )?;
+        let mut rows =
+            statement.query_map(params![local_message_id], conversation_session_from_row)?;
+        rows.next().transpose().map_err(TimelineError::from)
+    }
+
+    pub fn mark_conversation_session_synced(
+        &mut self,
+        input: MarkConversationSessionSyncedInput,
+    ) -> Result<ConversationSession, TimelineError> {
+        self.connection.execute(
+            "UPDATE conversation_sessions
+             SET cloud_conversation_id = ?2,
+                 sync_status = 'synced',
+                 updated_at_ms = ?3
+             WHERE id = ?1",
+            params![
+                input.local_session_id,
+                input.cloud_conversation_id,
+                current_time_ms()?
+            ],
+        )?;
+        self.get_conversation_session_by_id(&input.local_session_id)
+    }
+
+    pub fn mark_conversation_message_synced(
+        &mut self,
+        input: MarkConversationMessageSyncedInput,
+    ) -> Result<ConversationMessage, TimelineError> {
+        self.connection.execute(
+            "UPDATE conversation_messages
+             SET cloud_message_id = ?2,
+                 sync_status = 'synced',
+                 server_received_at_ms = ?3
+             WHERE id = ?1",
+            params![
+                input.local_message_id,
+                input.cloud_message_id,
+                input.server_received_at_ms
+            ],
+        )?;
+        self.get_conversation_message_by_id(&input.local_message_id)
+    }
+
+    pub fn mark_conversation_message_sync_failed(
+        &mut self,
+        input: MarkConversationMessageSyncFailedInput,
+    ) -> Result<ConversationMessage, TimelineError> {
+        let status = if input.retryable { "retrying" } else { "error" };
+        let _last_error = input.last_error.trim();
+        self.connection.execute(
+            "UPDATE conversation_messages
+         SET sync_status = ?2
+             WHERE id = ?1",
+            params![input.local_message_id, status],
+        )?;
+        self.get_conversation_message_by_id(&input.local_message_id)
+    }
+
+    pub fn upsert_cloud_conversation_message(
+        &mut self,
+        input: UpsertCloudConversationMessageInput,
+    ) -> Result<ConversationMessage, TimelineError> {
+        validate_cloud_conversation_message_input(&input)?;
+
+        if let Some(existing) =
+            self.find_conversation_message_by_cloud_id(&input.cloud_message_id)?
+        {
+            return Ok(existing);
+        }
+
+        let session = match self
+            .find_conversation_session_by_cloud_id(&input.cloud_conversation_id)?
+        {
+            Some(session) => session,
+            None => {
+                let (id, now) = self.next_marker("conversation-session")?;
+                let session = ConversationSession {
+                    id,
+                    cloud_conversation_id: input.cloud_conversation_id.clone(),
+                    persona_id: input.persona_id.clone(),
+                    source: "web_mirror".to_string(),
+                    sync_status: "synced".to_string(),
+                    last_synced_message_at_ms: Some(input.server_received_at_ms),
+                    created_at_ms: now,
+                    updated_at_ms: now,
+                };
+                self.connection.execute(
+                    "INSERT INTO conversation_sessions (id, cloud_conversation_id, persona_id, source, sync_status, last_synced_message_at_ms, created_at_ms, updated_at_ms) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                    params![
+                        session.id,
+                        session.cloud_conversation_id,
+                        session.persona_id,
+                        session.source,
+                        session.sync_status,
+                        session.last_synced_message_at_ms,
+                        session.created_at_ms,
+                        session.updated_at_ms
+                    ],
+                )?;
+                session
+            }
+        };
+
+        if let Some(existing) =
+            self.find_conversation_message_by_idempotency(&session.id, &input.idempotency_key)?
+        {
+            self.connection.execute(
+                "UPDATE conversation_messages
+                 SET cloud_message_id = ?2,
+                     sync_status = 'synced',
+                     server_received_at_ms = ?3
+                 WHERE id = ?1",
+                params![
+                    existing.id,
+                    input.cloud_message_id,
+                    input.server_received_at_ms
+                ],
+            )?;
+            return self.get_conversation_message_by_id(&existing.id);
+        }
+
+        let client_sequence = match input.client_sequence {
+            Some(sequence) => sequence,
+            None => self.connection.query_row(
+                "SELECT COALESCE(MAX(client_sequence), 0) + 1 FROM conversation_messages WHERE session_id = ?1",
+                params![session.id],
+                |row| row.get(0),
+            )?,
+        };
+        let local_id = format!("cloud-{}", input.cloud_message_id);
+        self.connection.execute(
+            "INSERT INTO conversation_messages (id, cloud_message_id, session_id, role, content, provider, sync_status, idempotency_key, client_sequence, created_at_ms, server_received_at_ms) VALUES (?1, ?2, ?3, ?4, ?5, ?6, 'synced', ?7, ?8, ?9, ?10)",
+            params![
+                local_id,
+                input.cloud_message_id,
+                session.id,
+                input.role,
+                input.content,
+                input.provider,
+                input.idempotency_key,
+                client_sequence,
+                input.client_created_at_ms,
+                input.server_received_at_ms
+            ],
+        )?;
+        self.get_conversation_message_by_id(&local_id)
+    }
+
+    fn get_conversation_message_by_id(
+        &self,
+        id: &str,
+    ) -> Result<ConversationMessage, TimelineError> {
+        self.connection
+            .query_row(
+                "SELECT id, cloud_message_id, session_id, role, content, provider, sync_status, idempotency_key, client_sequence, created_at_ms, server_received_at_ms
+                 FROM conversation_messages
+                 WHERE id = ?1",
+                params![id],
+                conversation_message_from_row,
+            )
+            .map_err(TimelineError::from)
+    }
+
+    fn find_conversation_message_by_cloud_id(
+        &self,
+        cloud_message_id: &str,
+    ) -> Result<Option<ConversationMessage>, TimelineError> {
+        let mut statement = self.connection.prepare(
+            "SELECT id, cloud_message_id, session_id, role, content, provider, sync_status, idempotency_key, client_sequence, created_at_ms, server_received_at_ms
+             FROM conversation_messages
+             WHERE cloud_message_id = ?1
+             LIMIT 1",
+        )?;
+        let mut rows =
+            statement.query_map(params![cloud_message_id], conversation_message_from_row)?;
+        rows.next().transpose().map_err(TimelineError::from)
+    }
+
+    fn get_conversation_session_by_id(
+        &self,
+        id: &str,
+    ) -> Result<ConversationSession, TimelineError> {
+        self.connection
+            .query_row(
+                "SELECT id, cloud_conversation_id, persona_id, source, sync_status, last_synced_message_at_ms, created_at_ms, updated_at_ms
+                 FROM conversation_sessions
+                 WHERE id = ?1",
+                params![id],
+                conversation_session_from_row,
+            )
+            .map_err(TimelineError::from)
+    }
+
+    fn find_conversation_session_by_cloud_id(
+        &self,
+        cloud_conversation_id: &str,
+    ) -> Result<Option<ConversationSession>, TimelineError> {
+        let mut statement = self.connection.prepare(
+            "SELECT id, cloud_conversation_id, persona_id, source, sync_status, last_synced_message_at_ms, created_at_ms, updated_at_ms
+             FROM conversation_sessions
+             WHERE cloud_conversation_id = ?1 AND sync_status != 'deleted'
+             LIMIT 1",
+        )?;
+        let mut rows = statement.query_map(
+            params![cloud_conversation_id],
+            conversation_session_from_row,
+        )?;
+        rows.next().transpose().map_err(TimelineError::from)
+    }
+
     pub fn list_conversation_messages_for_persona(
         &self,
         input: ListConversationMessagesInput,
@@ -561,7 +805,12 @@ impl TimelineRepository {
                  last_error = ?3,
                  updated_at_ms = ?4
              WHERE id = ?1",
-            params![input.id, status, redact_sync_error(&input.last_error), updated_at_ms],
+            params![
+                input.id,
+                status,
+                redact_sync_error(&input.last_error),
+                updated_at_ms
+            ],
         )?;
         self.get_sync_queue_row(&input.id)
     }
@@ -585,7 +834,7 @@ impl TimelineRepository {
         let mut statement = self.connection.prepare(
             "SELECT id, cloud_conversation_id, persona_id, source, sync_status, last_synced_message_at_ms, created_at_ms, updated_at_ms
              FROM conversation_sessions
-             WHERE persona_id = ?1 AND source = 'app' AND sync_status != 'deleted'
+             WHERE persona_id = ?1 AND sync_status != 'deleted'
              ORDER BY updated_at_ms DESC
              LIMIT 1",
         )?;
@@ -836,8 +1085,8 @@ fn local_memory_card_from_row(
     row: &rusqlite::Row<'_>,
 ) -> Result<LocalMemoryCardRow, rusqlite::Error> {
     let source_message_ids_json: String = row.get(9)?;
-    let source_message_ids = serde_json::from_str::<Vec<String>>(&source_message_ids_json)
-        .unwrap_or_default();
+    let source_message_ids =
+        serde_json::from_str::<Vec<String>>(&source_message_ids_json).unwrap_or_default();
     Ok(LocalMemoryCardRow {
         id: row.get(0)?,
         user_id: String::new(),
@@ -1062,6 +1311,42 @@ fn validate_conversation_message_input(
     if input.idempotency_key.trim().is_empty() {
         return Err(TimelineError::Validation(
             "conversation message idempotency_key is required".to_string(),
+        ));
+    }
+    Ok(())
+}
+
+fn validate_cloud_conversation_message_input(
+    input: &UpsertCloudConversationMessageInput,
+) -> Result<(), TimelineError> {
+    if input.cloud_conversation_id.trim().is_empty() {
+        return Err(TimelineError::Validation(
+            "cloud conversation id is required".to_string(),
+        ));
+    }
+    if input.cloud_message_id.trim().is_empty() {
+        return Err(TimelineError::Validation(
+            "cloud message id is required".to_string(),
+        ));
+    }
+    if input.persona_id.trim().is_empty() {
+        return Err(TimelineError::Validation(
+            "cloud message persona_id is required".to_string(),
+        ));
+    }
+    if !matches!(input.role.as_str(), "user" | "assistant" | "system_summary") {
+        return Err(TimelineError::Validation(
+            "cloud message role is unsupported".to_string(),
+        ));
+    }
+    if input.content.trim().is_empty() {
+        return Err(TimelineError::Validation(
+            "cloud message content is required".to_string(),
+        ));
+    }
+    if input.idempotency_key.trim().is_empty() {
+        return Err(TimelineError::Validation(
+            "cloud message idempotency key is required".to_string(),
         ));
     }
     Ok(())

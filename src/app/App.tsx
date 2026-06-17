@@ -4,11 +4,16 @@ import { ControlCenter } from "../features/control-center";
 import { useControlCenterWindow } from "../features/control-center/hooks/useControlCenterWindow";
 import { hydrateAuth, useAuth, useAuthWindow } from "../features/auth";
 import {
+  pullCloudConversationMessages,
+  syncPendingConversationMessages,
+} from "../features/conversation";
+import {
   hydrateOnboardingProgress,
   OnboardingFlow,
   useOnboarding,
 } from "../features/onboarding";
-import { ensureSettingsSync } from "../features/settings";
+import { syncConversationMemorySummaries } from "../features/memory";
+import { ensureSettingsSync, useAppSettings } from "../features/settings";
 import { useTauriDevTools } from "../lib/tauri/useTauriDevTools";
 import { logger } from "../observability/logger";
 import { scheduleFrontendFirstPaintRecord } from "../features/lifecycle";
@@ -17,6 +22,7 @@ import { useShellTheme } from "../ui";
 
 function App() {
   const { hydrated: authHydrated, isAuthenticated, logoutTransitioning, logoutPhase } = useAuth();
+  const appSettings = useAppSettings();
   const onboarding = useOnboarding(isAuthenticated, logoutTransitioning);
   useShellTheme();
   useTauriDevTools();
@@ -60,6 +66,24 @@ function App() {
       ensureSettingsSync();
     }
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !appSettings.hydrated) return;
+
+    const personaId = appSettings.settings.companionPersonaId;
+    void syncPendingConversationMessages()
+      .then(() => pullCloudConversationMessages({ personaId }))
+      .then(() => syncConversationMemorySummaries({ personaId }))
+      .catch((error) => {
+        logger.warn("auth", "conversation sync failed", {
+          error: error instanceof Error ? error.message : "unknown",
+        });
+      });
+  }, [
+    appSettings.hydrated,
+    appSettings.settings.companionPersonaId,
+    isAuthenticated,
+  ]);
 
   return (
     <main

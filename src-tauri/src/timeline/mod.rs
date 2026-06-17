@@ -6,19 +6,23 @@ use serde::{Deserialize, Serialize};
 pub use commands::{
     append_conversation_message, clear_local_timeline_data, create_context_event,
     create_local_memory, create_user_reaction, create_utterance_event, enqueue_sync_payload,
-    get_local_persona, get_or_create_conversation_session, list_activity_observations,
-    list_conversation_messages_for_persona, list_local_memory_cards, list_local_personas,
-    list_pending_sync_queue, list_timeline_events, list_work_sessions, mark_sync_queue_synced,
-    record_sync_queue_failure, upsert_local_personas,
+    get_conversation_session_for_message, get_local_persona, get_or_create_conversation_session,
+    list_activity_observations, list_conversation_messages_for_persona, list_local_memory_cards,
+    list_local_personas, list_pending_conversation_messages, list_pending_sync_queue,
+    list_timeline_events, list_work_sessions, mark_conversation_message_sync_failed,
+    mark_conversation_message_synced, mark_conversation_session_synced, mark_sync_queue_synced,
+    record_sync_queue_failure, upsert_cloud_conversation_message, upsert_local_personas,
 };
 pub use core::{
     ActivityObservation, AppendConversationMessageInput, ContextEvent, ConversationMessage,
     ConversationSession, CreateContextEventInput, CreateLocalMemoryInput, CreateUserReactionInput,
-    CreateUtteranceEventInput, EnqueueSyncPayloadInput, GetOrCreateConversationSessionInput,
-    ListConversationMessagesInput, ListLocalMemoryCardsInput, ListPendingSyncQueueInput,
-    LocalMemory, LocalMemoryCardRow, MarkSyncQueueSyncedInput, RecordActivityObservationInput,
+    CreateUtteranceEventInput, EnqueueSyncPayloadInput, GetConversationSessionForMessageInput,
+    GetOrCreateConversationSessionInput, ListConversationMessagesInput, ListLocalMemoryCardsInput,
+    ListPendingConversationMessagesInput, ListPendingSyncQueueInput, LocalMemory,
+    LocalMemoryCardRow, MarkConversationMessageSyncFailedInput, MarkConversationMessageSyncedInput,
+    MarkConversationSessionSyncedInput, MarkSyncQueueSyncedInput, RecordActivityObservationInput,
     RecordSyncQueueFailureInput, SyncQueueRow, TimelineEvent, TimelineRepository, TimelineState,
-    UserReaction, UtteranceEvent, WorkSession,
+    UpsertCloudConversationMessageInput, UserReaction, UtteranceEvent, WorkSession,
 };
 
 pub(crate) use core::{CommandError, TimelineError};

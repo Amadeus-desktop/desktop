@@ -26,18 +26,24 @@ import type {
   CreateUserReactionInput,
   CreateUtteranceEventInput,
   EnqueueSyncPayloadInput,
+  GetConversationSessionForMessageInput,
   GetLocalPersonaInput,
   GetOrCreateConversationSessionInput,
   ListConversationMessagesInput,
   ListLocalMemoryCardsInput,
+  ListPendingConversationMessagesInput,
   ListPendingSyncQueueInput,
   LocalMemoryCardRow,
   LocalMemory,
   LocalPersonaCacheRow,
+  MarkConversationMessageSyncFailedInput,
+  MarkConversationMessageSyncedInput,
+  MarkConversationSessionSyncedInput,
   MarkSyncQueueSyncedInput,
   RecordSyncQueueFailureInput,
   SyncQueueRow,
   TimelineEvent,
+  UpsertCloudConversationMessageInput,
   UpsertLocalPersonasInput,
   UserReaction,
   UtteranceEvent,
@@ -116,6 +122,124 @@ export async function listConversationMessagesForPersona(
   }
 
   return [];
+}
+
+export async function listPendingConversationMessages(
+  input: ListPendingConversationMessagesInput = {},
+): Promise<ConversationMessage[]> {
+  if (isTauriRuntime()) {
+    return invoke<ConversationMessage[]>("list_pending_conversation_messages", {
+      input,
+    });
+  }
+
+  return [];
+}
+
+export async function getConversationSessionForMessage(
+  input: GetConversationSessionForMessageInput,
+): Promise<ConversationSession | null> {
+  if (isTauriRuntime()) {
+    return invoke<ConversationSession | null>(
+      "get_conversation_session_for_message",
+      { input },
+    );
+  }
+
+  return null;
+}
+
+export async function markConversationSessionSynced(
+  input: MarkConversationSessionSyncedInput,
+): Promise<ConversationSession> {
+  if (isTauriRuntime()) {
+    return invoke<ConversationSession>("mark_conversation_session_synced", {
+      input,
+    });
+  }
+
+  return {
+    id: input.localSessionId,
+    cloudConversationId: input.cloudConversationId,
+    personaId: "",
+    source: "mock",
+    syncStatus: "synced",
+    lastSyncedMessageAtMs: null,
+    createdAtMs: Date.now(),
+    updatedAtMs: Date.now(),
+  };
+}
+
+export async function markConversationMessageSynced(
+  input: MarkConversationMessageSyncedInput,
+): Promise<ConversationMessage> {
+  if (isTauriRuntime()) {
+    return invoke<ConversationMessage>("mark_conversation_message_synced", {
+      input,
+    });
+  }
+
+  return {
+    id: input.localMessageId,
+    sessionId: "",
+    role: "user",
+    content: "",
+    provider: null,
+    idempotencyKey: "",
+    cloudMessageId: input.cloudMessageId,
+    syncStatus: "synced",
+    clientSequence: 0,
+    createdAtMs: Date.now(),
+    serverReceivedAtMs: input.serverReceivedAtMs,
+  };
+}
+
+export async function markConversationMessageSyncFailed(
+  input: MarkConversationMessageSyncFailedInput,
+): Promise<ConversationMessage> {
+  if (isTauriRuntime()) {
+    return invoke<ConversationMessage>("mark_conversation_message_sync_failed", {
+      input,
+    });
+  }
+
+  return {
+    id: input.localMessageId,
+    sessionId: "",
+    role: "user",
+    content: "",
+    provider: null,
+    idempotencyKey: "",
+    cloudMessageId: null,
+    syncStatus: input.retryable ? "retrying" : "error",
+    clientSequence: 0,
+    createdAtMs: Date.now(),
+    serverReceivedAtMs: null,
+  };
+}
+
+export async function upsertCloudConversationMessage(
+  input: UpsertCloudConversationMessageInput,
+): Promise<ConversationMessage> {
+  if (isTauriRuntime()) {
+    return invoke<ConversationMessage>("upsert_cloud_conversation_message", {
+      input,
+    });
+  }
+
+  return {
+    id: `cloud-${input.cloudMessageId}`,
+    sessionId: input.cloudConversationId,
+    role: input.role,
+    content: input.content,
+    provider: input.provider ?? null,
+    idempotencyKey: input.idempotencyKey,
+    cloudMessageId: input.cloudMessageId,
+    syncStatus: "synced",
+    clientSequence: input.clientSequence ?? 0,
+    createdAtMs: input.clientCreatedAtMs,
+    serverReceivedAtMs: input.serverReceivedAtMs,
+  };
 }
 
 export async function enqueueSyncPayload(

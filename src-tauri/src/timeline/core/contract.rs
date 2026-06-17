@@ -83,6 +83,56 @@ pub struct AppendConversationMessageInput {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ListPendingConversationMessagesInput {
+    pub limit: Option<i64>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetConversationSessionForMessageInput {
+    pub local_message_id: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MarkConversationSessionSyncedInput {
+    pub local_session_id: String,
+    pub cloud_conversation_id: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MarkConversationMessageSyncedInput {
+    pub local_message_id: String,
+    pub cloud_message_id: String,
+    pub server_received_at_ms: i64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MarkConversationMessageSyncFailedInput {
+    pub local_message_id: String,
+    pub retryable: bool,
+    pub last_error: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpsertCloudConversationMessageInput {
+    pub cloud_conversation_id: String,
+    pub cloud_message_id: String,
+    pub persona_id: String,
+    pub role: String,
+    pub content: String,
+    pub provider: Option<String>,
+    pub idempotency_key: String,
+    pub client_created_at_ms: i64,
+    pub client_sequence: Option<i64>,
+    pub server_received_at_ms: i64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct EnqueueSyncPayloadInput {
     pub event_type: String,
     pub payload_json: String,

@@ -6,6 +6,8 @@
 
 1차 범위는 conversation session/message sync만 포함한다. Memory sync 확장과 RAG source selection 정교화는 이 sync 기반이 안정된 뒤 진행한다.
 
+구현 상태(2026-06-17): 앱 로컬 pending 메시지 push, Supabase cloud message pull, 로컬 cloud message upsert/dedupe, 인증 완료 후 1회 sync trigger가 구현되었다. `conversation_sync_cursors` 기반 cursor persistence는 아직 구현되지 않았고, 현재 pull은 최근 cloud messages 조회 후 `cloud_message_id`/`idempotency_key` dedupe에 의존한다.
+
 ```text
 App SQLite conversation_sessions / conversation_messages
   <-> Supabase cloud_conversations / cloud_conversation_messages
@@ -75,7 +77,7 @@ message.client_sequence                -> p_client_sequence
 conversation_sync_cursors
   -> list cloud messages after cursor
   -> upsert into SQLite conversation_messages
-  -> update cursor
+  -> dedupe by cloud_message_id/idempotency_key
   -> render merged order
 ```
 
@@ -84,6 +86,8 @@ Pull worker mirrors web/app cloud messages into local SQLite. Existing local mes
 Cloud messages from web should land in the same persona conversation thread when possible. If local app session does not exist, create a `conversation_sessions` row with `source = web_mirror`.
 
 ### Cursor
+
+Planned cursor design:
 
 For each `(device_id, cloud_conversation_id)`, store:
 
@@ -94,6 +98,8 @@ For each `(device_id, cloud_conversation_id)`, store:
 
 The pull query must be deterministic and must not rely on offset pagination.
 
+Current implementation note: cursor row update is deferred. The first implementation reads recent cloud rows by `server_received_at` and keeps local idempotency through SQLite upsert/dedupe.
+
 ## Required App Repository Changes
 
 SQLite repository needs these operations:
@@ -101,21 +107,19 @@ SQLite repository needs these operations:
 - `list_pending_conversation_messages(limit)`
 - `mark_conversation_message_synced(local_message_id, cloud_message_id, server_received_at_ms)`
 - `mark_conversation_message_sync_failed(local_message_id, retryable, error)`
-- `upsert_cloud_conversation_session(remote conversation snapshot)`
+- `mark_conversation_session_synced(local_session_id, cloud_conversation_id)`
 - `upsert_cloud_conversation_message(remote message snapshot)`
 
 TypeScript sync worker needs these operations:
 
-- `pushPendingConversationMessages()`
+- `syncPendingConversationMessages()`
 - `pullCloudConversationMessages()`
-- `syncConversations()`
 
 Supabase adapter needs these operations:
 
 - `ensureCloudConversationForLocalSession(local session)`
 - `upsertCloudConversationMessage(local message)`
-- `listCloudConversationMessagesSince(cursor)`
-- `upsertConversationSyncCursor(cursor)`
+- `listCloudConversationMessages(personaId, sinceServerReceivedAtMs, limit)`
 
 ## Error Handling
 
@@ -153,7 +157,7 @@ TypeScript tests:
 
 - Push worker calls `upsert_cloud_conversation_message` with idempotency key and marks ack.
 - Duplicate RPC response is treated as success.
-- Pull worker merges web messages into local session and updates cursor.
+- Pull worker merges web messages into local session.
 - Auth/network failure keeps local pending messages.
 - Forbidden raw context keys are rejected before sync payload creation.
 
@@ -175,7 +179,7 @@ Supabase tests:
 ## Implementation Order
 
 1. Add local SQLite repository commands for pending message list, ack, failure, and cloud message upsert.
-2. Add Supabase conversation adapter for conversation ensure, message upsert, message pull, and cursor update.
+2. Add Supabase conversation adapter for conversation ensure, device registration, message upsert, and message pull.
 3. Add TypeScript sync worker for push.
 4. Add TypeScript sync worker for pull.
 5. Connect sync worker to app lifecycle/auth-ready points.

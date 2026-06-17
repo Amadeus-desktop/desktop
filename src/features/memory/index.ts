@@ -5,6 +5,19 @@ export {
 } from "./adapters/cloudMemorySyncWorker";
 
 export {
+  enqueueConversationMemorySummaries,
+  syncConversationMemorySummaries,
+  type ConversationMemorySummarySyncResult,
+} from "./adapters/conversationMemorySyncWorker";
+
+export {
+  selectAppPromptMemoryCards,
+  selectWebPromptMemoryCards,
+  type AppPromptMemorySelectionInput,
+  type WebPromptMemorySelectionInput,
+} from "./adapters/ragMemorySourceSelector";
+
+export {
   isCloudPersonaUuid,
   listCloudSafeMemoryCards,
   matchCloudSafeMemoryCards,

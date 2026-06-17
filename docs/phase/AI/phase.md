@@ -16,6 +16,7 @@ phase-05-qwen-local-runtime-contract.md
 phase-06-cloud-memory-and-rag.md
 phase-07-evaluation-and-regression.md
 phase-08-local-perception-hydration.md
+phase-09-memory-rag-sequential-rollout.md
 ```
 
 ## Core Decisions
@@ -127,3 +128,4 @@ If screen permission is missing, denied, or blocked by privacy gates, the app st
 - [Policy And Security Architecture](../../architecture/policy-and-security.md)
 - [Local AI OCR LLM Architecture](../../architecture/local-ai-ocr-llm.md)
 - [Screen Capture And OCR Runtime](../../architecture/screen-capture-ocr-runtime.md)
+- [Phase 09. Memory RAG Sequential Rollout](./phase-09-memory-rag-sequential-rollout.md)

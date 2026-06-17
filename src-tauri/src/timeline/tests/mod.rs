@@ -810,3 +810,122 @@ fn local_memory_cards_can_be_listed_for_prompt_context() {
     assert_eq!(cards[0].visibility, "local_private");
     assert_eq!(cards[0].memory_type, "episodic_summary");
 }
+
+#[test]
+fn pending_conversation_messages_can_be_listed_and_marked_synced() {
+    let mut repository = TimelineRepository::open_in_memory().expect("repo opens");
+    repository.migrate().expect("migration succeeds");
+    let session = repository
+        .get_or_create_conversation_session(GetOrCreateConversationSessionInput {
+            persona_id: "makise-kurisu".to_string(),
+        })
+        .expect("session creates");
+    let message = repository
+        .append_conversation_message(AppendConversationMessageInput {
+            session_id: session.id.clone(),
+            role: "user".to_string(),
+            content: "웹에서도 보여야 해.".to_string(),
+            provider: None,
+            idempotency_key: "local-msg-1".to_string(),
+        })
+        .expect("message appends");
+
+    let pending = repository
+        .list_pending_conversation_messages(ListPendingConversationMessagesInput {
+            limit: Some(10),
+        })
+        .expect("pending messages list");
+    assert_eq!(pending.len(), 1);
+    assert_eq!(pending[0].id, message.id);
+    assert_eq!(pending[0].session_id, session.id);
+
+    let session_for_message = repository
+        .get_conversation_session_for_message(GetConversationSessionForMessageInput {
+            local_message_id: message.id.clone(),
+        })
+        .expect("session lookup succeeds")
+        .expect("session exists for message");
+    assert_eq!(session_for_message.id, session.id);
+
+    let synced_session = repository
+        .mark_conversation_session_synced(MarkConversationSessionSyncedInput {
+            local_session_id: session.id.clone(),
+            cloud_conversation_id: "11111111-1111-4111-8111-111111111111".to_string(),
+        })
+        .expect("session marks synced");
+    assert_eq!(
+        synced_session.cloud_conversation_id,
+        "11111111-1111-4111-8111-111111111111"
+    );
+    assert_eq!(synced_session.sync_status, "synced");
+
+    let synced = repository
+        .mark_conversation_message_synced(MarkConversationMessageSyncedInput {
+            local_message_id: message.id.clone(),
+            cloud_message_id: "cloud-msg-1".to_string(),
+            server_received_at_ms: 1_797_398_400_000,
+        })
+        .expect("message marks synced");
+
+    assert_eq!(synced.sync_status, "synced");
+    assert_eq!(synced.cloud_message_id.as_deref(), Some("cloud-msg-1"));
+    assert_eq!(synced.server_received_at_ms, Some(1_797_398_400_000));
+
+    let pending = repository
+        .list_pending_conversation_messages(ListPendingConversationMessagesInput {
+            limit: Some(10),
+        })
+        .expect("pending messages list");
+    assert!(pending.is_empty());
+}
+
+#[test]
+fn cloud_conversation_messages_are_upserted_without_duplicates() {
+    let mut repository = TimelineRepository::open_in_memory().expect("repo opens");
+    repository.migrate().expect("migration succeeds");
+
+    let first = repository
+        .upsert_cloud_conversation_message(UpsertCloudConversationMessageInput {
+            cloud_conversation_id: "11111111-1111-4111-8111-111111111111".to_string(),
+            cloud_message_id: "22222222-2222-4222-8222-222222222222".to_string(),
+            persona_id: "makise-kurisu".to_string(),
+            role: "assistant".to_string(),
+            content: "웹에서 먼저 온 메시지야.".to_string(),
+            provider: Some("edge".to_string()),
+            idempotency_key: "web-msg-1".to_string(),
+            client_created_at_ms: 1_797_398_400_000,
+            client_sequence: Some(1),
+            server_received_at_ms: 1_797_398_401_000,
+        })
+        .expect("cloud message upserts");
+    assert_eq!(
+        first.cloud_message_id.as_deref(),
+        Some("22222222-2222-4222-8222-222222222222")
+    );
+    assert_eq!(first.sync_status, "synced");
+
+    let duplicate = repository
+        .upsert_cloud_conversation_message(UpsertCloudConversationMessageInput {
+            cloud_conversation_id: "11111111-1111-4111-8111-111111111111".to_string(),
+            cloud_message_id: "22222222-2222-4222-8222-222222222222".to_string(),
+            persona_id: "makise-kurisu".to_string(),
+            role: "assistant".to_string(),
+            content: "웹에서 먼저 온 메시지야.".to_string(),
+            provider: Some("edge".to_string()),
+            idempotency_key: "web-msg-1".to_string(),
+            client_created_at_ms: 1_797_398_400_000,
+            client_sequence: Some(1),
+            server_received_at_ms: 1_797_398_401_000,
+        })
+        .expect("duplicate cloud message upserts");
+    assert_eq!(duplicate.id, first.id);
+
+    let messages = repository
+        .list_conversation_messages_for_persona(ListConversationMessagesInput {
+            persona_id: "makise-kurisu".to_string(),
+            limit: Some(10),
+        })
+        .expect("messages list");
+    assert_eq!(messages.len(), 1);
+    assert_eq!(messages[0].id, first.id);
+}

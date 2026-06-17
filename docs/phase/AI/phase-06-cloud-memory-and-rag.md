@@ -150,3 +150,7 @@ If pgvector index filtering returns fewer rows than requested, the retriever mus
 - Web and app use the same cloud memory retrieval contract.
 - RAG adds continuity without violating privacy boundaries.
 - RAG improves measured continuity beyond deterministic retrieval before it becomes default.
+
+## Rollout Link
+
+Implementation sequencing is tracked in [Phase 09. Memory RAG Sequential Rollout](./phase-09-memory-rag-sequential-rollout.md).

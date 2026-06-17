@@ -38,6 +38,10 @@ export type ListConversationMessagesInput = {
   limit?: number;
 };
 
+export type ListPendingConversationMessagesInput = {
+  limit?: number;
+};
+
 export type AppendConversationMessageInput = {
   sessionId: string;
   role: "user" | "assistant" | "system_summary";
@@ -131,6 +135,40 @@ export type ConversationMessage = AppendConversationMessageInput & {
   clientSequence: number;
   createdAtMs: number;
   serverReceivedAtMs?: number | null;
+};
+
+export type GetConversationSessionForMessageInput = {
+  localMessageId: string;
+};
+
+export type MarkConversationSessionSyncedInput = {
+  localSessionId: string;
+  cloudConversationId: string;
+};
+
+export type MarkConversationMessageSyncedInput = {
+  localMessageId: string;
+  cloudMessageId: string;
+  serverReceivedAtMs: number;
+};
+
+export type MarkConversationMessageSyncFailedInput = {
+  localMessageId: string;
+  lastError: string;
+  retryable: boolean;
+};
+
+export type UpsertCloudConversationMessageInput = {
+  cloudConversationId: string;
+  cloudMessageId: string;
+  personaId: string;
+  role: "user" | "assistant" | "system_summary";
+  content: string;
+  provider?: string | null;
+  idempotencyKey: string;
+  clientCreatedAtMs: number;
+  clientSequence?: number | null;
+  serverReceivedAtMs: number;
 };
 
 export type SyncQueueRow = EnqueueSyncPayloadInput & {

@@ -8,11 +8,13 @@ mod validation;
 pub use contract::{
     ActivityObservation, AppendConversationMessageInput, ContextEvent, ConversationMessage,
     ConversationSession, CreateContextEventInput, CreateLocalMemoryInput, CreateUserReactionInput,
-    CreateUtteranceEventInput, EnqueueSyncPayloadInput, GetOrCreateConversationSessionInput,
-    ListConversationMessagesInput, ListLocalMemoryCardsInput, ListPendingSyncQueueInput,
-    LocalMemory, LocalMemoryCardRow, MarkSyncQueueSyncedInput, RecordActivityObservationInput,
-    RecordSyncQueueFailureInput, SyncPayloadEnvelope, SyncQueueRow, TimelineEvent, UserReaction,
-    UtteranceEvent, WorkSession,
+    CreateUtteranceEventInput, EnqueueSyncPayloadInput, GetConversationSessionForMessageInput,
+    GetOrCreateConversationSessionInput, ListConversationMessagesInput, ListLocalMemoryCardsInput,
+    ListPendingConversationMessagesInput, ListPendingSyncQueueInput, LocalMemory,
+    LocalMemoryCardRow, MarkConversationMessageSyncFailedInput, MarkConversationMessageSyncedInput,
+    MarkConversationSessionSyncedInput, MarkSyncQueueSyncedInput, RecordActivityObservationInput,
+    RecordSyncQueueFailureInput, SyncPayloadEnvelope, SyncQueueRow, TimelineEvent,
+    UpsertCloudConversationMessageInput, UserReaction, UtteranceEvent, WorkSession,
 };
 pub use repository::TimelineRepository;
 pub use state::TimelineState;

@@ -133,6 +133,32 @@ Rules:
 - Sync payload must be `SyncPayloadEnvelope`.
 - Sync validator runs before local queue insert and before Supabase write.
 
+### Conversation Session Sync
+
+Conversation messages use a dedicated mirror path instead of the generic `sync_queue`.
+
+```text
+App SQLite conversation_messages(pending)
+  -> Supabase upsert_cloud_conversation_message(...)
+  -> local message ack with cloud_message_id/server_received_at_ms
+
+Supabase cloud_conversation_messages
+  -> App SQLite upsert by cloud_message_id
+  -> fallback dedupe by idempotency_key
+```
+
+Rules:
+
+- App-created sessions start with a local cloud id and are promoted after a Supabase `cloud_conversations.id` exists.
+- Web-origin sessions are mirrored into SQLite with `source = web_mirror`.
+- Conversation sync contains user/assistant/system-summary chat text only.
+- Raw desktop context, screenshot text, OCR raw text, and window titles are not conversation sync payload.
+- Network or auth failures keep local app messages pending/retrying; local text is not deleted on sync failure.
+
+Web implementation contract: [Web Conversation Sync 설계](../superpowers/specs/2026-06-17-web-conversation-sync-design.md).
+
+Web memory/RAG contract: [Web Memory/RAG Contract](../superpowers/specs/2026-06-17-web-memory-rag-contract.md).
+
 ---
 
 ## 5. Syncable Payloads
