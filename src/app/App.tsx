@@ -19,6 +19,7 @@ import { logger } from "../observability/logger";
 import { scheduleFrontendFirstPaintRecord } from "../features/lifecycle";
 import { isTauriRuntime } from "../lib/tauri/runtime";
 import { useShellTheme } from "../ui";
+import { scheduleAutoUpdateCheck } from "../features/updates";
 
 function App() {
   const { hydrated: authHydrated, isAuthenticated, logoutTransitioning, logoutPhase } = useAuth();
@@ -57,6 +58,7 @@ function App() {
       performanceNowMs: Math.round(performance.now()),
     });
     scheduleFrontendFirstPaintRecord("main");
+    scheduleAutoUpdateCheck();
     void hydrateAuth();
     hydrateOnboardingProgress();
   }, []);

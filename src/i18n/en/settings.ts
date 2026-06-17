@@ -24,12 +24,12 @@ export const settings: SettingsMessages = {
   },
   talkFrequency: {
     label: "Speech frequency",
-    subtitle: "Default intensity without disrupting your flow",
+    subtitle: "Real-use intensity plus a fast QA-only test mode",
     options: {
       quiet: "Quiet and subtle",
       balanced: "Balanced and gentle",
       active: "Energetic and proactive",
-      test: "Test mode",
+      test: "QA test only · checks every 2s",
     },
   },
   nickname: {

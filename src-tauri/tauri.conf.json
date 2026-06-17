@@ -57,11 +57,18 @@
       "desktop": {
         "schemes": ["amadeus"]
       }
+    },
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDNGNTg4RkFCNjdENjc5Q0EKUldUS2VkWm5xNDlZUHd3V1ozU0tpdmQ5ejlYampodWxobG9LWmh6WGZ1ZEhHWGp1ZHpkV2tkbEYK",
+      "endpoints": [
+        "https://github.com/Amadeus-desktop/desktop/releases/latest/download/latest.json"
+      ]
     }
   },
   "bundle": {
     "active": true,
     "targets": ["app", "dmg"],
-    "icon": ["icons/icon.png"]
+    "icon": ["icons/icon.png"],
+    "createUpdaterArtifacts": true
   }
 }

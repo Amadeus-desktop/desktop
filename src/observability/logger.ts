@@ -7,6 +7,7 @@ export type LogArea =
   | "llm"
   | "startup"
   | "trigger"
+  | "updates"
   | "window"
   | "ui";
 

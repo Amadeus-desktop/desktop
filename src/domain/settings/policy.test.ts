@@ -19,9 +19,9 @@ describe("getTalkFrequencyPolicy", () => {
       dailyUtteranceLimit: 18,
     });
     expect(getTalkFrequencyPolicy("test")).toMatchObject({
-      cooldownMinutes: 1,
-      pollIntervalMs: 5_000,
-      dailyUtteranceLimit: 99,
+      cooldownMinutes: 0,
+      pollIntervalMs: 2_000,
+      dailyUtteranceLimit: 999,
     });
   });
 });

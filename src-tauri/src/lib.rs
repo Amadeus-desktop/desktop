@@ -59,6 +59,8 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .setup(setup_app)
         .invoke_handler(tauri::generate_handler![
             sync_companion_window_position,

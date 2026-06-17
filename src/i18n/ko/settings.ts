@@ -24,12 +24,12 @@ export const settings: SettingsMessages = {
   },
   talkFrequency: {
     label: "말 걸기 빈도",
-    subtitle: "업무 흐름을 방해하지 않는 기본 강도",
+    subtitle: "실제 사용 강도와 QA용 빠른 테스트 모드",
     options: {
       quiet: "조용하고 묵묵하게",
       balanced: "적당히 은은하게",
       active: "기운 넘치고 적극적이게",
-      test: "테스트용으로 바로 반응",
+      test: "QA 테스트 전용 · 2초마다 확인",
     },
   },
   nickname: {

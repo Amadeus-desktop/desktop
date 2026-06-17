@@ -61,11 +61,11 @@ pub fn talk_frequency_trigger_sensitivity(talk_frequency: &str) -> TriggerSensit
             drift_min_frontmost: MINUTE_MS,
         },
         TALK_FREQUENCY_TEST => TriggerSensitivityPolicy {
-            deep_pause_min_frontmost: 15_000,
-            deep_pause_min_idle_seconds: 5.0,
-            milestone_min_frontmost: 30_000,
+            deep_pause_min_frontmost: 2_000,
+            deep_pause_min_idle_seconds: 1.0,
+            milestone_min_frontmost: 5_000,
             unknown_ocr_probe_min_frontmost: 1_000,
-            drift_min_frontmost: 30_000,
+            drift_min_frontmost: 5_000,
         },
         _ => TriggerSensitivityPolicy {
             deep_pause_min_frontmost: 5 * MINUTE_MS,

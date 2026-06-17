@@ -47,3 +47,5 @@ ureq = { version = "2", default-features = false, features = ["json"] }
 objc2-vision = { version = "0.3.2", default-features = false, features = ["std", "VNRecognizeTextRequest", "VNObservation", "VNRequestHandler", "VNRequest", "objc2-core-image", "objc2-image-io"] }
 tauri-plugin-deep-link = "2"
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
+tauri-plugin-updater = "2.10.1"
+tauri-plugin-process = "2.3.1"

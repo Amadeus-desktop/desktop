@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Persona } from "../../../../domain/persona/types";
 import type { AppLocale } from "../../../../i18n";
-import { logger } from "../../../../observability/logger";
-import { persistCompanionMessage } from "../../../companion/lib/conversationPersistence";
-import type { CompanionMessage } from "../../../companion/types";
 import type { GeneralSettings } from "../../../settings/types";
 import type { DailyCareInsight, ReportMetric } from "../../types";
 import { buildDailyCarePhases, type DailyCarePhase } from "../lib/phases";
@@ -23,25 +20,6 @@ function sleep(ms: number) {
 
 function dailyCareMessageId(prefix: string, phaseIndex: number, id: string, index = 0) {
   return `daily-care-${prefix}-${Date.now()}-${phaseIndex}-${index}-${id}`;
-}
-
-function persistDailyCareTextMessage(persona: Persona, message: DailyCareThreadMessage) {
-  if (message.kind !== "text") return;
-
-  const companionMessage: CompanionMessage = {
-    id: message.id,
-    sender: message.sender,
-    text: message.text,
-  };
-
-  void persistCompanionMessage({
-    personaId: persona.id,
-    message: companionMessage,
-    role: message.sender === "user" ? "user" : "assistant",
-    provider: message.sender === "user" ? null : "daily-care",
-  }).catch((error) => {
-    logger.warn("ui", "daily care conversation persistence failed", { error });
-  });
 }
 
 function withSessionMessageId(
@@ -152,7 +130,6 @@ export function useDailyCareMessageSession({
 
         const sessionItem = withSessionMessageId(item, phaseIndex, index);
         setMessages((current) => [...current, sessionItem]);
-        persistDailyCareTextMessage(personaRef.current, sessionItem);
       }
 
       if (cancelled || revealTokenRef.current !== revealToken) return;
@@ -180,7 +157,6 @@ export function useDailyCareMessageSession({
         ...current,
         userMessage,
       ]);
-      persistDailyCareTextMessage(personaRef.current, userMessage);
       setReplies([]);
 
       if (phaseIndex >= phasesRef.current.length - 1) {

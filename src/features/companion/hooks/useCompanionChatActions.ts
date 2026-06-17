@@ -3,7 +3,7 @@ import { logger } from "../../../observability/logger";
 import { patchAppSettings } from "../../settings";
 import type { GeneralSettings } from "../../settings/types";
 import { recordTriggerReactionForScoring } from "../../trigger";
-import { generatePocketIntro } from "../lib/pocketIntro";
+import { buildPocketOpeningMessages } from "../lib/openingMessages";
 import {
   persistCompanionMessage,
   restoreCompanionMessagesForPersona,
@@ -74,7 +74,6 @@ export function useCompanionChatActions({
   }, []);
 
   const openPocket = useCallback(async () => {
-    const intro = generatePocketIntro(nudge, selectedPersona);
     const openingId = `companion-intro-${Date.now()}`;
     const restoreId = beginRestore();
 
@@ -101,8 +100,56 @@ export function useCompanionChatActions({
     if (!isCurrentRestore(restoreId)) {
       return;
     }
+    const currentContext = await buildCompanionCurrentContext({
+      nudge,
+    }).catch((error) => {
+      logger.warn("ui", "companion opening context build failed", { error });
+      return nudge
+        ? {
+            source: "user_visible" as const,
+            summary: nudge,
+            allowed_surface: "both" as const,
+          }
+        : null;
+    });
+    if (!isCurrentRestore(restoreId)) {
+      return;
+    }
+
+    const speakFirst = async () => {
+      try {
+        const generation = await resolveCompanionReply(
+          [],
+          selectedPersona,
+          settings,
+          {
+            currentContext,
+          },
+        );
+        return {
+          id: openingId,
+          sender: "companion" as const,
+          text: generation.message,
+        };
+      } catch (error) {
+        logger.warn("ui", "companion opening generation failed", { error });
+        return buildPocketOpeningMessages({
+          nudge,
+          persona: selectedPersona,
+          openingId,
+          restoredMessages: [],
+        })[0];
+      }
+    };
+
     if (restoredMessages.length > 0) {
-      setMessages(restoredMessages);
+      const openingMessage = await speakFirst();
+      if (!isCurrentRestore(restoreId)) {
+        return;
+      }
+      setMessages(
+        openingMessage ? [openingMessage, ...restoredMessages] : restoredMessages,
+      );
       setIsSending(false);
       void recordReaction("opened").catch(() => undefined);
       return;
@@ -112,13 +159,15 @@ export function useCompanionChatActions({
         setIsSending(false);
         return;
       }
-      const introMessage: CompanionMessage = {
-        id: openingId,
-        sender: "companion",
-        text: intro,
-      };
-      setMessages([introMessage]);
-      setIsSending(false);
+      void (async () => {
+        const openingMessage = await speakFirst();
+        if (!isCurrentRestore(restoreId)) {
+          setIsSending(false);
+          return;
+        }
+        setMessages(openingMessage ? [openingMessage] : []);
+        setIsSending(false);
+      })();
     }, POCKET_FIRST_SPEAK_DELAY_MS);
     void recordReaction("opened").catch(() => undefined);
   }, [
@@ -130,6 +179,7 @@ export function useCompanionChatActions({
     selectedPersona,
     setIsSending,
     setMessages,
+    settings,
   ]);
 
   const openIcon = useCallback(async () => {
@@ -198,19 +248,26 @@ export function useCompanionChatActions({
         return;
       }
       if (restoredMessages.length > 0) {
-        setMessages(restoredMessages);
+        setMessages(
+          buildPocketOpeningMessages({
+            nudge,
+            persona: personas[personaId],
+            openingId: `companion-intro-${Date.now()}`,
+            restoredMessages,
+          }),
+        );
         setIsSending(false);
         return;
       }
 
-      const nextIntro = generatePocketIntro(nudge, personas[personaId]);
-      setMessages([
-        {
-          id: `companion-intro-${Date.now()}`,
-          sender: "companion",
-          text: nextIntro,
-        },
-      ]);
+      setMessages(
+        buildPocketOpeningMessages({
+          nudge,
+          persona: personas[personaId],
+          openingId: `companion-intro-${Date.now()}`,
+          restoredMessages: [],
+        }),
+      );
       setIsSending(false);
     },
     [beginRestore, isCurrentRestore, mode, nudge, personas, setIsSending, setMessages],

@@ -27,10 +27,10 @@ const POLICY_BY_FREQUENCY: Record<TalkFrequency, TalkFrequencyPolicy> = {
     mockTriggerDelayMs: 450,
   },
   test: {
-    cooldownMinutes: 1,
-    pollIntervalMs: 5_000,
-    dailyUtteranceLimit: 99,
-    mockTriggerDelayMs: 150,
+    cooldownMinutes: 0,
+    pollIntervalMs: 2_000,
+    dailyUtteranceLimit: 999,
+    mockTriggerDelayMs: 50,
   },
 };
 

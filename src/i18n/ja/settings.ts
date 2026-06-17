@@ -24,12 +24,12 @@ export const settings: SettingsMessages = {
   },
   talkFrequency: {
     label: "声かけ頻度",
-    subtitle: "作業の流れを妨げない基本強度",
+    subtitle: "通常利用の強度とQA専用の高速テストモード",
     options: {
       quiet: "静かに控えめに",
       balanced: "ほどよくやさしく",
       active: "元気に積極的に",
-      test: "テスト用",
+      test: "QAテスト専用 · 2秒ごとに確認",
     },
   },
   nickname: {
