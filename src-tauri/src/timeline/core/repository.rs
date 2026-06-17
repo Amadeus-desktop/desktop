@@ -14,8 +14,10 @@ use super::{
     AppendConversationMessageInput, ContextEvent, ConversationMessage, ConversationSession,
     CreateContextEventInput, CreateLocalMemoryInput, CreateUserReactionInput,
     CreateUtteranceEventInput, EnqueueSyncPayloadInput, GetOrCreateConversationSessionInput,
-    ListConversationMessagesInput, LocalMemory, RecordActivityObservationInput, SyncQueueRow,
-    TimelineError, TimelineEvent, UserReaction, UtteranceEvent, WorkSession,
+    ListConversationMessagesInput, ListLocalMemoryCardsInput, ListPendingSyncQueueInput,
+    LocalMemory, LocalMemoryCardRow, MarkSyncQueueSyncedInput, RecordActivityObservationInput,
+    RecordSyncQueueFailureInput, SyncQueueRow, TimelineError, TimelineEvent, UserReaction,
+    UtteranceEvent, WorkSession,
 };
 
 const WORK_SESSION_MERGE_GAP_MS: i64 = 15 * 60 * 1000;
@@ -232,6 +234,31 @@ impl TimelineRepository {
         }
         transaction.commit()?;
         Ok(rows)
+    }
+
+    pub fn list_local_memory_cards(
+        &self,
+        input: ListLocalMemoryCardsInput,
+    ) -> Result<Vec<LocalMemoryCardRow>, TimelineError> {
+        let persona_id = input.persona_id.trim();
+        if persona_id.is_empty() {
+            return Err(TimelineError::Validation(
+                "local memory persona_id is required".to_string(),
+            ));
+        }
+        let limit = input.limit.unwrap_or(7).clamp(1, 30);
+        let mut statement = self.connection.prepare(
+            "SELECT id, COALESCE(persona_id, ''), memory_category, memory_type, content, confidence, source, scope, normalized_key, source_message_ids_json, evidence_excerpt_redacted, observed_at_ms, valid_from_ms, expires_at_ms, user_confirmed, contradicts_memory_id, write_reason, created_at_ms, updated_at_ms, deleted_at_ms
+             FROM local_memories
+             WHERE persona_id = ?1
+               AND deleted_at_ms IS NULL
+               AND scope IN ('local_private', 'syncable_summary')
+             ORDER BY confidence DESC, updated_at_ms DESC
+             LIMIT ?2",
+        )?;
+        let rows = statement.query_map(params![persona_id, limit], local_memory_card_from_row)?;
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(TimelineError::from)
     }
 
     pub fn list_local_personas(&self) -> Result<Vec<LocalPersonaCacheRow>, TimelineError> {
@@ -490,6 +517,67 @@ impl TimelineRepository {
         Ok(row)
     }
 
+    pub fn list_pending_sync_queue(
+        &self,
+        input: ListPendingSyncQueueInput,
+    ) -> Result<Vec<SyncQueueRow>, TimelineError> {
+        let limit = input.limit.unwrap_or(20).clamp(1, 100);
+        let mut statement = self.connection.prepare(
+            "SELECT id, event_type, payload_json, idempotency_key, safety_grade, redaction_level, retention_policy, status, retry_count, last_error, created_at_ms, updated_at_ms
+             FROM sync_queue
+             WHERE status = 'pending'
+             ORDER BY updated_at_ms ASC, created_at_ms ASC
+             LIMIT ?1",
+        )?;
+        let rows = statement.query_map(params![limit], sync_queue_row_from_row)?;
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(TimelineError::from)
+    }
+
+    pub fn mark_sync_queue_synced(
+        &mut self,
+        input: MarkSyncQueueSyncedInput,
+    ) -> Result<SyncQueueRow, TimelineError> {
+        let updated_at_ms = current_time_ms()?;
+        self.connection.execute(
+            "UPDATE sync_queue
+             SET status = 'synced', last_error = NULL, updated_at_ms = ?2
+             WHERE id = ?1",
+            params![input.id, updated_at_ms],
+        )?;
+        self.get_sync_queue_row(&input.id)
+    }
+
+    pub fn record_sync_queue_failure(
+        &mut self,
+        input: RecordSyncQueueFailureInput,
+    ) -> Result<SyncQueueRow, TimelineError> {
+        let updated_at_ms = current_time_ms()?;
+        let status = if input.retryable { "pending" } else { "failed" };
+        self.connection.execute(
+            "UPDATE sync_queue
+             SET status = ?2,
+                 retry_count = retry_count + 1,
+                 last_error = ?3,
+                 updated_at_ms = ?4
+             WHERE id = ?1",
+            params![input.id, status, redact_sync_error(&input.last_error), updated_at_ms],
+        )?;
+        self.get_sync_queue_row(&input.id)
+    }
+
+    fn get_sync_queue_row(&self, id: &str) -> Result<SyncQueueRow, TimelineError> {
+        self.connection
+            .query_row(
+                "SELECT id, event_type, payload_json, idempotency_key, safety_grade, redaction_level, retention_policy, status, retry_count, last_error, created_at_ms, updated_at_ms
+                 FROM sync_queue
+                 WHERE id = ?1",
+                params![id],
+                sync_queue_row_from_row,
+            )
+            .map_err(TimelineError::from)
+    }
+
     fn find_conversation_session_for_persona(
         &self,
         persona_id: &str,
@@ -744,6 +832,54 @@ fn local_persona_cache_row_from_row(
     })
 }
 
+fn local_memory_card_from_row(
+    row: &rusqlite::Row<'_>,
+) -> Result<LocalMemoryCardRow, rusqlite::Error> {
+    let source_message_ids_json: String = row.get(9)?;
+    let source_message_ids = serde_json::from_str::<Vec<String>>(&source_message_ids_json)
+        .unwrap_or_default();
+    Ok(LocalMemoryCardRow {
+        id: row.get(0)?,
+        user_id: String::new(),
+        persona_id: row.get(1)?,
+        memory_category: row.get(2)?,
+        memory_type: row.get(3)?,
+        content: row.get(4)?,
+        confidence: row.get(5)?,
+        source: row.get(6)?,
+        visibility: row.get(7)?,
+        normalized_key: row.get(8)?,
+        source_message_ids,
+        evidence_excerpt_redacted: row.get(10)?,
+        observed_at_ms: row.get(11)?,
+        valid_from_ms: row.get(12)?,
+        expires_at_ms: row.get(13)?,
+        user_confirmed: row.get::<_, i64>(14)? != 0,
+        contradicts_memory_id: row.get(15)?,
+        write_reason: row.get(16)?,
+        created_at_ms: row.get(17)?,
+        updated_at_ms: row.get(18)?,
+        deleted_at_ms: row.get(19)?,
+    })
+}
+
+fn sync_queue_row_from_row(row: &rusqlite::Row<'_>) -> Result<SyncQueueRow, rusqlite::Error> {
+    Ok(SyncQueueRow {
+        id: row.get(0)?,
+        event_type: row.get(1)?,
+        payload_json: row.get(2)?,
+        idempotency_key: row.get(3)?,
+        safety_grade: row.get(4)?,
+        redaction_level: row.get(5)?,
+        retention_policy: row.get(6)?,
+        status: row.get(7)?,
+        retry_count: row.get(8)?,
+        last_error: row.get(9)?,
+        created_at_ms: row.get(10)?,
+        updated_at_ms: row.get(11)?,
+    })
+}
+
 fn conversation_message_from_row(
     row: &rusqlite::Row<'_>,
 ) -> Result<ConversationMessage, rusqlite::Error> {
@@ -970,6 +1106,32 @@ fn bool_to_i64(value: bool) -> i64 {
     } else {
         0
     }
+}
+
+fn redact_sync_error(value: &str) -> String {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return "sync_failed".to_string();
+    }
+    trimmed
+        .split_whitespace()
+        .map(|token| {
+            let lower = token.to_ascii_lowercase();
+            if lower.contains("token")
+                || lower.contains("secret")
+                || lower.contains("password")
+                || lower.contains("api_key")
+                || lower.starts_with("http://")
+                || lower.starts_with("https://")
+                || token.starts_with("/Users/")
+            {
+                "[redacted]"
+            } else {
+                token
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 fn current_time_ms() -> Result<i64, TimelineError> {

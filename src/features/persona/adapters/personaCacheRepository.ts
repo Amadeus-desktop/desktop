@@ -39,10 +39,15 @@ export async function syncCloudPersonasToLocalCache(
   const localByRemoteId = new Map(
     localPersonas.map((persona) => [persona.remotePersonaId, persona]),
   );
+  const localBySlug = new Map(
+    localPersonas.map((persona) => [persona.slug, persona]),
+  );
   const nextCaches = remotePersonas
     .map((remote) =>
       mergeRemotePersonaCache(
-        localByRemoteId.get(remote.remotePersonaId) ?? null,
+        localByRemoteId.get(remote.remotePersonaId) ??
+          localBySlug.get(remote.slug) ??
+          null,
         remote,
       ),
     )
@@ -55,14 +60,14 @@ export async function syncCloudPersonasToLocalCache(
 
   await dependencies.upsertLocalPersonas(nextCaches);
 
-  const mergedByRemoteId = new Map(
-    localPersonas.map((persona) => [persona.remotePersonaId, persona]),
+  const mergedBySlug = new Map(
+    localPersonas.map((persona) => [persona.slug, persona]),
   );
   for (const cache of nextCaches) {
-    mergedByRemoteId.set(cache.remotePersonaId, cache);
+    mergedBySlug.set(cache.slug, cache);
   }
 
-  return [...mergedByRemoteId.values()].filter(
+  return [...mergedBySlug.values()].filter(
     (persona) => persona.syncStatus !== "deleted",
   );
 }

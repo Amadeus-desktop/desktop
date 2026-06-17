@@ -19,6 +19,8 @@ use crate::{
 
 const DEV_AUTH_CALLBACK_PORT: u16 = 17421;
 const DEV_AUTH_CALLBACK_URL: &str = "http://127.0.0.1:17421/auth/callback";
+const APP_AUTH_CALLBACK_URL: &str = "amadeus://auth/callback";
+const PRODUCTION_WEB_AUTH_CALLBACK_URL: &str = "https://amadeus0.kro.kr/auth/callback";
 const AUTH_CALLBACK_EVENT: &str = "amadeus-auth-callback";
 const DEV_AUTH_CALLBACK_TTL: Duration = Duration::from_secs(300);
 const DEV_AUTH_CALLBACK_ACCEPT_POLL_MS: u64 = 50;
@@ -386,7 +388,8 @@ fn is_supported_app_auth_callback_url(url: &str) -> bool {
     let Some(query_start) = url.find('?') else {
         return false;
     };
-    if &url[..query_start] != "amadeus://auth/callback" {
+    let callback_url = &url[..query_start];
+    if callback_url != APP_AUTH_CALLBACK_URL && callback_url != PRODUCTION_WEB_AUTH_CALLBACK_URL {
         return false;
     }
     url[query_start + 1..]
@@ -453,6 +456,19 @@ mod tests {
     }
 
     #[test]
+    fn extracts_production_web_auth_callback_from_single_instance_argv() {
+        let args = vec![
+            "/Applications/Amadeus.app/Contents/MacOS/Amadeus".to_string(),
+            "https://amadeus0.kro.kr/auth/callback?code=oauth-code&state=state".to_string(),
+        ];
+
+        assert_eq!(
+            auth_callback_url_from_argv(args),
+            Some("https://amadeus0.kro.kr/auth/callback?code=oauth-code&state=state".to_string())
+        );
+    }
+
+    #[test]
     fn rejects_fake_auth_callback_argv() {
         assert_eq!(
             auth_callback_url_from_argv(vec!["amadeus://auth.evil/callback?code=oauth-code"]),
@@ -464,6 +480,18 @@ mod tests {
         );
         assert_eq!(
             auth_callback_url_from_argv(vec!["amadeus://auth/callback?state=state"]),
+            None
+        );
+        assert_eq!(
+            auth_callback_url_from_argv(vec![
+                "https://evil.amadeus0.kro.kr/auth/callback?code=oauth-code"
+            ]),
+            None
+        );
+        assert_eq!(
+            auth_callback_url_from_argv(vec![
+                "http://amadeus0.kro.kr/auth/callback?code=oauth-code"
+            ]),
             None
         );
     }

@@ -134,6 +134,39 @@ pub struct LocalMemory {
     pub updated_at_ms: i64,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListLocalMemoryCardsInput {
+    pub persona_id: String,
+    pub limit: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalMemoryCardRow {
+    pub id: String,
+    pub user_id: String,
+    pub persona_id: String,
+    pub memory_category: String,
+    pub memory_type: String,
+    pub content: String,
+    pub confidence: i64,
+    pub source: String,
+    pub visibility: String,
+    pub normalized_key: Option<String>,
+    pub source_message_ids: Vec<String>,
+    pub evidence_excerpt_redacted: Option<String>,
+    pub observed_at_ms: Option<i64>,
+    pub valid_from_ms: Option<i64>,
+    pub expires_at_ms: Option<i64>,
+    pub user_confirmed: bool,
+    pub contradicts_memory_id: Option<String>,
+    pub write_reason: String,
+    pub created_at_ms: i64,
+    pub updated_at_ms: i64,
+    pub deleted_at_ms: Option<i64>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ActivityObservation {
@@ -216,6 +249,26 @@ pub struct SyncQueueRow {
     pub last_error: Option<String>,
     pub created_at_ms: i64,
     pub updated_at_ms: i64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListPendingSyncQueueInput {
+    pub limit: Option<i64>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MarkSyncQueueSyncedInput {
+    pub id: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecordSyncQueueFailureInput {
+    pub id: String,
+    pub last_error: String,
+    pub retryable: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

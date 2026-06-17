@@ -8,6 +8,7 @@ import type { AuthUser } from "../types";
 type SupabaseUserLike = Pick<User, "id" | "email" | "app_metadata" | "user_metadata">;
 
 export const AMADEUS_AUTH_CALLBACK_URL = "amadeus://auth/callback";
+export const AMADEUS_WEB_AUTH_CALLBACK_URL = "https://amadeus0.kro.kr/auth/callback";
 export const AMADEUS_DEV_AUTH_CALLBACK_URL = "http://127.0.0.1:17421/auth/callback";
 export const AMADEUS_DEV_AUTH_CALLBACK_PORT = "17421";
 export const AMADEUS_AUTH_CALLBACK_EVENT = "amadeus-auth-callback";
@@ -70,7 +71,7 @@ export function getGoogleOAuthRedirectUrl(
   origin = typeof window === "undefined" ? "" : window.location.origin,
 ) {
   if (!shouldUseAppDeepLink) return origin;
-  return isLocalDevOrigin(origin) ? AMADEUS_DEV_AUTH_CALLBACK_URL : AMADEUS_AUTH_CALLBACK_URL;
+  return isLocalDevOrigin(origin) ? AMADEUS_DEV_AUTH_CALLBACK_URL : AMADEUS_WEB_AUTH_CALLBACK_URL;
 }
 
 async function resolveGoogleOAuthRedirectUrl(shouldUseAppDeepLink: boolean) {
@@ -120,8 +121,13 @@ function isSupportedAuthCallbackUrl(parsed: URL) {
     (parsed.hostname === "127.0.0.1" || parsed.hostname === "localhost") &&
     parsed.port === AMADEUS_DEV_AUTH_CALLBACK_PORT &&
     parsed.pathname === "/auth/callback";
+  const isProductionWebCallback =
+    parsed.protocol === "https:" &&
+    parsed.hostname === "amadeus0.kro.kr" &&
+    parsed.pathname === "/auth/callback" &&
+    parsed.port === "";
 
-  return isAmadeusAuthCallback || isDevLoopbackCallback;
+  return isAmadeusAuthCallback || isDevLoopbackCallback || isProductionWebCallback;
 }
 
 function isLocalDevOrigin(origin: string) {

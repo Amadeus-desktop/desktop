@@ -10,7 +10,10 @@ import type {
   CreateUtteranceEventInput,
   EnqueueSyncPayloadInput,
   GetOrCreateConversationSessionInput,
+  ListPendingSyncQueueInput,
   LocalMemory,
+  MarkSyncQueueSyncedInput,
+  RecordSyncQueueFailureInput,
   SyncPayloadEnvelope,
   SyncQueueRow,
   TimelineEvent,
@@ -22,6 +25,7 @@ import type {
 const events: TimelineEvent[] = [];
 const conversationSessions: ConversationSession[] = [];
 const conversationMessages: ConversationMessage[] = [];
+const syncQueue: SyncQueueRow[] = [];
 let sequence = 0;
 
 export function createMockContextEvent(
@@ -163,7 +167,7 @@ export function enqueueMockSyncPayload(
 ): SyncQueueRow {
   const envelope = validateSyncPayloadEnvelope(input);
 
-  return {
+  const row: SyncQueueRow = {
     ...input,
     id: nextMockId("sync"),
     safetyGrade: envelope.safetyGrade,
@@ -175,6 +179,38 @@ export function enqueueMockSyncPayload(
     createdAtMs: nextMockOccurredAt(),
     updatedAtMs: nextMockOccurredAt(),
   };
+  syncQueue.push(row);
+  return row;
+}
+
+export function listPendingMockSyncQueue(
+  input: ListPendingSyncQueueInput = {},
+): SyncQueueRow[] {
+  return syncQueue
+    .filter((row) => row.status === "pending")
+    .sort((left, right) => left.updatedAtMs - right.updatedAtMs)
+    .slice(0, input.limit ?? 20);
+}
+
+export function markMockSyncQueueSynced(
+  input: MarkSyncQueueSyncedInput,
+): SyncQueueRow {
+  const row = findMockSyncQueueRow(input.id);
+  row.status = "synced";
+  row.lastError = null;
+  row.updatedAtMs = nextMockOccurredAt();
+  return row;
+}
+
+export function recordMockSyncQueueFailure(
+  input: RecordSyncQueueFailureInput,
+): SyncQueueRow {
+  const row = findMockSyncQueueRow(input.id);
+  row.status = input.retryable ? "pending" : "failed";
+  row.retryCount += 1;
+  row.lastError = redactMockSyncError(input.lastError);
+  row.updatedAtMs = nextMockOccurredAt();
+  return row;
 }
 
 export function listMockTimelineEvents(limit = 20): TimelineEvent[] {
@@ -199,6 +235,23 @@ function nextMockId(prefix: string) {
 function nextMockOccurredAt() {
   sequence += 1;
   return Date.now() + sequence;
+}
+
+function findMockSyncQueueRow(id: string): SyncQueueRow {
+  const row = syncQueue.find((candidate) => candidate.id === id);
+  if (!row) throw new Error("sync_queue_row_not_found");
+  return row;
+}
+
+function redactMockSyncError(value: string): string {
+  return value
+    .split(/\s+/)
+    .map((token) =>
+      /token|secret|password|api_key|^https?:\/\/|^\/Users\//i.test(token)
+        ? "[redacted]"
+        : token,
+    )
+    .join(" ");
 }
 
 function validateSyncPayloadEnvelope(

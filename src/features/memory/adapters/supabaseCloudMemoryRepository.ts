@@ -3,7 +3,9 @@ import type {
   MemoryCategory,
   MemorySource,
   MemoryType,
+  MemoryValidationResult,
 } from "../../../domain/memory/cards";
+import { validateMemoryCandidate } from "../../../domain/memory/cards";
 import type { VectorMemoryMatch } from "../../../domain/memory/rag";
 import { getSupabaseClient } from "../../../lib/supabase/client";
 
@@ -33,6 +35,25 @@ export type CloudMemoryRow = {
 
 export type CloudMemoryMatchRow = Omit<CloudMemoryRow, "user_id"> & {
   similarity: number;
+};
+
+export type CloudMemoryUpsertInput = {
+  idempotencyKey: string;
+  personaId: string;
+  memoryCategory: MemoryCategory;
+  memoryType: MemoryType;
+  content: string;
+  confidence: number;
+  source: MemorySource;
+  safetyGrade: "SharedMemory" | "SafeWorkSummary";
+  normalizedKey?: string | null;
+  sourceMessageIds?: string[];
+  evidenceExcerptRedacted: string;
+  observedAt: string;
+  validFrom?: string | null;
+  expiresAt?: string | null;
+  userConfirmed?: boolean;
+  writeReason: string;
 };
 
 const CLOUD_MEMORY_SELECT = [
@@ -126,6 +147,71 @@ export async function matchCloudSafeMemoryCards(input: {
   });
 }
 
+export async function upsertCloudSafeMemoryCard(
+  input: CloudMemoryUpsertInput,
+): Promise<MemoryCard> {
+  const normalizedKey = input.normalizedKey?.trim() || input.idempotencyKey;
+  const supabase = getSupabaseClient();
+  const personaId = await resolveCloudPersonaId(input.personaId);
+  if (!personaId) {
+    throw new Error("cloud_persona_not_found");
+  }
+
+  assertCloudMemoryUpsertInput({
+    ...input,
+    personaId,
+    normalizedKey,
+  });
+
+  const existing = await findCloudMemoryByNormalizedKey(personaId, normalizedKey);
+  if (existing) return existing;
+
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user?.id) {
+    throw userError ?? new Error("supabase_user_missing");
+  }
+
+  const cloudMemories = supabase.from("cloud_memories") as unknown as {
+    insert: (payload: Record<string, unknown>) => {
+      select: (columns: string) => {
+        single: () => Promise<{ data: unknown; error: unknown }>;
+      };
+    };
+  };
+  const { data, error } = await cloudMemories
+    .insert({
+      user_id: userData.user.id,
+      persona_id: personaId,
+      memory_category: input.memoryCategory,
+      memory_type: input.memoryType,
+      content: input.content,
+      confidence: input.confidence,
+      source: input.source,
+      safety_grade: input.safetyGrade,
+      normalized_key: normalizedKey,
+      source_message_ids: input.sourceMessageIds ?? [],
+      evidence_excerpt_redacted: input.evidenceExcerptRedacted,
+      observed_at: input.observedAt,
+      valid_from: input.validFrom ?? null,
+      expires_at: input.expiresAt ?? null,
+      user_confirmed: input.userConfirmed ?? false,
+      write_reason: input.writeReason,
+    })
+    .select(CLOUD_MEMORY_SELECT)
+    .single();
+
+  if (error) {
+    const existingAfterConflict = await findCloudMemoryByNormalizedKey(
+      personaId,
+      normalizedKey,
+    );
+    if (existingAfterConflict) return existingAfterConflict;
+    throw error;
+  }
+
+  return normalizeCloudMemoryRow(data as CloudMemoryRow);
+}
+
 export function normalizeCloudMemoryRow(row: CloudMemoryRow): MemoryCard {
   return {
     id: row.id,
@@ -150,6 +236,50 @@ export function normalizeCloudMemoryRow(row: CloudMemoryRow): MemoryCard {
     updatedAtMs: Date.parse(row.updated_at),
     deletedAtMs: parseNullableTime(row.deleted_at),
   };
+}
+
+function assertCloudMemoryUpsertInput(
+  input: CloudMemoryUpsertInput & { normalizedKey: string },
+): void {
+  if (input.source === "desktop_context") {
+    throw new Error("desktop_context_source_not_cloud_syncable");
+  }
+  const validation: MemoryValidationResult = validateMemoryCandidate({
+    userId: "",
+    personaId: input.personaId,
+    memoryCategory: input.memoryCategory,
+    memoryType: input.memoryType,
+    content: input.content,
+    confidence: input.confidence,
+    source: input.source,
+    visibility: "cloud_safe",
+    normalizedKey: input.normalizedKey,
+    sourceMessageIds: input.sourceMessageIds ?? [input.idempotencyKey],
+    evidenceExcerptRedacted: input.evidenceExcerptRedacted,
+    observedAtMs: Date.parse(input.observedAt),
+    userConfirmed: input.userConfirmed ?? false,
+    writeReason: input.writeReason,
+  });
+  if (!validation.accepted) {
+    throw new Error(`cloud_memory_validation_failed:${validation.reason}`);
+  }
+}
+
+async function findCloudMemoryByNormalizedKey(
+  personaId: string,
+  normalizedKey: string,
+): Promise<MemoryCard | null> {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase
+    .from("cloud_memories")
+    .select(CLOUD_MEMORY_SELECT)
+    .eq("persona_id", personaId)
+    .eq("normalized_key", normalizedKey)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data ? normalizeCloudMemoryRow(data as CloudMemoryRow) : null;
 }
 
 export function normalizeCloudMemoryMatchRow(row: CloudMemoryMatchRow): MemoryCard {

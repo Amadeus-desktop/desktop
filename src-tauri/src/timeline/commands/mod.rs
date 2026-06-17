@@ -5,8 +5,10 @@ use super::{
     ConversationMessage, ConversationSession, CreateContextEventInput, CreateLocalMemoryInput,
     CreateUserReactionInput, CreateUtteranceEventInput, EnqueueSyncPayloadInput,
     GetLocalPersonaInput, GetOrCreateConversationSessionInput, ListConversationMessagesInput,
-    LocalMemory, LocalPersonaCacheRow, SyncQueueRow, TimelineError, TimelineEvent, TimelineState,
-    UpsertLocalPersonasInput, UserReaction, UtteranceEvent, WorkSession,
+    ListLocalMemoryCardsInput, ListPendingSyncQueueInput, LocalMemory, LocalMemoryCardRow,
+    LocalPersonaCacheRow, MarkSyncQueueSyncedInput, RecordSyncQueueFailureInput, SyncQueueRow,
+    TimelineError, TimelineEvent, TimelineState, UpsertLocalPersonasInput, UserReaction,
+    UtteranceEvent, WorkSession,
 };
 
 #[tauri::command]
@@ -102,6 +104,46 @@ pub fn enqueue_sync_payload(
     input: EnqueueSyncPayloadInput,
 ) -> Result<SyncQueueRow, CommandError> {
     with_repository(&state, |repository| repository.enqueue_sync_payload(input))
+}
+
+#[tauri::command]
+pub fn list_pending_sync_queue(
+    state: State<'_, TimelineState>,
+    input: ListPendingSyncQueueInput,
+) -> Result<Vec<SyncQueueRow>, CommandError> {
+    with_repository(&state, |repository| {
+        repository.list_pending_sync_queue(input)
+    })
+}
+
+#[tauri::command]
+pub fn list_local_memory_cards(
+    state: State<'_, TimelineState>,
+    input: ListLocalMemoryCardsInput,
+) -> Result<Vec<LocalMemoryCardRow>, CommandError> {
+    with_repository(&state, |repository| {
+        repository.list_local_memory_cards(input)
+    })
+}
+
+#[tauri::command]
+pub fn mark_sync_queue_synced(
+    state: State<'_, TimelineState>,
+    input: MarkSyncQueueSyncedInput,
+) -> Result<SyncQueueRow, CommandError> {
+    with_repository(&state, |repository| {
+        repository.mark_sync_queue_synced(input)
+    })
+}
+
+#[tauri::command]
+pub fn record_sync_queue_failure(
+    state: State<'_, TimelineState>,
+    input: RecordSyncQueueFailureInput,
+) -> Result<SyncQueueRow, CommandError> {
+    with_repository(&state, |repository| {
+        repository.record_sync_queue_failure(input)
+    })
 }
 
 #[tauri::command]

@@ -187,7 +187,7 @@ src-tauri/src/app_lifecycle/startup.rs
 필수 계약:
 
 - `single_instance` callback의 argv fallback은 Amadeus의 방어 정책이다. 공식 문서가 모든 정적 scheme에서 직접 argv 파싱을 필수로 요구하는 것은 아니지만, Amadeus는 protocol 유실 방지를 위해 argv를 버리면 안 된다.
-- `amadeus://auth/callback?...`은 Rust에서 검증 후 `amadeus-auth-callback`으로 라우팅한다.
+- `amadeus://auth/callback?...`과 `https://amadeus0.kro.kr/auth/callback?...`은 Rust에서 검증 후 `amadeus-auth-callback`으로 라우팅한다.
 - fake deep link가 argv로 들어올 수 있으므로 scheme만 믿지 말고 host/path/query를 검증한다.
 - dev loopback callback은 emit만 하지 말고 마지막 callback을 pending state에 저장한다.
 - frontend는 `consume_pending_auth_callback` command로 replay를 확인할 수 있어야 한다.
@@ -491,7 +491,7 @@ P2:
 
 - auth callback URL은 exact app route, exact dev loopback host/port/path만 허용하도록 adapter contract test를 보강했다.
 - companion resize loop 회귀 방지를 위해 native window size 계산과 unchanged-size skip 정책을 pure contract test로 고정했다.
-- Rust single-instance argv extraction은 `amadeus://auth/callback?code=...` exact route만 허용하도록 contract test로 고정했다.
+- Rust single-instance argv extraction은 `amadeus://auth/callback?code=...`과 `https://amadeus0.kro.kr/auth/callback?code=...` exact route만 허용하도록 contract test로 고정했다.
 - dev loopback/deep-link race 대응을 위해 pending auth callback 저장/1회 소비 command를 추가하고 contract test로 고정했다.
 - main-only frontend listener ownership은 `view=companion`을 callback owner에서 제외하는 contract test로 고정했고, main window만 pending replay/listener/dev server를 시작하도록 연결했다.
 - onboarding completion은 animation 실패 시 `control-center` layout fallback을 호출하고 fallback 실패도 completion을 막지 않는 contract test로 고정했다.

@@ -7,9 +7,12 @@ import {
   createMockUtteranceEvent,
   enqueueMockSyncPayload,
   getOrCreateMockConversationSession,
+  listPendingMockSyncQueue,
   listMockActivityObservations,
   listMockTimelineEvents,
   listMockWorkSessions,
+  markMockSyncQueueSynced,
+  recordMockSyncQueueFailure,
 } from "../../../mocks/timeline";
 import { isTauriRuntime } from "../../../lib/tauri/runtime";
 import type {
@@ -26,8 +29,13 @@ import type {
   GetLocalPersonaInput,
   GetOrCreateConversationSessionInput,
   ListConversationMessagesInput,
+  ListLocalMemoryCardsInput,
+  ListPendingSyncQueueInput,
+  LocalMemoryCardRow,
   LocalMemory,
   LocalPersonaCacheRow,
+  MarkSyncQueueSyncedInput,
+  RecordSyncQueueFailureInput,
   SyncQueueRow,
   TimelineEvent,
   UpsertLocalPersonasInput,
@@ -118,6 +126,46 @@ export async function enqueueSyncPayload(
   }
 
   return enqueueMockSyncPayload(input);
+}
+
+export async function listLocalMemoryCards(
+  input: ListLocalMemoryCardsInput,
+): Promise<LocalMemoryCardRow[]> {
+  if (isTauriRuntime()) {
+    return invoke<LocalMemoryCardRow[]>("list_local_memory_cards", { input });
+  }
+
+  return [];
+}
+
+export async function listPendingSyncQueue(
+  input: ListPendingSyncQueueInput = {},
+): Promise<SyncQueueRow[]> {
+  if (isTauriRuntime()) {
+    return invoke<SyncQueueRow[]>("list_pending_sync_queue", { input });
+  }
+
+  return listPendingMockSyncQueue(input);
+}
+
+export async function markSyncQueueSynced(
+  input: MarkSyncQueueSyncedInput,
+): Promise<SyncQueueRow> {
+  if (isTauriRuntime()) {
+    return invoke<SyncQueueRow>("mark_sync_queue_synced", { input });
+  }
+
+  return markMockSyncQueueSynced(input);
+}
+
+export async function recordSyncQueueFailure(
+  input: RecordSyncQueueFailureInput,
+): Promise<SyncQueueRow> {
+  if (isTauriRuntime()) {
+    return invoke<SyncQueueRow>("record_sync_queue_failure", { input });
+  }
+
+  return recordMockSyncQueueFailure(input);
 }
 
 export async function listTimelineEvents(limit = 20): Promise<TimelineEvent[]> {

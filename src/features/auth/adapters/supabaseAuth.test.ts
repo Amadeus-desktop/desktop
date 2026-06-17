@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   AMADEUS_AUTH_CALLBACK_URL,
   AMADEUS_DEV_AUTH_CALLBACK_URL,
+  AMADEUS_WEB_AUTH_CALLBACK_URL,
   extractAuthCallbackCode,
   getGoogleOAuthRedirectUrl,
   toAuthUser,
@@ -34,9 +35,9 @@ describe("toAuthUser", () => {
     );
   });
 
-  it("uses the app deep link callback for Tauri production OAuth", () => {
+  it("uses the public web callback for Tauri production OAuth", () => {
     expect(getGoogleOAuthRedirectUrl(true, "tauri://localhost")).toBe(
-      AMADEUS_AUTH_CALLBACK_URL,
+      AMADEUS_WEB_AUTH_CALLBACK_URL,
     );
   });
 
@@ -47,7 +48,7 @@ describe("toAuthUser", () => {
   });
 
   it("extracts the PKCE code from the Amadeus auth deep link", () => {
-    expect(extractAuthCallbackCode("amadeus://auth/callback?code=oauth-code")).toBe(
+    expect(extractAuthCallbackCode(`${AMADEUS_AUTH_CALLBACK_URL}?code=oauth-code`)).toBe(
       "oauth-code",
     );
   });
@@ -55,6 +56,12 @@ describe("toAuthUser", () => {
   it("extracts the PKCE code from the local dev loopback callback", () => {
     expect(
       extractAuthCallbackCode("http://127.0.0.1:17421/auth/callback?code=oauth-code"),
+    ).toBe("oauth-code");
+  });
+
+  it("extracts the PKCE code from the public web callback", () => {
+    expect(
+      extractAuthCallbackCode("https://amadeus0.kro.kr/auth/callback?code=oauth-code"),
     ).toBe("oauth-code");
   });
 
@@ -78,6 +85,18 @@ describe("toAuthUser", () => {
     ).toBeNull();
     expect(
       extractAuthCallbackCode("http://example.com:17421/auth/callback?code=oauth-code"),
+    ).toBeNull();
+  });
+
+  it("accepts only the exact production web callback origin and path", () => {
+    expect(
+      extractAuthCallbackCode("https://evil.amadeus0.kro.kr/auth/callback?code=oauth-code"),
+    ).toBeNull();
+    expect(
+      extractAuthCallbackCode("http://amadeus0.kro.kr/auth/callback?code=oauth-code"),
+    ).toBeNull();
+    expect(
+      extractAuthCallbackCode("https://amadeus0.kro.kr/auth/callback/extra?code=oauth-code"),
     ).toBeNull();
   });
 });

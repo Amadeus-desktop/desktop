@@ -94,4 +94,49 @@ describe("syncCloudPersonasToLocalCache", () => {
       "seoyeon-modern-senior",
     ]);
   });
+
+  it("matches an existing local cache by slug when the remote persona id changes", async () => {
+    const existing: LocalPersonaCache = {
+      id: "old-remote-1",
+      remotePersonaId: "old-remote-1",
+      slug: "makise-kurisu",
+      name: "마키세 크리스",
+      baseTone: "logical_tsundere",
+      relationshipType: "lab_partner",
+      worldType: "sci_fi_modern",
+      staticPromptJson: "{}",
+      personaStateJson: null,
+      remoteVersion: 1,
+      lastPulledVersion: 1,
+      pendingMutationId: null,
+      syncStatus: "synced",
+      updatedAtMs: 1_797_398_300_000,
+    };
+    const bootstrapUserPersonas = vi.fn().mockResolvedValue(undefined);
+    const pullCloudPersonas = vi.fn().mockResolvedValue([remote]);
+    const listLocalPersonas = vi.fn().mockResolvedValue([existing]);
+    const upsertLocalPersonas = vi
+      .fn()
+      .mockImplementation(async (personas: LocalPersonaCache[]) => personas);
+
+    const result = await syncCloudPersonasToLocalCache({
+      bootstrapUserPersonas,
+      pullCloudPersonas,
+      listLocalPersonas,
+      upsertLocalPersonas,
+    });
+
+    expect(upsertLocalPersonas).toHaveBeenCalledWith([
+      expect.objectContaining({
+        id: "remote-1",
+        remotePersonaId: "remote-1",
+        slug: "makise-kurisu",
+      }),
+    ]);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      remotePersonaId: "remote-1",
+      slug: "makise-kurisu",
+    });
+  });
 });

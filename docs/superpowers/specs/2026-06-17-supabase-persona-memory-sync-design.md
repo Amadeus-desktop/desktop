@@ -14,7 +14,7 @@ RAG는 cloud-safe memory를 우선 사용하고, 앱은 오프라인 local fallb
 
 이번 설계의 핵심 결정은 기본 캐릭터 3개를 전역 공유 row로 두지 않고, 각 사용자 계정에 복사하는 것이다. 이 방식은 현재 Supabase RLS의 `user_id = auth.uid()` 모델과 맞고, 사용자별 persona state와 memory를 안전하게 분리한다.
 
-## 현재 차이
+## 현재 상태
 
 현재 코드에는 `src/domain/persona/cards` 아래 3개 character card가 있다.
 
@@ -22,22 +22,33 @@ RAG는 cloud-safe memory를 우선 사용하고, 앱은 오프라인 local fallb
 - `eiren-fantasy-guardian`
 - `makise-kurisu`
 
-하지만 Supabase migration에는 이 3개 카드를 사용자 계정의 `personas`와 `persona_states`로 초기화하는 경로가 없다.
+Persona foundation은 현재 구현되어 있다.
 
-현재 앱에는 `pullCloudPersonas()`와 persona cache merge 함수가 있지만, UI shell은 아직 locale registry의 hardcoded persona list를 사용한다. SQLite에는 `local_personas` 테이블이 준비되어 있지만, Rust/Tauri command로 upsert/list/get하는 저장 경로가 없다.
+- Supabase migration은 `personas.slug`, active slug unique index, `persona_states.is_current`, current-state unique index, 관련 RLS hardening을 포함한다.
+- `bootstrap-user-personas` Edge Function은 인증된 사용자 계정에 기본 3개 persona와 current `persona_states`를 생성한다.
+- 앱에는 `pullCloudPersonas()`, persona cache merge, SQLite `local_personas` upsert/list/get Tauri command, `useCachedPersonas()` UI 연결이 있다.
+- companion shell과 settings persona picker는 cached persona를 우선 사용하고, 실패하면 bundled card fallback을 사용한다.
 
-따라서 현재 상태는 아래처럼 끊겨 있다.
+현재 persona 경로는 아래처럼 연결되어 있다.
 
 ```text
 JSON character cards
-  -> TypeScript registry
-  -> UI hardcoded personas
-
-Supabase personas
-  -> pullCloudPersonas exists
-  -> SQLite local_personas command missing
-  -> UI not connected
+  -> Supabase Edge Function default persona template
+  -> bootstrap-user-personas
+  -> public.personas / public.persona_states
+  -> pullCloudPersonas()
+  -> SQLite local_personas cache
+  -> useCachedPersonas()
+  -> companion shell / settings picker
 ```
+
+Memory sync와 app RAG source selection도 현재 구현 경로가 있다.
+
+- SQLite에는 `local_memories`, `sync_queue`, `SyncPayloadEnvelope` 검증, pending queue 조회/ack/failure command가 있다.
+- Supabase에는 `cloud_memories`, idempotency-key 기반 normalized memory upsert, `match_cloud_memories` 기반 조회 계약이 있다.
+- `syncPendingMemorySummaryQueue()`는 `memory.summary` queue row를 검증된 `cloud_memories` write로 보내고, 성공/재시도/실패 상태를 SQLite queue에 반영한다.
+- app reply assembly는 cloud-safe memory와 SQLite local memory cards를 함께 로드해 prompt memory source로 전달한다.
+- Web-specific RAG orchestration은 별도 web app surface가 생길 때 같은 `cloud_memories`/`match_cloud_memories` 계약을 사용한다.
 
 ## 대상 아키텍처
 
@@ -158,6 +169,12 @@ On authenticated app startup:
 5. Upsert accepted cache rows into SQLite `local_personas`.
 6. Render UI from SQLite cache.
 
+Implementation note:
+
+- Current cache merge indexes local rows by `remotePersonaId`.
+- The contract still requires a `slug` fallback when `remote_persona_id` does not match, because `slug` is the stable product persona id and remote UUIDs can change if cloud rows are recreated.
+- Add or keep a focused test that proves an existing local cache with the same `slug` is updated instead of duplicated when the remote UUID changes.
+
 Offline behavior:
 
 1. If Supabase is unavailable, skip bootstrap/pull.
@@ -172,6 +189,8 @@ upsert_local_personas(input: LocalPersonaCache[])
 list_local_personas()
 get_local_persona(slug_or_remote_id)
 ```
+
+These commands are implemented in the current Tauri timeline module. They remain listed here as the required contract for future refactors.
 
 SQLite `local_personas` remains a cache, not a source of truth. App-side persona edits must go to Supabase with `expected_version`, then update local cache after ack.
 
@@ -298,7 +317,7 @@ Rust SQLite tests:
 TypeScript tests:
 
 - `pullCloudPersonas` normalizes slug, static prompt, and current state.
-- App bootstrap flow calls server bootstrap, pulls personas, and writes SQLite cache.
+- App bootstrap flow calls server bootstrap, pulls personas, merges by `remotePersonaId` or `slug`, and writes SQLite cache.
 - UI uses cached personas rather than only hardcoded i18n registry.
 - Prompt assembly keeps raw desktop context out of cloud provider envelopes.
 - RAG fallback works when cloud match fails.

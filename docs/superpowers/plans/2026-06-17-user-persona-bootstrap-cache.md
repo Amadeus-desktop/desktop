@@ -2,6 +2,32 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+## Current Status
+
+Status: implemented in the current workspace.
+
+Implemented:
+
+- Supabase persona hardening migration exists at `supabase/migrations/20260617010000_persona_bootstrap_hardening.sql`.
+- `bootstrap-user-personas` Edge Function exists and contains server-owned default persona templates.
+- Tauri local persona cache commands exist: `upsert_local_personas`, `list_local_personas`, `get_local_persona`.
+- TypeScript persona bootstrap/cache adapters exist.
+- `useCachedPersonas()` is connected to companion shell and settings persona picker.
+- Persona cache merge matches by `remotePersonaId` and falls back to stable `slug`.
+- Sync queue consume commands exist for pending rows, synced ack, and retryable/non-retryable failure.
+- `syncPendingMemorySummaryQueue()` uploads safe memory summaries to Supabase `cloud_memories`.
+- App reply memory loading combines cloud-safe memory with local SQLite memory cards.
+
+Latest local verification:
+
+- `pnpm run typecheck`: PASS.
+- `cargo test local_persona_cache_can_be_upserted_and_listed`: PASS.
+- `cargo test sync_queue_pending_rows_can_be_listed_and_marked`: PASS.
+- `cargo test local_memory_cards_can_be_listed_for_prompt_context`: PASS.
+- Focused Vitest command did not produce output for about 90 seconds and was interrupted, so Vitest pass is not confirmed.
+
+The unchecked task list below is the original implementation checklist, not an authoritative current progress tracker.
+
 **Goal:** Create user-owned default personas from the three bundled character cards, cache pulled personas in SQLite, and make the app consume cached personas instead of only hardcoded i18n registry data.
 
 **Architecture:** Supabase remains the persona source of truth. A server-side bootstrap function creates missing default personas for the authenticated user, the app pulls those rows, and Tauri stores them in SQLite `local_personas`. React reads cached personas with a bundled-card fallback for offline/unauthenticated preview.
@@ -487,7 +513,7 @@ cargo test local_persona_cache_can_be_upserted_and_listed
 
 from `src-tauri`.
 
-Expected: FAIL because `LocalPersonaCacheInput` or repository methods do not exist.
+Original expected result while following this plan from an empty implementation: FAIL because `LocalPersonaCacheInput` and the repository methods were absent at that point. In the current workspace these APIs exist, so this step is historical TDD context.
 
 - [ ] **Step 3: Add contract structs**
 
@@ -825,7 +851,7 @@ Run:
 pnpm exec vitest run src/features/persona/adapters/personaCacheRepository.test.ts --reporter=verbose
 ```
 
-Expected: FAIL because `personaCacheRepository` does not exist.
+Original expected result while following this plan from an empty implementation: FAIL because `personaCacheRepository` was absent at that point. In the current workspace this adapter exists, so this step is historical TDD context.
 
 - [ ] **Step 3: Add timeline types and wrappers**
 
@@ -1235,6 +1261,8 @@ Expected: only intended uncommitted files remain. Existing unrelated user change
 ## Self-Review Notes
 
 - Spec coverage: this plan covers user-owned default persona bootstrap, persona current-state hardening, SQLite local persona cache, app pull/cache, and UI connection.
-- Explicitly deferred: memory sync worker and RAG source selection. The spec covers them, but they are separate subsystems and need their own implementation plan.
+- Memory sync worker status: app-side safe summary queue consumption is implemented for `memory.summary` rows.
+- RAG source selection status: app replies can combine Supabase cloud-safe memory and SQLite local memory cards. Web-specific orchestration remains a future web surface task.
+- Verification status: typecheck and focused Rust tests pass; focused Vitest did not complete during the latest local check.
 - Placeholder scan: no TBD/TODO placeholders remain in the plan text.
 - Type consistency: `slug`, `remotePersonaId`, and SQLite camelCase fields match the existing TypeScript `LocalPersonaCache` contract; Rust serde uses `rename_all = "camelCase"` for command boundaries.

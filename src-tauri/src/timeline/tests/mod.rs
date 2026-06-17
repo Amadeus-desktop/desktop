@@ -721,3 +721,92 @@ fn sync_queue_rejects_forbidden_context_values() {
 
     assert!(result.is_err());
 }
+
+#[test]
+fn sync_queue_pending_rows_can_be_listed_and_marked() {
+    let mut repository = TimelineRepository::open_in_memory().expect("repo opens");
+    repository.migrate().expect("migration succeeds");
+
+    let pending = repository
+        .enqueue_sync_payload(EnqueueSyncPayloadInput {
+            event_type: "memory.summary".to_string(),
+            payload_json: serde_json::to_string(&SyncPayloadEnvelope {
+                schema_version: 1,
+                event_type: "memory.summary".to_string(),
+                payload_class: "SafeSummary".to_string(),
+                safety_grade: "SafeWorkSummary".to_string(),
+                redaction_level: "SummaryRedacted".to_string(),
+                retention_policy: "Session".to_string(),
+                validator_version: "test.v1".to_string(),
+                payload: serde_json::json!({
+                    "personaId": "makise-kurisu",
+                    "memoryCategory": "episodic",
+                    "memoryType": "episodic_summary",
+                    "content": "사용자는 오늘 과제를 오래 붙잡았다.",
+                    "confidence": 82,
+                    "source": "manual",
+                    "evidenceExcerptRedacted": "과제를 오래 붙잡음",
+                    "observedAt": "2026-06-17T00:00:00.000Z",
+                    "writeReason": "safe_summary"
+                }),
+            })
+            .expect("payload serializes"),
+            idempotency_key: "memory-summary-1".to_string(),
+        })
+        .expect("payload enqueues");
+
+    let pending_rows = repository
+        .list_pending_sync_queue(ListPendingSyncQueueInput { limit: Some(10) })
+        .expect("pending rows list");
+    assert_eq!(pending_rows.len(), 1);
+    assert_eq!(pending_rows[0].id, pending.id);
+
+    let retryable = repository
+        .record_sync_queue_failure(RecordSyncQueueFailureInput {
+            id: pending.id.clone(),
+            last_error: "network_unavailable".to_string(),
+            retryable: true,
+        })
+        .expect("retryable failure records");
+    assert_eq!(retryable.status, "pending");
+    assert_eq!(retryable.retry_count, 1);
+
+    let synced = repository
+        .mark_sync_queue_synced(MarkSyncQueueSyncedInput { id: pending.id })
+        .expect("sync marks synced");
+    assert_eq!(synced.status, "synced");
+    assert!(synced.last_error.is_none());
+
+    let pending_rows = repository
+        .list_pending_sync_queue(ListPendingSyncQueueInput { limit: Some(10) })
+        .expect("pending rows list");
+    assert!(pending_rows.is_empty());
+}
+
+#[test]
+fn local_memory_cards_can_be_listed_for_prompt_context() {
+    let mut repository = TimelineRepository::open_in_memory().expect("repo opens");
+    repository.migrate().expect("migration succeeds");
+    repository
+        .create_local_memory(CreateLocalMemoryInput {
+            persona_id: Some("makise-kurisu".to_string()),
+            memory_type: "episodic_summary".to_string(),
+            content: "사용자는 로컬 작업 맥락을 이어가고 있다.".to_string(),
+            scope: "local_private".to_string(),
+            confidence: 88,
+            syncable: false,
+        })
+        .expect("local memory writes");
+
+    let cards = repository
+        .list_local_memory_cards(ListLocalMemoryCardsInput {
+            persona_id: "makise-kurisu".to_string(),
+            limit: Some(10),
+        })
+        .expect("local memory cards list");
+
+    assert_eq!(cards.len(), 1);
+    assert_eq!(cards[0].persona_id, "makise-kurisu");
+    assert_eq!(cards[0].visibility, "local_private");
+    assert_eq!(cards[0].memory_type, "episodic_summary");
+}

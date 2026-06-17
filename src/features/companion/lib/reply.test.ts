@@ -102,4 +102,37 @@ describe("resolveCompanionReplyWithDependencies", () => {
     });
     warn.mockRestore();
   });
+
+  it("combines cloud-safe and local memory sources for app replies", async () => {
+    const localMemory: MemoryCard = {
+      ...memoryCard,
+      id: "local-memory-1",
+      visibility: "local_private",
+      content: "사용자는 로컬에서만 보관되는 작업 맥락을 가지고 있다.",
+    };
+    const generateChatReply = vi.fn().mockResolvedValue({
+      message: "로컬 맥락까지 고려할게.",
+      provider: "test",
+    });
+
+    await resolveCompanionReplyWithDependencies(
+      [{ id: "m1", sender: "user", text: "이어가자." }],
+      persona,
+      settings,
+      {
+        listCloudSafeMemoryCards: vi.fn().mockResolvedValue([memoryCard]),
+        listLocalMemoryCards: vi.fn().mockResolvedValue([localMemory]),
+        generateChatReply,
+      },
+    );
+
+    expect(generateChatReply).toHaveBeenCalledWith(
+      expect.any(Array),
+      persona,
+      settings,
+      expect.objectContaining({
+        memoryCards: [memoryCard, localMemory],
+      }),
+    );
+  });
 });

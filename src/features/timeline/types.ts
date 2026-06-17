@@ -1,3 +1,5 @@
+import type { MemoryCard } from "../../domain/memory/cards";
+
 export type CreateContextEventInput = {
   appName: string;
   windowTitle: string;
@@ -105,6 +107,13 @@ export type LocalMemory = Omit<CreateLocalMemoryInput, "syncable"> & {
   updatedAtMs: number;
 };
 
+export type ListLocalMemoryCardsInput = {
+  personaId: string;
+  limit?: number;
+};
+
+export type LocalMemoryCardRow = MemoryCard;
+
 export type ConversationSession = GetOrCreateConversationSessionInput & {
   id: string;
   cloudConversationId: string;
@@ -134,6 +143,20 @@ export type SyncQueueRow = EnqueueSyncPayloadInput & {
   lastError?: string | null;
   createdAtMs: number;
   updatedAtMs: number;
+};
+
+export type ListPendingSyncQueueInput = {
+  limit?: number;
+};
+
+export type MarkSyncQueueSyncedInput = {
+  id: string;
+};
+
+export type RecordSyncQueueFailureInput = {
+  id: string;
+  lastError: string;
+  retryable: boolean;
 };
 
 export type LocalPersonaCacheRow = {
