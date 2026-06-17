@@ -76,20 +76,21 @@ jobs:
       - name: Validate signing secrets
         run: |
           missing=0
-          for name in \
-            APPLE_ID \
-            APPLE_PASSWORD \
-            APPLE_TEAM_ID \
-            APPLE_CERTIFICATE \
-            APPLE_CERTIFICATE_PASSWORD \
-            TAURI_SIGNING_PRIVATE_KEY \
-            TAURI_SIGNING_PRIVATE_KEY_PASSWORD
-          do
-            if [ -z "${!name}" ]; then
-              echo "::error title=Missing signing secret::$name is not set"
+          check_secret() {
+            secret_name="$1"
+            secret_value="$2"
+            if [ -z "$secret_value" ]; then
+              echo "::error title=Missing signing secret::$secret_name is not set"
               missing=1
             fi
-          done
+          }
+          check_secret "APPLE_ID" "$APPLE_ID"
+          check_secret "APP_PASSWD" "$APPLE_PASSWORD"
+          check_secret "APPLE_TEAM_ID" "$APPLE_TEAM_ID"
+          check_secret "APPLE_CERTIFICATE_BASE64" "$APPLE_CERTIFICATE"
+          check_secret "APPLE_CERTIFICATE_PASSWORD" "$APPLE_CERTIFICATE_PASSWORD"
+          check_secret "TAURI_SIGNING_PRIVATE_KEY" "$TAURI_SIGNING_PRIVATE_KEY"
+          check_secret "TAURI_SIGNING_PRIVATE_KEY_PASSWORD" "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD"
           if [ "$missing" -ne 0 ]; then
             exit 1
           fi
